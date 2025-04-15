@@ -19,82 +19,81 @@ fn main() {
     }
 }
 
+fn tokenize(string: String, tokens: &mut Vec<String>) {
+    let mut stack = vec![];
+
+    for c in string.chars() {
+        if c == ' ' {
+            continue;
+        }
+
+        if c.is_ascii_digit() {
+            stack.push(c.to_string());
+            continue;
+        }
+
+        if !stack.is_empty() {
+            tokens.push(stack.join(""));
+            stack.clear();
+        }
+
+        if c == '+' || c == '-' {
+            tokens.push(c.to_string());
+        }
+    }
+
+    if !stack.is_empty() {
+        tokens.push(stack.join(""));
+    }
+}
+
 /// 式を解析し、LLVM IRを文字列として返す
 fn generate_llvm_ir(expr: &str) -> Result<String, String> {
-    let mut p = expr.trim();
+    let mut tokens = vec![];
+    tokenize(expr.to_string(), &mut tokens);
+
+    if tokens.is_empty() {
+        return Err("トークンが空です".to_string());
+    }
+
     let mut code = String::new();
 
     // ヘッダ部分
     code.push_str("; ModuleID = 'main'\n");
     code.push_str("define i32 @main() {\n");
 
-    // 最初の数値（初期値）
-    let (first_value, rest) = parse_number(p)?;
-    p = rest;
     let mut reg_counter = 1;
-    code.push_str(&format!(
-        "  %{} = add i32 0, {}\n",
-        reg_counter, first_value
-    ));
+
+    // 最初の数字
+    let first = tokens.remove(0);
     let mut last_reg = reg_counter;
+    code.push_str(&format!("  %{} = add i32 0, {}\n", reg_counter, first));
     reg_counter += 1;
 
     // 残りの演算子と数値を処理
-    while !p.is_empty() {
-        let ch = p.chars().next().unwrap();
-        p = &p[1..];
-
-        let (num, rest2) = parse_number(p)?;
-        p = rest2;
-
-        match ch {
-            '+' => {
-                code.push_str(&format!(
-                    "  %{} = add i32 %{}, {}\n",
-                    reg_counter, last_reg, num
-                ));
-            }
-            '-' => {
-                code.push_str(&format!(
-                    "  %{} = sub i32 %{}, {}\n",
-                    reg_counter, last_reg, num
-                ));
-            }
-            _ => {
-                return Err(format!("予期しない文字です: '{}'", ch));
-            }
+    while !tokens.is_empty() {
+        let op = tokens.remove(0);
+        if tokens.is_empty() {
+            return Err("演算子の後に数値が必要です".to_string());
         }
+        let rhs = tokens.remove(0);
 
+        let ir_op = match op.as_str() {
+            "+" => "add",
+            "-" => "sub",
+            _ => return Err(format!("未知の演算子: '{}'", op)),
+        };
+
+        code.push_str(&format!(
+            "  %{} = {} i32 %{}, {}\n",
+            reg_counter, ir_op, last_reg, rhs
+        ));
         last_reg = reg_counter;
         reg_counter += 1;
     }
 
-    // 終了処理
     code.push_str(&format!("  ret i32 %{}\n", last_reg));
     code.push_str("}\n");
 
     Ok(code)
-}
-
-/// 数字をパースする（先頭から数字を取り出し、残りを返す）
-fn parse_number(s: &str) -> Result<(i32, &str), String> {
-    let s = s.trim_start();
-    let mut chars = s.chars();
-    let mut len = 0;
-
-    while let Some(c) = chars.next() {
-        if c.is_ascii_digit() {
-            len += 1;
-        } else {
-            break;
-        }
-    }
-
-    if len == 0 {
-        return Err("数値のパースに失敗しました".into());
-    }
-
-    let (num_str, rest) = s.split_at(len);
-    let value = num_str.parse::<i32>().map_err(|e| e.to_string())?;
-    Ok((value, rest))
 }
