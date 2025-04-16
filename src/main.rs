@@ -1,7 +1,139 @@
+use std::char;
 use std::env;
 use std::process;
+use std::usize;
 
-/// メイン関数：引数から式を受け取り、LLVM IRを出力
+#[derive(Debug, PartialEq, Clone)]
+enum SYMBOLS {
+    Add,    // +
+    Sub,    // -
+    Mul,    // *
+    Div,    // /
+    ParenL, // (
+    ParenR, // )
+}
+
+impl SYMBOLS {
+    fn classify(input: char) -> Option<SYMBOLS> {
+        match input {
+            '+' => Some(Self::Add),
+            '-' => Some(Self::Sub),
+            '*' => Some(Self::Mul),
+            '/' => Some(Self::Div),
+            '(' => Some(Self::ParenL),
+            ')' => Some(Self::ParenR),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+enum TokenKind {
+    SYMBOL, // 記号
+    NUMBER, // 整数トークン
+}
+
+#[derive(Debug)]
+struct Token {
+    kind: TokenKind,         // トークンの型
+    value: Option<usize>,    // kindがTK_NUMの場合、その数値
+    symbol: Option<SYMBOLS>, // トークン文字列
+}
+
+impl Token {
+    fn new_number(value: usize) -> Self {
+        Self {
+            kind: TokenKind::NUMBER,
+            value: Some(value),
+            symbol: None,
+        }
+    }
+    fn new_symbol(symbol: SYMBOLS) -> Self {
+        Self {
+            kind: TokenKind::SYMBOL,
+            value: None,
+            symbol: Some(symbol),
+        }
+    }
+}
+
+#[derive(Debug)]
+enum NodeKind {
+    ADD, // +
+    SUB, // -
+    MUL, // *
+    DIV, // /
+    NUM, // 整数
+}
+
+// 抽象構文木のノードの型
+#[derive(Debug)]
+struct Node {
+    kind: NodeKind,         // ノードの型
+    lhs: Option<Box<Node>>, // 左辺
+    rhs: Option<Box<Node>>, // 右辺
+    val: Option<usize>,     // kindがND_NUMの場合のみ使う
+}
+
+impl Node {
+    fn new_node(kind: NodeKind, lhs: Box<Node>, rhs: Box<Node>) -> Self {
+        Self {
+            kind,
+            lhs: Some(lhs),
+            rhs: Some(rhs),
+            val: None,
+        }
+    }
+
+    fn new_node_num(val: usize) -> Self {
+        Self {
+            kind: NodeKind::NUM,
+            lhs: None,
+            rhs: None,
+            val: Some(val),
+        }
+    }
+}
+
+fn primary(tokens: &mut Vec<Token>) -> Box<Node> {
+    // 次のトークンが"("なら、"(" expr ")"のはず
+    if consume(SYMBOLS::ParenL, tokens) {
+        let node = expr(tokens);
+        let _ = consume(SYMBOLS::ParenR, tokens);
+        return node;
+    }
+
+    // そうでなければ数値のはず
+    return Box::new(Node::new_node_num(expect_number(tokens)));
+}
+
+fn mul(tokens: &mut Vec<Token>) -> Box<Node> {
+    let mut node = primary(tokens);
+
+    loop {
+        if consume(SYMBOLS::Mul, tokens) {
+            node = Box::new(Node::new_node(NodeKind::MUL, node, primary(tokens)));
+        } else if consume(SYMBOLS::Div, tokens) {
+            node = Box::new(Node::new_node(NodeKind::DIV, node, primary(tokens)));
+        } else {
+            return node;
+        }
+    }
+}
+
+fn expr(tokens: &mut Vec<Token>) -> Box<Node> {
+    let mut node = mul(tokens);
+    loop {
+        if consume(SYMBOLS::Add, tokens) {
+            node = Box::new(Node::new_node(NodeKind::ADD, node, mul(tokens)));
+        } else if consume(SYMBOLS::Sub, tokens) {
+            node = Box::new(Node::new_node(NodeKind::SUB, node, mul(tokens)));
+        } else {
+            return node;
+        }
+    }
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -10,16 +142,11 @@ fn main() {
         process::exit(1);
     }
 
-    match generate_llvm_ir(&args[1]) {
-        Ok(ir) => print!("{}", ir),
-        Err(e) => {
-            eprintln!("{}", e);
-            process::exit(1);
-        }
-    }
+    let tokens = tokenize(args[1].clone());
 }
 
-fn tokenize(string: String, tokens: &mut Vec<String>) {
+fn tokenize(string: String) -> Vec<Token> {
+    let mut tokens = vec![];
     let mut stack = vec![];
 
     for c in string.chars() {
@@ -33,67 +160,60 @@ fn tokenize(string: String, tokens: &mut Vec<String>) {
         }
 
         if !stack.is_empty() {
-            tokens.push(stack.join(""));
+            tokens.push(Token::new_number(stack.join("").parse().unwrap()));
             stack.clear();
         }
-
-        if c == '+' || c == '-' {
-            tokens.push(c.to_string());
+        let symbol = SYMBOLS::classify(c);
+        if symbol.is_some() {
+            tokens.push(Token::new_symbol(symbol.unwrap()));
         }
     }
 
     if !stack.is_empty() {
-        tokens.push(stack.join(""));
+        tokens.push(Token::new_number(stack.join("").parse().unwrap()));
     }
+
+    return tokens;
 }
 
-/// 式を解析し、LLVM IRを文字列として返す
-fn generate_llvm_ir(expr: &str) -> Result<String, String> {
-    let mut tokens = vec![];
-    tokenize(expr.to_string(), &mut tokens);
+#[test]
+fn test() {
+    let a = "(3+3)*2";
 
+    let mut b = tokenize(a.to_string());
+    let f = expr(&mut b);
+    println!("{:?}", f);
+}
+
+fn consume(op: SYMBOLS, tokens: &mut Vec<Token>) -> bool {
     if tokens.is_empty() {
-        return Err("トークンが空です".to_string());
+        return false;
+    }
+    let next = tokens.first().unwrap();
+
+    if next.kind != TokenKind::SYMBOL {
+        return false;
     }
 
-    let mut code = String::new();
-
-    // ヘッダ部分
-    code.push_str("; ModuleID = 'main'\n");
-    code.push_str("define i32 @main() {\n");
-
-    let mut reg_counter = 1;
-
-    // 最初の数字
-    let first = tokens.remove(0);
-    let mut last_reg = reg_counter;
-    code.push_str(&format!("  %{} = add i32 0, {}\n", reg_counter, first));
-    reg_counter += 1;
-
-    // 残りの演算子と数値を処理
-    while !tokens.is_empty() {
-        let op = tokens.remove(0);
-        if tokens.is_empty() {
-            return Err("演算子の後に数値が必要です".to_string());
-        }
-        let rhs = tokens.remove(0);
-
-        let ir_op = match op.as_str() {
-            "+" => "add",
-            "-" => "sub",
-            _ => return Err(format!("未知の演算子: '{}'", op)),
-        };
-
-        code.push_str(&format!(
-            "  %{} = {} i32 %{}, {}\n",
-            reg_counter, ir_op, last_reg, rhs
-        ));
-        last_reg = reg_counter;
-        reg_counter += 1;
+    if next.symbol.clone().unwrap() != op {
+        return false;
     }
 
-    code.push_str(&format!("  ret i32 %{}\n", last_reg));
-    code.push_str("}\n");
+    tokens.remove(0);
+    return true;
+}
 
-    Ok(code)
+fn expect_number(tokens: &mut Vec<Token>) -> usize {
+    if tokens.is_empty() {
+        eprintln!("error");
+    }
+
+    let next = tokens.first().unwrap();
+
+    if next.kind != TokenKind::NUMBER {
+        eprintln!("error");
+    }
+    let tmp = next.value.unwrap();
+    tokens.remove(0);
+    return tmp;
 }
