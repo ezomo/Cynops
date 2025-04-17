@@ -24,17 +24,6 @@ impl Symbol {
             _ => None,
         }
     }
-
-    fn symbol2code(self) -> char {
-        match self {
-            Self::Add => '+',
-            Self::Sub => '-',
-            Self::Mul => '*',
-            Self::Div => '/',
-            Self::ParenL => '(',
-            Self::ParenR => ')',
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -65,6 +54,7 @@ impl Node {
     // 既存のメソッド等はそのまま
 
     // 抽象構文木を図示する関数
+    #[allow(dead_code)]
     fn visualize(&self, prefix: &str, is_last: bool) {
         let display_prefix = if is_last { "└── " } else { "├── " };
         let next_prefix = if is_last { "    " } else { "│   " };
@@ -97,6 +87,7 @@ impl Node {
     }
 
     // 便利なラッパー関数
+    #[allow(dead_code)]
     fn print_ast(&self) {
         println!("抽象構文木の表示:");
         self.visualize("", true);
@@ -222,22 +213,32 @@ fn tokenize(string: String) -> Vec<Token> {
     return tokens;
 }
 
-fn generate(node: Box<Node>) {
-    if matches!(node.token, Token::Number(_)) {
-        println!("push {:?}", node.token);
-        return;
+fn generate(node: Box<Node>, id_counter: &mut usize) -> String {
+    match node.token {
+        Token::Number(n) => {
+            let name = format!("%tmp{}", *id_counter);
+            println!("  {} = add i32 0, {}", name, n);
+            *id_counter += 1;
+            return name;
+        }
+        Token::Symbol(sym) => {
+            let lhs = generate(node.lhs.unwrap(), id_counter);
+            let rhs = generate(node.rhs.unwrap(), id_counter);
+            let name = format!("%tmp{}", *id_counter);
+            *id_counter += 1;
+
+            let op = match sym {
+                Symbol::Add => "add",
+                Symbol::Sub => "sub",
+                Symbol::Mul => "mul",
+                Symbol::Div => "sdiv",
+                _ => panic!("invalid operator"),
+            };
+
+            println!("  {} = {} i32 {}, {}", name, op, lhs, rhs);
+            return name;
+        }
     }
-
-    generate(node.lhs.unwrap());
-    generate(node.rhs.unwrap());
-
-    println!("pop a");
-    println!("pop b");
-    if let Token::Symbol(sym) = node.token {
-        println!("{:?} a,b ", sym.symbol2code());
-    }
-
-    println!("push a")
 }
 
 fn main() {
@@ -247,16 +248,14 @@ fn main() {
         eprintln!("引数の個数が正しくありません");
         process::exit(1);
     }
+    println!("; ModuleID = 'main'");
+    println!("define i32 @main() {{");
 
-    // let tokens = tokenize(args[1].clone());
-}
-
-#[test]
-fn test() {
-    let a = "(1+2+3)*(3+2+1)";
-
-    let mut b = tokenize(a.to_string());
-    println!("トークン: {:?}", b);
+    let mut b = tokenize(args[1].to_string());
     let ast = expr(&mut b);
-    ast.print_ast();
+
+    let mut id_counter: usize = 0;
+    generate(ast, &mut id_counter);
+    println!("  ret i32 %tmp{}", id_counter - 1);
+    println!("}}")
 }
