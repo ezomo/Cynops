@@ -15,13 +15,24 @@ enum Symbol {
 impl Symbol {
     fn classify(input: char) -> Option<Self> {
         match input {
-            '+' => Some(Symbol::Add),
-            '-' => Some(Symbol::Sub),
-            '*' => Some(Symbol::Mul),
-            '/' => Some(Symbol::Div),
-            '(' => Some(Symbol::ParenL),
-            ')' => Some(Symbol::ParenR),
+            '+' => Some(Self::Add),
+            '-' => Some(Self::Sub),
+            '*' => Some(Self::Mul),
+            '/' => Some(Self::Div),
+            '(' => Some(Self::ParenL),
+            ')' => Some(Self::ParenR),
             _ => None,
+        }
+    }
+
+    fn symbol2code(self) -> char {
+        match self {
+            Self::Add => '+',
+            Self::Sub => '-',
+            Self::Mul => '*',
+            Self::Div => '/',
+            Self::ParenL => '(',
+            Self::ParenR => ')',
         }
     }
 }
@@ -209,6 +220,24 @@ fn tokenize(string: String) -> Vec<Token> {
     }
 
     return tokens;
+}
+
+fn generate(node: Box<Node>) {
+    if matches!(node.token, Token::Number(_)) {
+        println!("push {:?}", node.token);
+        return;
+    }
+
+    generate(node.lhs.unwrap());
+    generate(node.rhs.unwrap());
+
+    println!("pop a");
+    println!("pop b");
+    if let Token::Symbol(sym) = node.token {
+        println!("{:?} a,b ", sym.symbol2code());
+    }
+
+    println!("push a")
 }
 
 fn main() {
