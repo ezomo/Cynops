@@ -332,15 +332,35 @@ fn generate(node: Box<Node>, id_counter: &mut usize) -> String {
             *id_counter += 1;
 
             let op = match sym {
-                Symbol::Add => "add",
-                Symbol::Sub => "sub",
-                Symbol::Mul => "mul",
-                Symbol::Div => "sdiv",
-                _ => panic!("invalid operator"),
+                Symbol::Add => "add".to_string(),
+                Symbol::Sub => "sub".to_string(),
+                Symbol::Mul => "mul".to_string(),
+                Symbol::Div => "sdiv".to_string(),
+                _ => "".to_string(),
+            };
+
+            if op != "" {
+                println!("  {} = {} i32 {}, {}", name, op, lhs, rhs);
+                return name;
+            }
+
+            let op = match sym {
+                Symbol::Eq => "icmp eq".to_string(),
+                Symbol::Neq => "icmp ne".to_string(),
+                Symbol::Lt => "icmp slt".to_string(),
+                Symbol::Le => "icmp sle".to_string(),
+                Symbol::Gt => "icmp sgt".to_string(),
+                Symbol::Ge => "icmp sge".to_string(),
+                _ => panic!("error"),
             };
 
             println!("  {} = {} i32 {}, {}", name, op, lhs, rhs);
-            return name;
+
+            let name_1 = format!("%tmp{}", *id_counter);
+            println!("  {} = zext i1 {} to i32", name_1, name);
+            *id_counter += 1;
+
+            return name_1;
         }
     }
 }
@@ -366,7 +386,7 @@ fn main() {
 
 #[test]
 fn test() {
-    let a = " 5 !=  20 ";
+    let a = "1 !=1";
 
     let mut b = tokenize(a.to_string());
     println!("トークン: {:?}", b);
