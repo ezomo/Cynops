@@ -106,20 +106,20 @@ fn primary(tokens: &mut Vec<Token>) -> Box<Node> {
 }
 
 fn mul(tokens: &mut Vec<Token>) -> Box<Node> {
-    let mut node = primary(tokens);
+    let mut node = unary(tokens);
 
     loop {
         if consume(Symbol::Mul, tokens) {
             node = Box::new(Node::new(
                 Token::Symbol(Symbol::Mul),
                 Some(node),
-                Some(primary(tokens)),
+                Some(unary(tokens)),
             ));
         } else if consume(Symbol::Div, tokens) {
             node = Box::new(Node::new(
                 Token::Symbol(Symbol::Div),
                 Some(node),
-                Some(primary(tokens)),
+                Some(unary(tokens)),
             ));
         } else {
             return node;
@@ -146,6 +146,20 @@ fn expr(tokens: &mut Vec<Token>) -> Box<Node> {
             return node;
         }
     }
+}
+
+fn unary(tokens: &mut Vec<Token>) -> Box<Node> {
+    if consume(Symbol::Add, tokens) {
+        return primary(tokens);
+    }
+    if consume(Symbol::Sub, tokens) {
+        return Box::new(Node::new(
+            Token::Symbol(Symbol::Sub),
+            Some(Box::new(Node::new(Token::Number(0), None, None))),
+            Some(primary(tokens)),
+        ));
+    }
+    return primary(tokens);
 }
 
 fn consume(op: Symbol, tokens: &mut Vec<Token>) -> bool {
@@ -258,4 +272,15 @@ fn main() {
     generate(ast, &mut id_counter);
     println!("  ret i32 %tmp{}", id_counter - 1);
     println!("}}")
+}
+
+#[test]
+fn test() {
+    let a = "(-1*3)";
+
+    let mut b = tokenize(a.to_string());
+    println!("トークン: {:?}", b);
+    let ast = expr(&mut b);
+    println!("{:?}", ast);
+    ast.print_ast();
 }
