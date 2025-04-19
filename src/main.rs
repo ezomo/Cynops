@@ -1,4 +1,3 @@
-use std::char;
 use std::env;
 use std::process;
 use std::usize;
@@ -11,16 +10,31 @@ enum Symbol {
     Div,    // /
     ParenL, // (
     ParenR, // )
+    Eq,     // ==
+    Neq,    // !=
+    Lt,     // <
+    Le,     // <=
+    Gt,     // >
+    Ge,     // >=
 }
 impl Symbol {
-    fn classify(input: char) -> Option<Self> {
+    const SYMBOLS: [&str; 12] = [
+        "+", "-", "*", "/", "(", ")", "==", "!=", "<", "<=", ">", ">=",
+    ];
+    fn classify(input: &str) -> Option<Self> {
         match input {
-            '+' => Some(Self::Add),
-            '-' => Some(Self::Sub),
-            '*' => Some(Self::Mul),
-            '/' => Some(Self::Div),
-            '(' => Some(Self::ParenL),
-            ')' => Some(Self::ParenR),
+            "+" => Some(Self::Add),
+            "-" => Some(Self::Sub),
+            "*" => Some(Self::Mul),
+            "/" => Some(Self::Div),
+            "(" => Some(Self::ParenL),
+            ")" => Some(Self::ParenR),
+            "==" => Some(Self::Eq),
+            "!=" => Some(Self::Neq),
+            "<" => Some(Self::Lt),
+            "<=" => Some(Self::Le),
+            ">" => Some(Self::Gt),
+            ">=" => Some(Self::Ge),
             _ => None,
         }
     }
@@ -69,6 +83,12 @@ impl Node {
                 Symbol::Div => "Symbol(/)".to_string(),
                 Symbol::ParenL => "Symbol(()".to_string(),
                 Symbol::ParenR => "Symbol())".to_string(),
+                Symbol::Eq => "Symbol(==)".to_string(),
+                Symbol::Neq => "Symbol(!=)".to_string(),
+                Symbol::Lt => "Symbol(<)".to_string(),
+                Symbol::Le => "Symbol(<=)".to_string(),
+                Symbol::Gt => "Symbol(>)".to_string(),
+                Symbol::Ge => "Symbol(>=)".to_string(),
             },
         };
 
@@ -94,15 +114,83 @@ impl Node {
     }
 }
 
-fn primary(tokens: &mut Vec<Token>) -> Box<Node> {
-    // 次のトークンが"("なら、"(" expr ")"のはず
-    if consume(Symbol::ParenL, tokens) {
-        let node = expr(tokens);
-        let _ = consume(Symbol::ParenR, tokens);
-        return node;
+fn expr(tokens: &mut Vec<Token>) -> Box<Node> {
+    return equality(tokens);
+}
+
+fn equality(tokens: &mut Vec<Token>) -> Box<Node> {
+    let mut node = relational(tokens);
+    loop {
+        if consume(Symbol::Eq, tokens) {
+            node = Box::new(Node::new(
+                Token::Symbol(Symbol::Eq),
+                Some(node),
+                Some(relational(tokens)),
+            ));
+        } else if consume(Symbol::Neq, tokens) {
+            node = Box::new(Node::new(
+                Token::Symbol(Symbol::Neq),
+                Some(node),
+                Some(relational(tokens)),
+            ));
+        } else {
+            return node;
+        }
     }
-    // そうでなければ数値のはず
-    return Box::new(Node::new(expect_number(tokens), None, None));
+}
+
+fn relational(tokens: &mut Vec<Token>) -> Box<Node> {
+    let mut node = add(tokens);
+    loop {
+        if consume(Symbol::Lt, tokens) {
+            node = Box::new(Node::new(
+                Token::Symbol(Symbol::Lt),
+                Some(node),
+                Some(add(tokens)),
+            ));
+        } else if consume(Symbol::Le, tokens) {
+            node = Box::new(Node::new(
+                Token::Symbol(Symbol::Le),
+                Some(node),
+                Some(add(tokens)),
+            ));
+        } else if consume(Symbol::Gt, tokens) {
+            node = Box::new(Node::new(
+                Token::Symbol(Symbol::Gt),
+                Some(node),
+                Some(add(tokens)),
+            ));
+        } else if consume(Symbol::Ge, tokens) {
+            node = Box::new(Node::new(
+                Token::Symbol(Symbol::Ge),
+                Some(node),
+                Some(add(tokens)),
+            ));
+        } else {
+            return node;
+        }
+    }
+}
+
+fn add(tokens: &mut Vec<Token>) -> Box<Node> {
+    let mut node = mul(tokens);
+    loop {
+        if consume(Symbol::Add, tokens) {
+            node = Box::new(Node::new(
+                Token::Symbol(Symbol::Add),
+                Some(node),
+                Some(mul(tokens)),
+            ));
+        } else if consume(Symbol::Sub, tokens) {
+            node = Box::new(Node::new(
+                Token::Symbol(Symbol::Sub),
+                Some(node),
+                Some(mul(tokens)),
+            ));
+        } else {
+            return node;
+        }
+    }
 }
 
 fn mul(tokens: &mut Vec<Token>) -> Box<Node> {
@@ -127,27 +215,6 @@ fn mul(tokens: &mut Vec<Token>) -> Box<Node> {
     }
 }
 
-fn expr(tokens: &mut Vec<Token>) -> Box<Node> {
-    let mut node = mul(tokens);
-    loop {
-        if consume(Symbol::Add, tokens) {
-            node = Box::new(Node::new(
-                Token::Symbol(Symbol::Add),
-                Some(node),
-                Some(mul(tokens)),
-            ));
-        } else if consume(Symbol::Sub, tokens) {
-            node = Box::new(Node::new(
-                Token::Symbol(Symbol::Sub),
-                Some(node),
-                Some(mul(tokens)),
-            ));
-        } else {
-            return node;
-        }
-    }
-}
-
 fn unary(tokens: &mut Vec<Token>) -> Box<Node> {
     if consume(Symbol::Add, tokens) {
         return primary(tokens);
@@ -160,6 +227,17 @@ fn unary(tokens: &mut Vec<Token>) -> Box<Node> {
         ));
     }
     return primary(tokens);
+}
+
+fn primary(tokens: &mut Vec<Token>) -> Box<Node> {
+    // 次のトークンが"("なら、"(" expr ")"のはず
+    if consume(Symbol::ParenL, tokens) {
+        let node = expr(tokens);
+        let _ = consume(Symbol::ParenR, tokens);
+        return node;
+    }
+    // そうでなければ数値のはず
+    return Box::new(Node::new(expect_number(tokens), None, None));
 }
 
 fn consume(op: Symbol, tokens: &mut Vec<Token>) -> bool {
@@ -196,32 +274,44 @@ fn expect_number(tokens: &mut Vec<Token>) -> Token {
     return tmp;
 }
 
-fn tokenize(string: String) -> Vec<Token> {
+fn tokenize(input: String) -> Vec<Token> {
     let mut tokens: Vec<Token> = vec![];
-    let mut stack = vec![];
+    let symbol_potential: Vec<_> = Symbol::SYMBOLS.join("").chars().collect();
+    let mut chars = input.chars().peekable();
 
-    for c in string.chars() {
-        if c == ' ' {
+    while let Some(&c) = chars.peek() {
+        if c.is_whitespace() {
+            chars.next();
             continue;
         }
 
         if c.is_ascii_digit() {
-            stack.push(c.to_string());
+            let mut number = String::new();
+            while let Some(&digit) = chars.peek() {
+                if digit.is_ascii_digit() {
+                    number.push(digit);
+                    chars.next();
+                } else {
+                    break;
+                }
+            }
+            tokens.push(Token::Number(number.parse().unwrap()));
             continue;
         }
 
-        if !stack.is_empty() {
-            tokens.push(Token::Number(stack.join("").parse().unwrap()));
-            stack.clear();
+        if symbol_potential.contains(&c) {
+            let mut symbol = String::new();
+            while let Some(&sy) = chars.peek() {
+                if symbol_potential.contains(&sy) {
+                    symbol.push(sy);
+                    chars.next();
+                } else {
+                    break;
+                }
+            }
+            tokens.push(Token::Symbol(Symbol::classify(&symbol).unwrap()));
+            continue;
         }
-        let symbol = Symbol::classify(c);
-        if symbol.is_some() {
-            tokens.push(Token::Symbol(symbol.unwrap()));
-        }
-    }
-
-    if !stack.is_empty() {
-        tokens.push(Token::Number(stack.join("").parse().unwrap()));
     }
 
     return tokens;
@@ -276,7 +366,7 @@ fn main() {
 
 #[test]
 fn test() {
-    let a = "(-1*3)";
+    let a = " 5 !=  20 ";
 
     let mut b = tokenize(a.to_string());
     println!("トークン: {:?}", b);
