@@ -3,19 +3,34 @@ use std::process;
 use std::usize;
 
 #[derive(Debug, PartialEq, Clone)]
+enum Arithmetic {
+    Add, // +
+    Sub, // -
+    Mul, // *
+    Div, // /
+}
+
+#[derive(Debug, PartialEq, Clone)]
+enum Parentheses {
+    L, // (
+    R, // )
+}
+
+#[derive(Debug, PartialEq, Clone)]
+enum Comparison {
+    Eq,  // ==
+    Neq, // !=
+    Lt,  // <
+    Le,  // <=
+    Gt,  // >
+    Ge,  // >=
+}
+
+#[derive(Debug, PartialEq, Clone)]
 enum Symbol {
-    Add,    // +
-    Sub,    // -
-    Mul,    // *
-    Div,    // /
-    ParenL, // (
-    ParenR, // )
-    Eq,     // ==
-    Neq,    // !=
-    Lt,     // <
-    Le,     // <=
-    Gt,     // >
-    Ge,     // >=
+    Arithmetic(Arithmetic),
+    Parentheses(Parentheses),
+    Comparison(Comparison),
 }
 impl Symbol {
     const SYMBOLS: [&str; 12] = [
@@ -23,18 +38,18 @@ impl Symbol {
     ];
     fn classify(input: &str) -> Option<Self> {
         match input {
-            "+" => Some(Self::Add),
-            "-" => Some(Self::Sub),
-            "*" => Some(Self::Mul),
-            "/" => Some(Self::Div),
-            "(" => Some(Self::ParenL),
-            ")" => Some(Self::ParenR),
-            "==" => Some(Self::Eq),
-            "!=" => Some(Self::Neq),
-            "<" => Some(Self::Lt),
-            "<=" => Some(Self::Le),
-            ">" => Some(Self::Gt),
-            ">=" => Some(Self::Ge),
+            "+" => Some(Self::Arithmetic(Arithmetic::Add)),
+            "-" => Some(Self::Arithmetic(Arithmetic::Sub)),
+            "*" => Some(Self::Arithmetic(Arithmetic::Mul)),
+            "/" => Some(Self::Arithmetic(Arithmetic::Div)),
+            "(" => Some(Self::Parentheses(Parentheses::L)),
+            ")" => Some(Self::Parentheses(Parentheses::R)),
+            "==" => Some(Self::Comparison(Comparison::Eq)),
+            "!=" => Some(Self::Comparison(Comparison::Neq)),
+            "<" => Some(Self::Comparison(Comparison::Lt)),
+            "<=" => Some(Self::Comparison(Comparison::Le)),
+            ">" => Some(Self::Comparison(Comparison::Gt)),
+            ">=" => Some(Self::Comparison(Comparison::Ge)),
             _ => None,
         }
     }
@@ -77,18 +92,18 @@ impl Node {
         let node_value = match &self.token {
             Token::Number(n) => format!("Number({})", n),
             Token::Symbol(s) => match s {
-                Symbol::Add => "Symbol(+)".to_string(),
-                Symbol::Sub => "Symbol(-)".to_string(),
-                Symbol::Mul => "Symbol(*)".to_string(),
-                Symbol::Div => "Symbol(/)".to_string(),
-                Symbol::ParenL => "Symbol(()".to_string(),
-                Symbol::ParenR => "Symbol())".to_string(),
-                Symbol::Eq => "Symbol(==)".to_string(),
-                Symbol::Neq => "Symbol(!=)".to_string(),
-                Symbol::Lt => "Symbol(<)".to_string(),
-                Symbol::Le => "Symbol(<=)".to_string(),
-                Symbol::Gt => "Symbol(>)".to_string(),
-                Symbol::Ge => "Symbol(>=)".to_string(),
+                Symbol::Arithmetic(Arithmetic::Add) => "Symbol(+)".to_string(),
+                Symbol::Arithmetic(Arithmetic::Sub) => "Symbol(-)".to_string(),
+                Symbol::Arithmetic(Arithmetic::Mul) => "Symbol(*)".to_string(),
+                Symbol::Arithmetic(Arithmetic::Div) => "Symbol(/)".to_string(),
+                Symbol::Parentheses(Parentheses::L) => "Symbol(()".to_string(),
+                Symbol::Parentheses(Parentheses::R) => "Symbol())".to_string(),
+                Symbol::Comparison(Comparison::Eq) => "Symbol(==)".to_string(),
+                Symbol::Comparison(Comparison::Neq) => "Symbol(!=)".to_string(),
+                Symbol::Comparison(Comparison::Lt) => "Symbol(<)".to_string(),
+                Symbol::Comparison(Comparison::Le) => "Symbol(<=)".to_string(),
+                Symbol::Comparison(Comparison::Gt) => "Symbol(>)".to_string(),
+                Symbol::Comparison(Comparison::Ge) => "Symbol(>=)".to_string(),
             },
         };
 
@@ -121,15 +136,15 @@ fn expr(tokens: &mut Vec<Token>) -> Box<Node> {
 fn equality(tokens: &mut Vec<Token>) -> Box<Node> {
     let mut node = relational(tokens);
     loop {
-        if consume(Symbol::Eq, tokens) {
+        if consume(Symbol::Comparison(Comparison::Eq), tokens) {
             node = Box::new(Node::new(
-                Token::Symbol(Symbol::Eq),
+                Token::Symbol(Symbol::Comparison(Comparison::Eq)),
                 Some(node),
                 Some(relational(tokens)),
             ));
-        } else if consume(Symbol::Neq, tokens) {
+        } else if consume(Symbol::Comparison(Comparison::Neq), tokens) {
             node = Box::new(Node::new(
-                Token::Symbol(Symbol::Neq),
+                Token::Symbol(Symbol::Comparison(Comparison::Neq)),
                 Some(node),
                 Some(relational(tokens)),
             ));
@@ -142,27 +157,27 @@ fn equality(tokens: &mut Vec<Token>) -> Box<Node> {
 fn relational(tokens: &mut Vec<Token>) -> Box<Node> {
     let mut node = add(tokens);
     loop {
-        if consume(Symbol::Lt, tokens) {
+        if consume(Symbol::Comparison(Comparison::Lt), tokens) {
             node = Box::new(Node::new(
-                Token::Symbol(Symbol::Lt),
+                Token::Symbol(Symbol::Comparison(Comparison::Lt)),
                 Some(node),
                 Some(add(tokens)),
             ));
-        } else if consume(Symbol::Le, tokens) {
+        } else if consume(Symbol::Comparison(Comparison::Le), tokens) {
             node = Box::new(Node::new(
-                Token::Symbol(Symbol::Le),
+                Token::Symbol(Symbol::Comparison(Comparison::Le)),
                 Some(node),
                 Some(add(tokens)),
             ));
-        } else if consume(Symbol::Gt, tokens) {
+        } else if consume(Symbol::Comparison(Comparison::Gt), tokens) {
             node = Box::new(Node::new(
-                Token::Symbol(Symbol::Gt),
+                Token::Symbol(Symbol::Comparison(Comparison::Gt)),
                 Some(node),
                 Some(add(tokens)),
             ));
-        } else if consume(Symbol::Ge, tokens) {
+        } else if consume(Symbol::Comparison(Comparison::Ge), tokens) {
             node = Box::new(Node::new(
-                Token::Symbol(Symbol::Ge),
+                Token::Symbol(Symbol::Comparison(Comparison::Ge)),
                 Some(node),
                 Some(add(tokens)),
             ));
@@ -175,15 +190,15 @@ fn relational(tokens: &mut Vec<Token>) -> Box<Node> {
 fn add(tokens: &mut Vec<Token>) -> Box<Node> {
     let mut node = mul(tokens);
     loop {
-        if consume(Symbol::Add, tokens) {
+        if consume(Symbol::Arithmetic(Arithmetic::Add), tokens) {
             node = Box::new(Node::new(
-                Token::Symbol(Symbol::Add),
+                Token::Symbol(Symbol::Arithmetic(Arithmetic::Add)),
                 Some(node),
                 Some(mul(tokens)),
             ));
-        } else if consume(Symbol::Sub, tokens) {
+        } else if consume(Symbol::Arithmetic(Arithmetic::Sub), tokens) {
             node = Box::new(Node::new(
-                Token::Symbol(Symbol::Sub),
+                Token::Symbol(Symbol::Arithmetic(Arithmetic::Sub)),
                 Some(node),
                 Some(mul(tokens)),
             ));
@@ -197,15 +212,15 @@ fn mul(tokens: &mut Vec<Token>) -> Box<Node> {
     let mut node = unary(tokens);
 
     loop {
-        if consume(Symbol::Mul, tokens) {
+        if consume(Symbol::Arithmetic(Arithmetic::Mul), tokens) {
             node = Box::new(Node::new(
-                Token::Symbol(Symbol::Mul),
+                Token::Symbol(Symbol::Arithmetic(Arithmetic::Mul)),
                 Some(node),
                 Some(unary(tokens)),
             ));
-        } else if consume(Symbol::Div, tokens) {
+        } else if consume(Symbol::Arithmetic(Arithmetic::Div), tokens) {
             node = Box::new(Node::new(
-                Token::Symbol(Symbol::Div),
+                Token::Symbol(Symbol::Arithmetic(Arithmetic::Div)),
                 Some(node),
                 Some(unary(tokens)),
             ));
@@ -216,12 +231,12 @@ fn mul(tokens: &mut Vec<Token>) -> Box<Node> {
 }
 
 fn unary(tokens: &mut Vec<Token>) -> Box<Node> {
-    if consume(Symbol::Add, tokens) {
+    if consume(Symbol::Arithmetic(Arithmetic::Add), tokens) {
         return primary(tokens);
     }
-    if consume(Symbol::Sub, tokens) {
+    if consume(Symbol::Arithmetic(Arithmetic::Sub), tokens) {
         return Box::new(Node::new(
-            Token::Symbol(Symbol::Sub),
+            Token::Symbol(Symbol::Arithmetic(Arithmetic::Sub)),
             Some(Box::new(Node::new(Token::Number(0), None, None))),
             Some(primary(tokens)),
         ));
@@ -231,9 +246,9 @@ fn unary(tokens: &mut Vec<Token>) -> Box<Node> {
 
 fn primary(tokens: &mut Vec<Token>) -> Box<Node> {
     // 次のトークンが"("なら、"(" expr ")"のはず
-    if consume(Symbol::ParenL, tokens) {
+    if consume(Symbol::Parentheses(Parentheses::L), tokens) {
         let node = expr(tokens);
-        let _ = consume(Symbol::ParenR, tokens);
+        let _ = consume(Symbol::Parentheses(Parentheses::R), tokens);
         return node;
     }
     // そうでなければ数値のはず
@@ -332,35 +347,28 @@ fn generate(node: Box<Node>, id_counter: &mut usize) -> String {
             *id_counter += 1;
 
             let op = match sym {
-                Symbol::Add => "add".to_string(),
-                Symbol::Sub => "sub".to_string(),
-                Symbol::Mul => "mul".to_string(),
-                Symbol::Div => "sdiv".to_string(),
-                _ => "".to_string(),
-            };
-
-            if op != "" {
-                println!("  {} = {} i32 {}, {}", name, op, lhs, rhs);
-                return name;
-            }
-
-            let op = match sym {
-                Symbol::Eq => "icmp eq".to_string(),
-                Symbol::Neq => "icmp ne".to_string(),
-                Symbol::Lt => "icmp slt".to_string(),
-                Symbol::Le => "icmp sle".to_string(),
-                Symbol::Gt => "icmp sgt".to_string(),
-                Symbol::Ge => "icmp sge".to_string(),
+                Symbol::Arithmetic(Arithmetic::Add) => "add".to_string(),
+                Symbol::Arithmetic(Arithmetic::Sub) => "sub".to_string(),
+                Symbol::Arithmetic(Arithmetic::Mul) => "mul".to_string(),
+                Symbol::Arithmetic(Arithmetic::Div) => "sdiv".to_string(),
+                Symbol::Comparison(Comparison::Eq) => "icmp eq".to_string(),
+                Symbol::Comparison(Comparison::Neq) => "icmp ne".to_string(),
+                Symbol::Comparison(Comparison::Lt) => "icmp slt".to_string(),
+                Symbol::Comparison(Comparison::Le) => "icmp sle".to_string(),
+                Symbol::Comparison(Comparison::Gt) => "icmp sgt".to_string(),
+                Symbol::Comparison(Comparison::Ge) => "icmp sge".to_string(),
                 _ => panic!("error"),
             };
 
             println!("  {} = {} i32 {}, {}", name, op, lhs, rhs);
 
-            let name_1 = format!("%tmp{}", *id_counter);
-            println!("  {} = zext i1 {} to i32", name_1, name);
-            *id_counter += 1;
-
-            return name_1;
+            if matches!(sym, Symbol::Comparison(_)) {
+                let name_1 = format!("%tmp{}", *id_counter);
+                *id_counter += 1;
+                println!("  {} = zext i1 {} to i32", name_1, name);
+                return name_1;
+            }
+            return name;
         }
     }
 }
