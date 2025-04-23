@@ -14,6 +14,6 @@ if [ -z "$input" ]; then
 fi
 
 # cargoを実行して出力をファイルに書き込む
-cargo run -- $input > ./out/result.ll;
+cargo run  "$input" > ./out/result.ll;
 llc ./out/result.ll
 clang ./out/result.s -o ./out/result

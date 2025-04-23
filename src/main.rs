@@ -1,9 +1,7 @@
+use std::collections::HashMap;
 use std::env;
 use std::process;
-use std::usize;
-
 mod setting;
-use setting::*;
 
 mod tree2code;
 use tree2code::*;
@@ -22,10 +20,12 @@ fn main() {
     println!("define i32 @main() {{");
 
     let mut b = tokenize(&args[1].to_string());
-    let ast = expr(&mut b);
-
-    let mut id_counter: usize = 0;
-    generate(ast, &mut id_counter);
-    println!("  ret i32 %tmp{}", id_counter - 1);
+    let ast = program(&mut b);
+    let mut name_gen = TmpNameGen::new();
+    let mut hashmap = HashMap::new();
+    for i in &ast {
+        generate(i.clone(), &mut name_gen, &mut hashmap);
+    }
+    println!("  ret i32 {}", name_gen.last());
     println!("}}")
 }

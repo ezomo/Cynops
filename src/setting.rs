@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Arithmetic {
     Add, // +
     Sub, // -
@@ -6,13 +6,14 @@ pub enum Arithmetic {
     Div, // /
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Parentheses {
     L, // (
     R, // )
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
+
 pub enum Comparison {
     Eq,  // ==
     Neq, // !=
@@ -22,7 +23,8 @@ pub enum Comparison {
     Ge,  // >=
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
+
 pub enum Symbol {
     Arithmetic(Arithmetic),
     Parentheses(Parentheses),
@@ -55,7 +57,8 @@ impl Symbol {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
+
 pub enum Token {
     Number(usize),  // 数値リテラル
     Symbol(Symbol), // 記号トークン

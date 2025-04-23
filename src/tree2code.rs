@@ -1,56 +1,132 @@
+use std::collections::HashMap;
+
 use crate::setting::*;
 #[allow(unused_imports)]
 use crate::string2tree::*;
 
-pub fn generate(node: Box<Node>, id_counter: &mut usize) -> String {
+trait ToLLVMIR {
+    fn to_llvmir(&self) -> &str;
+}
+
+impl ToLLVMIR for Arithmetic {
+    fn to_llvmir(&self) -> &str {
+        match self {
+            Self::Add => "add",
+            Self::Sub => "sub",
+            Self::Mul => "mul",
+            Self::Div => "sdiv",
+        }
+    }
+}
+impl ToLLVMIR for Comparison {
+    fn to_llvmir(&self) -> &str {
+        match self {
+            Self::Eq => "icmp eq",
+            Self::Neq => "icmp ne",
+            Self::Lt => "icmp slt",
+            Self::Le => "icmp sle",
+            Self::Gt => "icmp sgt",
+            Self::Ge => "icmp sge",
+        }
+    }
+}
+pub struct TmpNameGen {
+    counter: usize,
+}
+
+impl TmpNameGen {
+    pub fn new() -> Self {
+        TmpNameGen { counter: 0 }
+    }
+
+    pub fn next(&mut self) -> String {
+        let name = format!("%tmp{}", self.counter);
+        self.counter += 1;
+        name
+    }
+    pub fn last(&mut self) -> String {
+        let name = format!("%tmp{}", self.counter - 1);
+        name
+    }
+}
+
+pub fn generate(
+    mut node: Box<Node>,
+    name_gen: &mut TmpNameGen,
+    variables: &mut HashMap<char, String>,
+) -> String {
     match node.token {
-        Token::Number(n) => {
-            let name = format!("%tmp{}", *id_counter);
-            println!("  {} = add i32 0, {}", name, n);
-            *id_counter += 1;
-            return name;
-        }
-        Token::Symbol(sym) => {
-            let lhs = generate(node.lhs.unwrap(), id_counter);
-            let rhs = generate(node.rhs.unwrap(), id_counter);
-            let name = format!("%tmp{}", *id_counter);
-            *id_counter += 1;
+        Token::Symbol(symbol) => {
+            match symbol {
+                Symbol::Arithmetic(ari) => {
+                    let lhs = generate(node.lhs.take().unwrap(), name_gen, variables);
+                    let rhs = generate(node.rhs.take().unwrap(), name_gen, variables);
+                    let name1 = name_gen.next();
 
-            let op = match sym {
-                Symbol::Arithmetic(Arithmetic::Add) => "add".to_string(),
-                Symbol::Arithmetic(Arithmetic::Sub) => "sub".to_string(),
-                Symbol::Arithmetic(Arithmetic::Mul) => "mul".to_string(),
-                Symbol::Arithmetic(Arithmetic::Div) => "sdiv".to_string(),
-                Symbol::Comparison(Comparison::Eq) => "icmp eq".to_string(),
-                Symbol::Comparison(Comparison::Neq) => "icmp ne".to_string(),
-                Symbol::Comparison(Comparison::Lt) => "icmp slt".to_string(),
-                Symbol::Comparison(Comparison::Le) => "icmp sle".to_string(),
-                Symbol::Comparison(Comparison::Gt) => "icmp sgt".to_string(),
-                Symbol::Comparison(Comparison::Ge) => "icmp sge".to_string(),
-                _ => panic!("error"),
-            };
+                    println!("  {} = {} i32 {}, {}", name1, ari.to_llvmir(), lhs, rhs);
+                    return name1;
+                }
+                Symbol::Comparison(com) => {
+                    let lhs = generate(node.lhs.take().unwrap(), name_gen, variables);
+                    let rhs = generate(node.rhs.take().unwrap(), name_gen, variables);
+                    let name1 = name_gen.next();
 
-            println!("  {} = {} i32 {}, {}", name, op, lhs, rhs);
-
-            if matches!(sym, Symbol::Comparison(_)) {
-                let name_1 = format!("%tmp{}", *id_counter);
-                *id_counter += 1;
-                println!("  {} = zext i1 {} to i32", name_1, name);
-                return name_1;
+                    let name2 = name_gen.next();
+                    println!("  {} = {} i32 {}, {}", name1, com.to_llvmir(), lhs, rhs);
+                    println!("  {} = zext i1 {} to i32", name2, name1);
+                    return name2;
+                }
+                Symbol::Assignment => {
+                    // lhs は ident なので、もう一度解析する必要あり
+                    if let Token::Ident(ref idn) = node.lhs.as_ref().unwrap().token {
+                        let rhs = generate(node.rhs.take().unwrap(), name_gen, variables);
+                        let ptr = variables.entry(idn.clone()).or_insert_with(|| {
+                            let alloc = name_gen.next();
+                            println!("  {} = alloca i32", alloc);
+                            alloc
+                        });
+                        println!("  store i32 {}, i32* {}", rhs, ptr);
+                        return ptr.clone();
+                    } else {
+                        panic!("左辺が変数じゃない！");
+                    }
+                }
+                _ => panic!(),
             }
-            return name;
         }
-        _ => todo!(),
+        Token::Number(num) => {
+            let name1 = name_gen.next();
+            println!("  {} = add i32 0, {}", name1, num);
+            return name1;
+        }
+        Token::Ident(ref idn) => {
+            if let Some(ptr) = variables.get(idn) {
+                // 既にallcoされた変数
+                let tmp = name_gen.next();
+                println!("  {} = load i32, i32* {}", tmp, ptr);
+                return tmp;
+            } else {
+                // 初めて出てきた変数
+                let ptr = name_gen.next();
+                println!("  {} = alloca i32", ptr);
+                variables.insert(idn.clone(), ptr.clone());
+                return ptr;
+            }
+        }
     }
 }
 
 #[test]
 fn test() {
-    let a = "1;1+2;a*(b+c);";
+    let a = "a=1;b = a+1;";
     let mut b = tokenize(&a.to_string());
-    println!("{:?}", b);
     let ast = program(&mut b);
+    println!("{:?}", ast);
+    let mut name_gen = TmpNameGen::new();
+    let mut hashmap = HashMap::new();
+    println!("{}", a);
     for i in &ast {
         i.print_ast();
+        generate(i.clone(), &mut name_gen, &mut hashmap);
     }
 }
