@@ -31,10 +31,12 @@ enum Symbol {
     Arithmetic(Arithmetic),
     Parentheses(Parentheses),
     Comparison(Comparison),
+    Assignment,
+    Stop,
 }
 impl Symbol {
-    const SYMBOLS: [&str; 12] = [
-        "+", "-", "*", "/", "(", ")", "==", "!=", "<", "<=", ">", ">=",
+    const SYMBOLS: [&str; 14] = [
+        "+", "-", "*", "/", "(", ")", "==", "!=", "<", "<=", ">", ">=", "=", ";",
     ];
     fn classify(input: &str) -> Option<Self> {
         match input {
@@ -50,6 +52,8 @@ impl Symbol {
             "<=" => Some(Self::Comparison(Comparison::Le)),
             ">" => Some(Self::Comparison(Comparison::Gt)),
             ">=" => Some(Self::Comparison(Comparison::Ge)),
+            "=" => Some(Self::Assignment),
+            ";" => Some(Self::Stop),
             _ => None,
         }
     }
@@ -59,6 +63,7 @@ impl Symbol {
 enum Token {
     Number(usize),  // 数値リテラル
     Symbol(Symbol), // 記号トークン
+    Ident(char),
 }
 
 // 抽象構文木のノードの型
@@ -90,20 +95,23 @@ impl Node {
 
         // ノードの値を表示
         let node_value = match &self.token {
-            Token::Number(n) => format!("Number({})", n),
+            Token::Number(n) => format!("{}", n),
+            Token::Ident(n) => format!("{}", n),
             Token::Symbol(s) => match s {
-                Symbol::Arithmetic(Arithmetic::Add) => "Symbol(+)".to_string(),
-                Symbol::Arithmetic(Arithmetic::Sub) => "Symbol(-)".to_string(),
-                Symbol::Arithmetic(Arithmetic::Mul) => "Symbol(*)".to_string(),
-                Symbol::Arithmetic(Arithmetic::Div) => "Symbol(/)".to_string(),
-                Symbol::Parentheses(Parentheses::L) => "Symbol(()".to_string(),
-                Symbol::Parentheses(Parentheses::R) => "Symbol())".to_string(),
-                Symbol::Comparison(Comparison::Eq) => "Symbol(==)".to_string(),
-                Symbol::Comparison(Comparison::Neq) => "Symbol(!=)".to_string(),
-                Symbol::Comparison(Comparison::Lt) => "Symbol(<)".to_string(),
-                Symbol::Comparison(Comparison::Le) => "Symbol(<=)".to_string(),
-                Symbol::Comparison(Comparison::Gt) => "Symbol(>)".to_string(),
-                Symbol::Comparison(Comparison::Ge) => "Symbol(>=)".to_string(),
+                Symbol::Arithmetic(Arithmetic::Add) => "+".to_string(),
+                Symbol::Arithmetic(Arithmetic::Sub) => "-".to_string(),
+                Symbol::Arithmetic(Arithmetic::Mul) => "*".to_string(),
+                Symbol::Arithmetic(Arithmetic::Div) => "/".to_string(),
+                Symbol::Parentheses(Parentheses::L) => "(".to_string(),
+                Symbol::Parentheses(Parentheses::R) => ")".to_string(),
+                Symbol::Comparison(Comparison::Eq) => "==".to_string(),
+                Symbol::Comparison(Comparison::Neq) => "!=".to_string(),
+                Symbol::Comparison(Comparison::Lt) => "<)".to_string(),
+                Symbol::Comparison(Comparison::Le) => "<=".to_string(),
+                Symbol::Comparison(Comparison::Gt) => ">)".to_string(),
+                Symbol::Comparison(Comparison::Ge) => ">=".to_string(),
+                Symbol::Assignment => "=".to_string(),
+                _ => todo!(),
             },
         };
 
@@ -129,8 +137,36 @@ impl Node {
     }
 }
 
+fn program(tokens: &mut Vec<Token>) -> Vec<Box<Node>> {
+    let mut code = vec![];
+    while !tokens.is_empty() {
+        code.push(stmt(tokens));
+    }
+    code
+}
+
+fn stmt(tokens: &mut Vec<Token>) -> Box<Node> {
+    let node = expr(tokens);
+    if !consume(Symbol::Stop, tokens) {
+        panic!("error");
+    }
+    node
+}
+
 fn expr(tokens: &mut Vec<Token>) -> Box<Node> {
-    return equality(tokens);
+    assign(tokens)
+}
+
+fn assign(tokens: &mut Vec<Token>) -> Box<Node> {
+    let mut node = equality(tokens);
+    if consume(Symbol::Assignment, tokens) {
+        node = Box::new(Node::new(
+            Token::Symbol(Symbol::Assignment),
+            Some(node),
+            Some(assign(tokens)),
+        ));
+    }
+    node
 }
 
 fn equality(tokens: &mut Vec<Token>) -> Box<Node> {
@@ -251,8 +287,9 @@ fn primary(tokens: &mut Vec<Token>) -> Box<Node> {
         let _ = consume(Symbol::Parentheses(Parentheses::R), tokens);
         return node;
     }
-    // そうでなければ数値のはず
-    return Box::new(Node::new(expect_number(tokens), None, None));
+    // そうでなければ数値か変数のはず
+
+    return Box::new(Node::new(consume_atom(tokens), None, None));
 }
 
 fn consume(op: Symbol, tokens: &mut Vec<Token>) -> bool {
@@ -273,15 +310,15 @@ fn consume(op: Symbol, tokens: &mut Vec<Token>) -> bool {
     return true;
 }
 
-fn expect_number(tokens: &mut Vec<Token>) -> Token {
+fn consume_atom(tokens: &mut Vec<Token>) -> Token {
     if tokens.is_empty() {
         eprintln!("error_1");
     }
 
     let next = tokens.first().unwrap();
 
-    if !matches!(next, Token::Number(_)) {
-        eprintln!("error_2");
+    if !matches!(next, Token::Number(_) | Token::Ident(_)) {
+        eprintln!("{:?}error_2", next);
     }
 
     let tmp = next.clone();
@@ -289,47 +326,52 @@ fn expect_number(tokens: &mut Vec<Token>) -> Token {
     return tmp;
 }
 
-fn tokenize(input: String) -> Vec<Token> {
-    let mut tokens: Vec<Token> = vec![];
-    let symbol_potential: Vec<_> = Symbol::SYMBOLS.join("").chars().collect();
-    let mut chars = input.chars().peekable();
+fn tokenize(input: &str) -> Vec<Token> {
+    let mut tokens = Vec::new();
+    let symbols_sorted: Vec<&str> = {
+        let mut syms = Symbol::SYMBOLS.to_vec();
+        syms.sort_by(|a, b| b.len().cmp(&a.len())); // 長い記号優先
+        syms
+    };
 
-    while let Some(&c) = chars.peek() {
-        if c.is_whitespace() {
-            chars.next();
-            continue;
-        }
+    let mut input = input.trim();
+    while !input.is_empty() {
+        input = input.trim_start();
+        if let Some(first) = input.chars().next() {
+            // 数字
+            if first.is_ascii_digit() {
+                let num_str: String = input.chars().take_while(|c| c.is_ascii_digit()).collect();
+                let num_len = num_str.len();
+                tokens.push(Token::Number(num_str.parse().unwrap()));
+                input = &input[num_len..];
+                continue;
+            }
 
-        if c.is_ascii_digit() {
-            let mut number = String::new();
-            while let Some(&digit) = chars.peek() {
-                if digit.is_ascii_digit() {
-                    number.push(digit);
-                    chars.next();
-                } else {
+            // 記号（長いものから）
+            let mut matched = false;
+            for &sym in &symbols_sorted {
+                if input.starts_with(sym) {
+                    tokens.push(Token::Symbol(Symbol::classify(&sym.to_string()).unwrap()));
+                    input = &input[sym.len()..];
+                    matched = true;
                     break;
                 }
             }
-            tokens.push(Token::Number(number.parse().unwrap()));
-            continue;
-        }
-
-        if symbol_potential.contains(&c) {
-            let mut symbol = String::new();
-            while let Some(&sy) = chars.peek() {
-                if symbol_potential.contains(&sy) {
-                    symbol.push(sy);
-                    chars.next();
-                } else {
-                    break;
-                }
+            if matched {
+                continue;
             }
-            tokens.push(Token::Symbol(Symbol::classify(&symbol).unwrap()));
-            continue;
+
+            if matches!(first, 'a'..='z') {
+                tokens.push(Token::Ident(first));
+                input = &input[1..];
+                continue;
+            }
+
+            panic!("Unexpected character: {}", first);
         }
     }
 
-    return tokens;
+    tokens
 }
 
 fn generate(node: Box<Node>, id_counter: &mut usize) -> String {
@@ -370,6 +412,7 @@ fn generate(node: Box<Node>, id_counter: &mut usize) -> String {
             }
             return name;
         }
+        _ => todo!(),
     }
 }
 
@@ -383,7 +426,7 @@ fn main() {
     println!("; ModuleID = 'main'");
     println!("define i32 @main() {{");
 
-    let mut b = tokenize(args[1].to_string());
+    let mut b = tokenize(&args[1].to_string());
     let ast = expr(&mut b);
 
     let mut id_counter: usize = 0;
@@ -394,11 +437,11 @@ fn main() {
 
 #[test]
 fn test() {
-    let a = "1 !=1";
-
-    let mut b = tokenize(a.to_string());
-    println!("トークン: {:?}", b);
-    let ast = expr(&mut b);
-    println!("{:?}", ast);
-    ast.print_ast();
+    let a = "1;1+2;a*(b+c);";
+    let mut b = tokenize(&a.to_string());
+    println!("{:?}", b);
+    let ast = program(&mut b);
+    for i in &ast {
+        i.print_ast();
+    }
 }
