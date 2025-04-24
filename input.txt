@@ -5,4 +5,5 @@ p = q * input_b;
 r = input_a - p; 
 g = r < 0;
 r = r - g * (r + r);
-r; 
+return r; 
+return g;

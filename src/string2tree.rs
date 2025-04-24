@@ -9,7 +9,18 @@ pub fn program(tokens: &mut Vec<Token>) -> Vec<Box<Node>> {
 }
 
 pub fn stmt(tokens: &mut Vec<Token>) -> Box<Node> {
-    let node = expr(tokens);
+    let node = {
+        if consume(Symbol::Return, tokens) {
+            Box::new(Node::new(
+                Token::Symbol(Symbol::Return),
+                Some(expr(tokens)),
+                None,
+            ))
+        } else {
+            expr(tokens)
+        }
+    };
+
     if !consume(Symbol::Stop, tokens) {
         panic!("error");
     }
@@ -239,4 +250,9 @@ pub fn tokenize(input: &str) -> Vec<Token> {
     }
 
     tokens
+}
+
+#[test]
+fn test_tokenize() {
+    println!("{:?}", tokenize("return;"))
 }

@@ -26,6 +26,5 @@ fn main() {
     for i in &ast {
         generate(i.clone(), &mut name_gen, &mut hashmap);
     }
-    println!("  ret i32 {}", name_gen.last());
     println!("}}")
 }

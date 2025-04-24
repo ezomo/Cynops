@@ -44,10 +44,6 @@ impl TmpNameGen {
         self.counter += 1;
         name
     }
-    pub fn last(&mut self) -> String {
-        let name = format!("%tmp{}", self.counter - 1);
-        name
-    }
 }
 
 pub fn generate(
@@ -88,8 +84,14 @@ pub fn generate(
                         println!("  store i32 {}, i32* {}", rhs, ptr);
                         return ptr.clone();
                     } else {
-                        panic!("左辺が変数じゃない！");
+                        panic!("The left side is not variable!");
                     }
+                }
+                Symbol::Return => {
+                    let lhs = generate(node.lhs.take().unwrap(), name_gen, variables);
+                    println!("  ret i32 {}", lhs);
+
+                    return "finished".to_string();
                 }
                 _ => panic!(),
             }
@@ -118,7 +120,7 @@ pub fn generate(
 
 #[test]
 fn test() {
-    let a = "a = 5;";
+    let a = "a = 5; return a;";
     let mut b = tokenize(&a.to_string());
     let ast = program(&mut b);
     let mut name_gen = TmpNameGen::new();

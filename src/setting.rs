@@ -31,10 +31,11 @@ pub enum Symbol {
     Comparison(Comparison),
     Assignment,
     Stop,
+    Return,
 }
 impl Symbol {
-    pub const SYMBOLS: [&str; 14] = [
-        "+", "-", "*", "/", "(", ")", "==", "!=", "<", "<=", ">", ">=", "=", ";",
+    pub const SYMBOLS: [&str; 15] = [
+        "+", "-", "*", "/", "(", ")", "==", "!=", "<", "<=", ">", ">=", "=", ";", "return",
     ];
     pub fn classify(input: &str) -> Option<Self> {
         match input {
@@ -52,6 +53,7 @@ impl Symbol {
             ">=" => Some(Self::Comparison(Comparison::Ge)),
             "=" => Some(Self::Assignment),
             ";" => Some(Self::Stop),
+            "return" => Some(Self::Return),
             _ => None,
         }
     }
@@ -109,6 +111,7 @@ impl Node {
                 Symbol::Comparison(Comparison::Gt) => ">)".to_string(),
                 Symbol::Comparison(Comparison::Ge) => ">=".to_string(),
                 Symbol::Assignment => "=".to_string(),
+                Symbol::Return => "return".to_string(),
                 _ => todo!(),
             },
         };
