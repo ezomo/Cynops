@@ -224,9 +224,13 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                 continue;
             }
 
-            if matches!(first, 'a'..='z') {
-                tokens.push(Token::Ident(first));
-                input = &input[1..];
+            if first.is_alphabetic() {
+                let can_ident =
+                    |c: &char| c.is_ascii_alphabetic() || c.is_ascii_digit() || *c == '_';
+                let ident_str: String = input.chars().take_while(|c| can_ident(c)).collect();
+                let str_len = ident_str.len();
+                tokens.push(Token::Ident(ident_str.to_string()));
+                input = &input[str_len..];
                 continue;
             }
 

@@ -53,7 +53,7 @@ impl TmpNameGen {
 pub fn generate(
     mut node: Box<Node>,
     name_gen: &mut TmpNameGen,
-    variables: &mut HashMap<char, String>,
+    variables: &mut HashMap<String, String>,
 ) -> String {
     match node.token {
         Token::Symbol(symbol) => {
@@ -118,13 +118,11 @@ pub fn generate(
 
 #[test]
 fn test() {
-    let a = "a=1;b = a+1;";
+    let a = "a = 5;";
     let mut b = tokenize(&a.to_string());
     let ast = program(&mut b);
-    println!("{:?}", ast);
     let mut name_gen = TmpNameGen::new();
     let mut hashmap = HashMap::new();
-    println!("{}", a);
     for i in &ast {
         i.print_ast();
         generate(i.clone(), &mut name_gen, &mut hashmap);

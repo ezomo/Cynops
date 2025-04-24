@@ -57,12 +57,11 @@ impl Symbol {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Number(usize),  // 数値リテラル
     Symbol(Symbol), // 記号トークン
-    Ident(char),
+    Ident(String),
 }
 
 // 抽象構文木のノードの型

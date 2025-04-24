@@ -1,8 +1,8 @@
-a = 100;
-b = 3;
-q = a / b; 
-p = q * b;  
-r = a - p; 
+input_a = 100;
+input_b = 3;
+q = input_a / input_b; 
+p = q * input_b;  
+r = input_a - p; 
 g = r < 0;
 r = r - g * (r + r);
 r; 
