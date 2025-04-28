@@ -47,24 +47,24 @@ impl TmpNameGen {
 }
 
 pub fn generate(
-    mut node: Box<Node>,
+    node: Box<Node>,
     name_gen: &mut TmpNameGen,
     variables: &mut HashMap<String, String>,
 ) -> String {
-    match node.token {
-        Token::Symbol(symbol) => {
-            match symbol {
-                Symbol::Arithmetic(ari) => {
-                    let lhs = generate(node.lhs.take().unwrap(), name_gen, variables);
-                    let rhs = generate(node.rhs.take().unwrap(), name_gen, variables);
+    match *node {
+        Node::Expr { op, lhs, rhs } => {
+            match op {
+                ExprSymbol::Arithmetic(ari) => {
+                    let lhs = generate(lhs, name_gen, variables);
+                    let rhs = generate(rhs, name_gen, variables);
                     let name1 = name_gen.next();
 
                     println!("  {} = {} i32 {}, {}", name1, ari.to_llvmir(), lhs, rhs);
                     return name1;
                 }
-                Symbol::Comparison(com) => {
-                    let lhs = generate(node.lhs.take().unwrap(), name_gen, variables);
-                    let rhs = generate(node.rhs.take().unwrap(), name_gen, variables);
+                ExprSymbol::Comparison(com) => {
+                    let lhs = generate(lhs, name_gen, variables);
+                    let rhs = generate(rhs, name_gen, variables);
                     let name1 = name_gen.next();
 
                     let name2 = name_gen.next();
@@ -72,10 +72,10 @@ pub fn generate(
                     println!("  {} = zext i1 {} to i32", name2, name1);
                     return name2;
                 }
-                Symbol::Assignment => {
+                ExprSymbol::Assignment => {
                     // lhs は ident なので、もう一度解析する必要あり
-                    if let Token::Ident(ref idn) = node.lhs.as_ref().unwrap().token {
-                        let rhs = generate(node.rhs.take().unwrap(), name_gen, variables);
+                    if let Node::Value(Value::Ident(ref idn)) = *lhs {
+                        let rhs = generate(rhs, name_gen, variables);
                         let ptr = variables.entry(idn.clone()).or_insert_with(|| {
                             let alloc = name_gen.next();
                             println!("  {} = alloca i32", alloc);
@@ -87,34 +87,39 @@ pub fn generate(
                         panic!("The left side is not variable!");
                     }
                 }
-                Symbol::Return => {
-                    let lhs = generate(node.lhs.take().unwrap(), name_gen, variables);
-                    println!("  ret i32 {}", lhs);
-
-                    return "finished".to_string();
-                }
                 _ => panic!(),
             }
         }
-        Token::Number(num) => {
-            let name1 = name_gen.next();
-            println!("  {} = add i32 0, {}", name1, num);
-            return name1;
+        Node::Return { value } => {
+            let lhs = generate(value, name_gen, variables);
+            println!("  ret i32 {}", lhs);
+
+            return "finished".to_string();
         }
-        Token::Ident(ref idn) => {
-            if let Some(ptr) = variables.get(idn) {
-                // 既にallcoされた変数
-                let tmp = name_gen.next();
-                println!("  {} = load i32, i32* {}", tmp, ptr);
-                return tmp;
-            } else {
-                // 初めて出てきた変数
-                let ptr = name_gen.next();
-                println!("  {} = alloca i32", ptr);
-                variables.insert(idn.clone(), ptr.clone());
-                return ptr;
+        Node::Value(vaule) => {
+            match vaule {
+                Value::Number(num) => {
+                    let name1 = name_gen.next();
+                    println!("  {} = add i32 0, {}", name1, num);
+                    return name1;
+                }
+                Value::Ident(idn) => {
+                    if let Some(ptr) = variables.get(&idn) {
+                        // 既にallcoされた変数
+                        let tmp = name_gen.next();
+                        println!("  {} = load i32, i32* {}", tmp, ptr);
+                        return tmp;
+                    } else {
+                        // 初めて出てきた変数
+                        let ptr = name_gen.next();
+                        println!("  {} = alloca i32", ptr);
+                        variables.insert(idn.clone(), ptr.clone());
+                        return ptr;
+                    }
+                }
             }
         }
+        _ => panic!(),
     }
 }
 
@@ -126,7 +131,6 @@ fn test() {
     let mut name_gen = TmpNameGen::new();
     let mut hashmap = HashMap::new();
     for i in &ast {
-        i.print_ast();
         generate(i.clone(), &mut name_gen, &mut hashmap);
     }
 }

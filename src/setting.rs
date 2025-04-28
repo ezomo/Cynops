@@ -13,7 +13,6 @@ pub enum Parentheses {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-
 pub enum Comparison {
     Eq,  // ==
     Neq, // !=
@@ -24,116 +23,104 @@ pub enum Comparison {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-
-pub enum Symbol {
+pub enum ExprSymbol {
     Arithmetic(Arithmetic),
     Parentheses(Parentheses),
     Comparison(Comparison),
     Assignment,
     Stop,
-    Return,
 }
-impl Symbol {
-    pub const SYMBOLS: [&str; 15] = [
-        "+", "-", "*", "/", "(", ")", "==", "!=", "<", "<=", ">", ">=", "=", ";", "return",
-    ];
-    pub fn classify(input: &str) -> Option<Self> {
-        match input {
-            "+" => Some(Self::Arithmetic(Arithmetic::Add)),
-            "-" => Some(Self::Arithmetic(Arithmetic::Sub)),
-            "*" => Some(Self::Arithmetic(Arithmetic::Mul)),
-            "/" => Some(Self::Arithmetic(Arithmetic::Div)),
-            "(" => Some(Self::Parentheses(Parentheses::L)),
-            ")" => Some(Self::Parentheses(Parentheses::R)),
-            "==" => Some(Self::Comparison(Comparison::Eq)),
-            "!=" => Some(Self::Comparison(Comparison::Neq)),
-            "<" => Some(Self::Comparison(Comparison::Lt)),
-            "<=" => Some(Self::Comparison(Comparison::Le)),
-            ">" => Some(Self::Comparison(Comparison::Gt)),
-            ">=" => Some(Self::Comparison(Comparison::Ge)),
-            "=" => Some(Self::Assignment),
-            ";" => Some(Self::Stop),
-            "return" => Some(Self::Return),
-            _ => None,
-        }
-    }
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Value {
+    Number(usize),
+    Ident(String),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum ControlStructure {
+    If,
+    Return,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
-    Number(usize),  // 数値リテラル
-    Symbol(Symbol), // 記号トークン
-    Ident(String),
+    ControlStructure(ControlStructure),
+    ExprSymbol(ExprSymbol),
+    Value(Value),
+}
+
+impl Token {
+    pub const fn arith(a: Arithmetic) -> Self {
+        Self::ExprSymbol(ExprSymbol::Arithmetic(a))
+    }
+    pub const fn comp(c: Comparison) -> Self {
+        Self::ExprSymbol(ExprSymbol::Comparison(c))
+    }
+    pub const fn paren(p: Parentheses) -> Self {
+        Self::ExprSymbol(ExprSymbol::Parentheses(p))
+    }
+    pub const fn assign() -> Self {
+        Self::ExprSymbol(ExprSymbol::Assignment)
+    }
+    pub const fn stop() -> Self {
+        Self::ExprSymbol(ExprSymbol::Stop)
+    }
+    pub const fn ctrl(c: ControlStructure) -> Self {
+        Self::ControlStructure(c)
+    }
+    pub const fn number(n: usize) -> Self {
+        Self::Value(Value::Number(n))
+    }
+    pub fn ident(name: impl Into<String>) -> Self {
+        Self::Value(Value::Ident(name.into()))
+    }
+}
+
+impl Token {
+    pub const SYMBOLS: [(&str, Self); 15] = [
+        ("+", Self::arith(Arithmetic::Add)),
+        ("-", Self::arith(Arithmetic::Sub)),
+        ("*", Self::arith(Arithmetic::Mul)),
+        ("/", Self::arith(Arithmetic::Div)),
+        ("(", Self::paren(Parentheses::L)),
+        (")", Self::paren(Parentheses::R)),
+        ("==", Self::comp(Comparison::Eq)),
+        ("!=", Self::comp(Comparison::Neq)),
+        ("<", Self::comp(Comparison::Lt)),
+        ("<=", Self::comp(Comparison::Le)),
+        (">", Self::comp(Comparison::Gt)),
+        (">=", Self::comp(Comparison::Ge)),
+        ("=", Self::assign()),
+        (";", Self::stop()),
+        ("return", Self::ctrl(ControlStructure::Return)),
+    ];
+
+    pub fn classify(input: &str) -> Option<Self> {
+        for (symbol, token) in Self::SYMBOLS.iter() {
+            if *symbol == input {
+                return Some(token.clone());
+            }
+        }
+        None
+    }
 }
 
 // 抽象構文木のノードの型
 #[derive(Debug, PartialEq, Clone)]
-pub struct Node {
-    pub token: Token,           // ノードの型
-    pub lhs: Option<Box<Node>>, // 左辺
-    pub rhs: Option<Box<Node>>, // 右辺
-}
-impl Node {
-    pub fn new(token: Token, lhs: Option<Box<Node>>, rhs: Option<Box<Node>>) -> Self {
-        Self {
-            token,
-            lhs: lhs,
-            rhs: rhs,
-        }
-    }
-}
-
-// for debug
-impl Node {
-    // 既存のメソッド等はそのまま
-
-    // 抽象構文木を図示する関数
-    #[allow(dead_code)]
-    pub fn visualize(&self, prefix: &str, is_last: bool) {
-        let display_prefix = if is_last { "└── " } else { "├── " };
-        let next_prefix = if is_last { "    " } else { "│   " };
-
-        // ノードの値を表示
-        let node_value = match &self.token {
-            Token::Number(n) => format!("{}", n),
-            Token::Ident(n) => format!("{}", n),
-            Token::Symbol(s) => match s {
-                Symbol::Arithmetic(Arithmetic::Add) => "+".to_string(),
-                Symbol::Arithmetic(Arithmetic::Sub) => "-".to_string(),
-                Symbol::Arithmetic(Arithmetic::Mul) => "*".to_string(),
-                Symbol::Arithmetic(Arithmetic::Div) => "/".to_string(),
-                Symbol::Parentheses(Parentheses::L) => "(".to_string(),
-                Symbol::Parentheses(Parentheses::R) => ")".to_string(),
-                Symbol::Comparison(Comparison::Eq) => "==".to_string(),
-                Symbol::Comparison(Comparison::Neq) => "!=".to_string(),
-                Symbol::Comparison(Comparison::Lt) => "<)".to_string(),
-                Symbol::Comparison(Comparison::Le) => "<=".to_string(),
-                Symbol::Comparison(Comparison::Gt) => ">)".to_string(),
-                Symbol::Comparison(Comparison::Ge) => ">=".to_string(),
-                Symbol::Assignment => "=".to_string(),
-                Symbol::Return => "return".to_string(),
-                _ => todo!(),
-            },
-        };
-
-        println!("{}{}{}", prefix, display_prefix, node_value);
-
-        // 左の子ノードを表示
-        if let Some(lhs) = &self.lhs {
-            let has_right = self.rhs.is_some();
-            lhs.visualize(&format!("{}{}", prefix, next_prefix), !has_right);
-        }
-
-        // 右の子ノードを表示
-        if let Some(rhs) = &self.rhs {
-            rhs.visualize(&format!("{}{}", prefix, next_prefix), true);
-        }
-    }
-
-    // 便利なラッパー関数
-    #[allow(dead_code)]
-    pub fn print_ast(&self) {
-        println!("抽象構文木の表示:");
-        self.visualize("", true);
-    }
+pub enum Node {
+    Expr {
+        op: ExprSymbol,
+        lhs: Box<Node>,
+        rhs: Box<Node>,
+    },
+    Value(Value),
+    If {
+        condition: Box<Node>,
+        then_branch: Box<Node>,
+        else_branch: Option<Box<Node>>,
+    },
+    Return {
+        value: Box<Node>,
+    },
 }
