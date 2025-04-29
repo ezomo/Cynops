@@ -38,7 +38,7 @@ fn gen_expr(expr: Expr, cgs: &mut CodeGenStatus) -> String {
             let rhs = generate(expr.rhs, cgs);
             let name1 = cgs.name_gen.next();
 
-            println!("  {} = {} i32 {}, {}", name1, ari.to_llvmir(), lhs, rhs);
+            println!("  %{} = {} i32 %{}, %{}", name1, ari.to_llvmir(), lhs, rhs);
             return name1;
         }
         ExprSymbol::Comparison(com) => {
@@ -47,8 +47,8 @@ fn gen_expr(expr: Expr, cgs: &mut CodeGenStatus) -> String {
             let name1 = cgs.name_gen.next();
 
             let name2 = cgs.name_gen.next();
-            println!("  {} = {} i32 {}, {}", name1, com.to_llvmir(), lhs, rhs);
-            println!("  {} = zext i1 {} to i32", name2, name1);
+            println!("  %{} = {} i32 %{}, %{}", name1, com.to_llvmir(), lhs, rhs);
+            println!("  %{} = zext i1 %{} to i32", name2, name1);
             return name2;
         }
         ExprSymbol::Assignment => {
@@ -57,10 +57,10 @@ fn gen_expr(expr: Expr, cgs: &mut CodeGenStatus) -> String {
                 let rhs = generate(expr.rhs, cgs);
                 let ptr = cgs.variables.entry(idn.clone()).or_insert_with(|| {
                     let alloc = cgs.name_gen.next();
-                    println!("  {} = alloca i32", alloc);
+                    println!("  %{} = alloca i32", alloc);
                     alloc
                 });
-                println!("  store i32 {}, i32* {}", rhs, ptr);
+                println!("  store i32 %{}, i32* %{}", rhs, ptr);
                 return ptr.clone();
             } else {
                 panic!("The left side is not variable!");
@@ -74,31 +74,36 @@ fn gen_control(control: Control, cgs: &mut CodeGenStatus) -> String {
     match control {
         node::Control::Return(be) => {
             let lhs = generate(be.value, cgs);
-            println!("  ret i32 {}", lhs);
+            println!("  ret i32 %{}", lhs);
+            return "finished".to_string();
         }
+        // node::Control::If(be) => {
+        //     let condition = generate(be.condition, cgs);
+        //     println!("  {} = icmp ne i32 {}, 0", cgs.name_gen.next(), condition); //型変更
+
+        //     return "finished".to_string();
+        // }
         _ => panic!(),
     }
-
-    return "finished".to_string();
 }
 
 fn gen_value(value: Value, cgs: &mut CodeGenStatus) -> String {
     match value {
         Value::Number(num) => {
             let name1 = cgs.name_gen.next();
-            println!("  {} = add i32 0, {}", name1, num);
+            println!("  %{} = add i32 0, {}", name1, num);
             return name1;
         }
         Value::Ident(idn) => {
             if let Some(ptr) = cgs.variables.get(&idn) {
                 // 既にallcoされた変数
                 let tmp = cgs.name_gen.next();
-                println!("  {} = load i32, i32* {}", tmp, ptr);
+                println!("  %{} = load i32, i32* %{}", tmp, ptr);
                 return tmp;
             } else {
                 // 初めて出てきた変数
                 let ptr = cgs.name_gen.next();
-                println!("  {} = alloca i32", ptr);
+                println!("  %{} = alloca i32", ptr);
                 cgs.variables.insert(idn.clone(), ptr.clone());
                 return ptr;
             }

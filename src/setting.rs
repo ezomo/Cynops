@@ -187,7 +187,7 @@ impl TmpNameGen {
     }
 
     pub fn next(&mut self) -> String {
-        let name = format!("%tmp{}", self.counter);
+        let name = format!("tmp{}", self.counter);
         self.counter += 1;
         name
     }
