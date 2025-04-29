@@ -40,6 +40,9 @@ pub enum Value {
 #[derive(Debug, PartialEq, Clone)]
 pub enum ControlStructure {
     If,
+    Else,
+    For,
+    While,
     Return,
 }
 
@@ -78,7 +81,7 @@ impl Token {
 }
 
 impl Token {
-    pub const SYMBOLS: [(&str, Self); 15] = [
+    pub const SYMBOLS: [(&str, Self); 19] = [
         ("+", Self::arith(Arithmetic::Add)),
         ("-", Self::arith(Arithmetic::Sub)),
         ("*", Self::arith(Arithmetic::Mul)),
@@ -93,6 +96,10 @@ impl Token {
         (">=", Self::comp(Comparison::Ge)),
         ("=", Self::assign()),
         (";", Self::stop()),
+        ("if", Self::ctrl(ControlStructure::If)),
+        ("else", Self::ctrl(ControlStructure::Else)),
+        ("while", Self::ctrl(ControlStructure::For)),
+        ("for", Self::ctrl(ControlStructure::While)),
         ("return", Self::ctrl(ControlStructure::Return)),
     ];
 

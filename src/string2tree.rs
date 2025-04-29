@@ -14,14 +14,32 @@ pub fn stmt(tokens: &mut Vec<Token>) -> Box<Node> {
             Box::new(Node::Return {
                 value: expr(tokens),
             })
+        } else if consume(Token::ctrl(ControlStructure::If), tokens) {
+            Box::new(Node::If {
+                condition: {
+                    consume(Token::paren(Parentheses::L), tokens);
+                    let tmp = expr(tokens);
+                    consume(Token::paren(Parentheses::R), tokens);
+                    tmp
+                },
+                then_branch: stmt(tokens),
+                else_branch: {
+                    if consume(Token::ctrl(ControlStructure::Else), tokens) {
+                        Some(stmt(tokens))
+                    } else {
+                        None
+                    }
+                },
+            })
         } else {
-            expr(tokens)
+            let tmp = expr(tokens);
+            if !consume(Token::stop(), tokens) {
+                panic!("error");
+            }
+            tmp
         }
     };
 
-    if !consume(Token::stop(), tokens) {
-        panic!("error");
-    }
     node
 }
 
@@ -248,5 +266,6 @@ pub fn tokenize(input: &str) -> Vec<Token> {
 
 #[test]
 fn test_tokenize() {
-    println!("{:?}", tokenize("return;"))
+    let mut a = tokenize("if (1 == 2) a = 2; else a = 3;");
+    println!("{:#?}", program(&mut a))
 }
