@@ -1,4 +1,6 @@
-use crate::setting::*;
+use crate::setting::node::Node;
+use crate::setting::token::*;
+use crate::setting::token::{ControlStructure, Token, Value};
 
 pub fn program(tokens: &mut Vec<Token>) -> Vec<Box<Node>> {
     let mut code = vec![];
@@ -11,26 +13,28 @@ pub fn program(tokens: &mut Vec<Token>) -> Vec<Box<Node>> {
 pub fn stmt(tokens: &mut Vec<Token>) -> Box<Node> {
     let node = {
         if consume(Token::ctrl(ControlStructure::Return), tokens) {
-            Box::new(Node::Return {
-                value: expr(tokens),
-            })
+            let tmp = Node::r#return(expr(tokens));
+            if !consume(Token::stop(), tokens) {
+                panic!("error");
+            }
+            tmp
         } else if consume(Token::ctrl(ControlStructure::If), tokens) {
-            Box::new(Node::If {
-                condition: {
+            Node::r#if(
+                {
                     consume(Token::paren(Parentheses::L), tokens);
                     let tmp = expr(tokens);
                     consume(Token::paren(Parentheses::R), tokens);
                     tmp
                 },
-                then_branch: stmt(tokens),
-                else_branch: {
+                stmt(tokens),
+                {
                     if consume(Token::ctrl(ControlStructure::Else), tokens) {
                         Some(stmt(tokens))
                     } else {
                         None
                     }
                 },
-            })
+            )
         } else {
             let tmp = expr(tokens);
             if !consume(Token::stop(), tokens) {
@@ -50,11 +54,7 @@ pub fn expr(tokens: &mut Vec<Token>) -> Box<Node> {
 pub fn assign(tokens: &mut Vec<Token>) -> Box<Node> {
     let mut node = equality(tokens);
     if consume(Token::assign(), tokens) {
-        node = Box::new(Node::Expr {
-            op: ExprSymbol::Assignment,
-            lhs: node,
-            rhs: assign(tokens),
-        });
+        node = Node::expr(ExprSymbol::Assignment, node, assign(tokens))
     }
     node
 }
@@ -63,17 +63,17 @@ pub fn equality(tokens: &mut Vec<Token>) -> Box<Node> {
     let mut node = relational(tokens);
     loop {
         if consume(Token::comp(Comparison::Eq), tokens) {
-            node = Box::new(Node::Expr {
-                op: ExprSymbol::Comparison(Comparison::Eq),
-                lhs: node,
-                rhs: relational(tokens),
-            });
+            node = Node::expr(
+                ExprSymbol::Comparison(Comparison::Eq),
+                node,
+                relational(tokens),
+            );
         } else if consume(Token::comp(Comparison::Neq), tokens) {
-            node = Box::new(Node::Expr {
-                op: ExprSymbol::Comparison(Comparison::Neq),
-                lhs: node,
-                rhs: relational(tokens),
-            });
+            node = Node::expr(
+                ExprSymbol::Comparison(Comparison::Neq),
+                node,
+                relational(tokens),
+            );
         } else {
             return node;
         }
@@ -84,29 +84,13 @@ pub fn relational(tokens: &mut Vec<Token>) -> Box<Node> {
     let mut node = add(tokens);
     loop {
         if consume(Token::comp(Comparison::Lt), tokens) {
-            node = Box::new(Node::Expr {
-                op: ExprSymbol::Comparison(Comparison::Lt),
-                lhs: node,
-                rhs: add(tokens),
-            });
+            node = Node::expr(ExprSymbol::Comparison(Comparison::Lt), node, add(tokens));
         } else if consume(Token::comp(Comparison::Le), tokens) {
-            node = Box::new(Node::Expr {
-                op: ExprSymbol::Comparison(Comparison::Le),
-                lhs: node,
-                rhs: add(tokens),
-            });
+            node = Node::expr(ExprSymbol::Comparison(Comparison::Le), node, add(tokens));
         } else if consume(Token::comp(Comparison::Gt), tokens) {
-            node = Box::new(Node::Expr {
-                op: ExprSymbol::Comparison(Comparison::Gt),
-                lhs: node,
-                rhs: add(tokens),
-            });
+            node = Node::expr(ExprSymbol::Comparison(Comparison::Gt), node, add(tokens));
         } else if consume(Token::comp(Comparison::Ge), tokens) {
-            node = Box::new(Node::Expr {
-                op: ExprSymbol::Comparison(Comparison::Ge),
-                lhs: node,
-                rhs: add(tokens),
-            });
+            node = Node::expr(ExprSymbol::Comparison(Comparison::Ge), node, add(tokens));
         } else {
             return node;
         }
@@ -117,17 +101,9 @@ pub fn add(tokens: &mut Vec<Token>) -> Box<Node> {
     let mut node = mul(tokens);
     loop {
         if consume(Token::arith(Arithmetic::Add), tokens) {
-            node = Box::new(Node::Expr {
-                op: ExprSymbol::Arithmetic(Arithmetic::Add),
-                lhs: node,
-                rhs: mul(tokens),
-            });
+            node = Node::expr(ExprSymbol::Arithmetic(Arithmetic::Add), node, mul(tokens));
         } else if consume(Token::arith(Arithmetic::Sub), tokens) {
-            node = Box::new(Node::Expr {
-                op: ExprSymbol::Arithmetic(Arithmetic::Sub),
-                lhs: node,
-                rhs: mul(tokens),
-            });
+            node = Node::expr(ExprSymbol::Arithmetic(Arithmetic::Sub), node, mul(tokens));
         } else {
             return node;
         }
@@ -139,17 +115,9 @@ pub fn mul(tokens: &mut Vec<Token>) -> Box<Node> {
 
     loop {
         if consume(Token::arith(Arithmetic::Mul), tokens) {
-            node = Box::new(Node::Expr {
-                op: ExprSymbol::Arithmetic(Arithmetic::Mul),
-                lhs: node,
-                rhs: unary(tokens),
-            });
+            node = Node::expr(ExprSymbol::Arithmetic(Arithmetic::Mul), node, unary(tokens));
         } else if consume(Token::arith(Arithmetic::Div), tokens) {
-            node = Box::new(Node::Expr {
-                op: ExprSymbol::Arithmetic(Arithmetic::Div),
-                lhs: node,
-                rhs: unary(tokens),
-            });
+            node = Node::expr(ExprSymbol::Arithmetic(Arithmetic::Div), node, unary(tokens));
         } else {
             return node;
         }
@@ -161,11 +129,11 @@ pub fn unary(tokens: &mut Vec<Token>) -> Box<Node> {
         return primary(tokens);
     }
     if consume(Token::arith(Arithmetic::Sub), tokens) {
-        return Box::new(Node::Expr {
-            op: ExprSymbol::Arithmetic(Arithmetic::Sub),
-            lhs: Box::new(Node::Value(Value::Number(0))),
-            rhs: primary(tokens),
-        });
+        return Node::expr(
+            ExprSymbol::Arithmetic(Arithmetic::Sub),
+            Node::value(Value::Number(0)),
+            primary(tokens),
+        );
     }
     return primary(tokens);
 }
@@ -212,60 +180,11 @@ pub fn consume_atom(tokens: &mut Vec<Token>) -> Value {
         panic!("Expected a Token::Value, found something else.");
     }
 }
-pub fn tokenize(input: &str) -> Vec<Token> {
-    let mut tokens = Vec::new();
-    let symbols_sorted: Vec<&str> = {
-        let mut syms: Vec<_> = Token::SYMBOLS.iter().map(|x| x.0).collect();
-        syms.sort_by(|a, b| b.len().cmp(&a.len())); // 長い記号優先
-        syms
-    };
-
-    let mut input = input.trim();
-    while !input.is_empty() {
-        input = input.trim_start();
-        if let Some(first) = input.chars().next() {
-            // 数字
-            if first.is_ascii_digit() {
-                let num_str: String = input.chars().take_while(|c| c.is_ascii_digit()).collect();
-                let num_len = num_str.len();
-                tokens.push(Token::number(num_str.parse().unwrap()));
-                input = &input[num_len..];
-                continue;
-            }
-
-            // 記号（長いものから）
-            let mut matched = false;
-            for &sym in &symbols_sorted {
-                if input.starts_with(sym) {
-                    tokens.push(Token::classify(&sym.to_string()).unwrap());
-                    input = &input[sym.len()..];
-                    matched = true;
-                    break;
-                }
-            }
-            if matched {
-                continue;
-            }
-
-            if first.is_alphabetic() {
-                let can_ident =
-                    |c: &char| c.is_ascii_alphabetic() || c.is_ascii_digit() || *c == '_';
-                let ident_str: String = input.chars().take_while(|c| can_ident(c)).collect();
-                let str_len = ident_str.len();
-                tokens.push(Token::ident(ident_str.to_string()));
-                input = &input[str_len..];
-                continue;
-            }
-
-            panic!("Unexpected character: {}", first);
-        }
-    }
-
-    tokens
-}
 
 #[test]
-fn test_tokenize() {
-    let mut a = tokenize("if (1 == 2) a = 2; else a = 3;");
-    println!("{:#?}", program(&mut a))
+fn test_program() {
+    use crate::tokenize::tokenize;
+    let mut a = tokenize("a = 2; return a*5;");
+    let b = program(&mut a);
+    println!("{:#?}", b);
 }
