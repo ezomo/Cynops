@@ -8,6 +8,9 @@ trait ToLLVMIR {
     fn to_llvmir(&self) -> &str;
 }
 
+const EVIL: &str = "evil";
+const IGNORE: &str = "ignore";
+
 impl ToLLVMIR for Arithmetic {
     fn to_llvmir(&self) -> &str {
         match self {
@@ -31,25 +34,35 @@ impl ToLLVMIR for Comparison {
     }
 }
 
+fn i1toi32(name_i1: String, cgs: &mut CodeGenStatus) -> String {
+    let name = cgs.name_gen.next();
+    println!("%{} = zext i1 %{} to i32", name, name_i1);
+    return name;
+}
+
+fn i32toi1(name_i32: String, cgs: &mut CodeGenStatus) -> String {
+    let name = cgs.name_gen.next();
+    println!("%{} = icmp ne i32 %{}, 0", name, name_i32);
+    return name;
+}
+
 fn gen_expr(expr: Expr, cgs: &mut CodeGenStatus) -> String {
     match expr.op {
         ExprSymbol::Arithmetic(ari) => {
             let lhs = generate(expr.lhs, cgs);
             let rhs = generate(expr.rhs, cgs);
-            let name1 = cgs.name_gen.next();
+            let name = cgs.name_gen.next();
 
-            println!("  %{} = {} i32 %{}, %{}", name1, ari.to_llvmir(), lhs, rhs);
-            return name1;
+            println!("%{} = {} i32 %{}, %{}", name, ari.to_llvmir(), lhs, rhs);
+            return name;
         }
         ExprSymbol::Comparison(com) => {
             let lhs = generate(expr.lhs, cgs);
             let rhs = generate(expr.rhs, cgs);
-            let name1 = cgs.name_gen.next();
+            let name = cgs.name_gen.next();
 
-            let name2 = cgs.name_gen.next();
-            println!("  %{} = {} i32 %{}, %{}", name1, com.to_llvmir(), lhs, rhs);
-            println!("  %{} = zext i1 %{} to i32", name2, name1);
-            return name2;
+            println!("%{} = {} i32 %{}, %{}", name, com.to_llvmir(), lhs, rhs);
+            i1toi32(name, cgs)
         }
         ExprSymbol::Assignment => {
             // lhs は ident なので、もう一度解析する必要あり
@@ -57,10 +70,10 @@ fn gen_expr(expr: Expr, cgs: &mut CodeGenStatus) -> String {
                 let rhs = generate(expr.rhs, cgs);
                 let ptr = cgs.variables.entry(idn.clone()).or_insert_with(|| {
                     let alloc = cgs.name_gen.next();
-                    println!("  %{} = alloca i32", alloc);
+                    println!("%{} = alloca i32", alloc);
                     alloc
                 });
-                println!("  store i32 %{}, i32* %{}", rhs, ptr);
+                println!("store i32 %{}, i32* %{}", rhs, ptr);
                 return ptr.clone();
             } else {
                 panic!("The left side is not variable!");
@@ -74,16 +87,41 @@ fn gen_control(control: Control, cgs: &mut CodeGenStatus) -> String {
     match control {
         node::Control::Return(be) => {
             let lhs = generate(be.value, cgs);
-            println!("  ret i32 %{}", lhs);
-            return "finished".to_string();
+            println!("ret i32 %{}", lhs);
+            return EVIL.to_string();
         }
-        // node::Control::If(be) => {
-        //     let condition = generate(be.condition, cgs);
-        //     println!("  {} = icmp ne i32 {}, 0", cgs.name_gen.next(), condition); //型変更
+        node::Control::If(be) => {
+            let con = i32toi1(generate(be.condition, cgs), cgs);
+            let if_name = cgs.name_gen.next();
 
-        //     return "finished".to_string();
-        // }
-        _ => panic!(),
+            println!(
+                "br i1 %{}, label %if{}_true, label %if{}_false",
+                con, if_name, if_name
+            );
+            println!("if{}_true:", if_name);
+
+            let if_result = generate(be.then_branch, cgs);
+            if if_result != EVIL {
+                println!("br label %if{}_end", if_name);
+            }
+
+            println!("if{}_false:", if_name);
+
+            let else_result = be.else_branch.map(|b| generate(b, cgs)).unwrap_or_else(|| {
+                println!("br label %if{}_end", if_name);
+                EVIL.to_string()
+            });
+
+            if else_result != EVIL {
+                println!("br label %if{}_end", if_name);
+            }
+
+            if if_result != EVIL || else_result != EVIL {
+                println!("if{}_end:", if_name);
+            }
+
+            IGNORE.to_string()
+        }
     }
 }
 
@@ -91,19 +129,19 @@ fn gen_value(value: Value, cgs: &mut CodeGenStatus) -> String {
     match value {
         Value::Number(num) => {
             let name1 = cgs.name_gen.next();
-            println!("  %{} = add i32 0, {}", name1, num);
+            println!("%{} = add i32 0, {}", name1, num);
             return name1;
         }
         Value::Ident(idn) => {
             if let Some(ptr) = cgs.variables.get(&idn) {
                 // 既にallcoされた変数
                 let tmp = cgs.name_gen.next();
-                println!("  %{} = load i32, i32* %{}", tmp, ptr);
+                println!("%{} = load i32, i32* %{}", tmp, ptr);
                 return tmp;
             } else {
                 // 初めて出てきた変数
                 let ptr = cgs.name_gen.next();
-                println!("  %{} = alloca i32", ptr);
+                println!("%{} = alloca i32", ptr);
                 cgs.variables.insert(idn.clone(), ptr.clone());
                 return ptr;
             }
@@ -122,9 +160,10 @@ pub fn generate(node: Box<Node>, cgs: &mut CodeGenStatus) -> String {
 fn test() {
     use crate::string2tree::program;
     use crate::tokenize::tokenize;
-    let a = "a = 5; return a;";
+    let a = "if (1 ==1) return 1;return 2;";
     let mut b = tokenize(&a.to_string());
     let ast = program(&mut b);
+    println!("{:#?}", ast);
     let mut cgs = CodeGenStatus::new();
     for i in &ast {
         generate(i.clone(), &mut cgs);
