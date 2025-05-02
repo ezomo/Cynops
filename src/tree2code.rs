@@ -122,7 +122,31 @@ fn gen_control(control: Control, cgs: &mut CodeGenStatus) -> String {
 
             IGNORE.to_string()
         }
-        _ => todo!(),
+        node::Control::For(be) => {
+            let for_name = cgs.name_gen.next();
+
+            be.initializer.map(|x| generate(x, cgs)).unwrap();
+
+            println!("br label %begin{}", for_name);
+            println!("begin{}:", for_name);
+
+            let con = i32toi1(generate(be.condition, cgs), cgs);
+
+            println!(
+                "br i1 %{}, label %for_true{}, label %end{}",
+                con, for_name, for_name
+            );
+
+            println!("for_true{}:", for_name);
+
+            be.updater.map(|x| generate(x, cgs)).unwrap();
+            generate(be.body, cgs);
+
+            println!("br label %begin{}", for_name);
+            println!("end{}:", for_name);
+
+            IGNORE.to_string()
+        }
     }
 }
 
@@ -161,7 +185,7 @@ pub fn generate(node: Box<Node>, cgs: &mut CodeGenStatus) -> String {
 fn test() {
     use crate::string2tree::program;
     use crate::tokenize::tokenize;
-    let a = "if (1 ==1) return 1;return 2;";
+    let a = "for(a = 0;a < 5;a = a+1) 1;";
     let mut b = tokenize(&a.to_string());
     let ast = program(&mut b);
     println!("{:#?}", ast);

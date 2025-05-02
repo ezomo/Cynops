@@ -1,23 +1,2 @@
-height_cm = 170;
-weight_kg = 65;
-
-bmi_approx = 0;
-bmi_int = 0;
-category_code = 0;
-result = 0;
-
-
-bmi_approx = (weight_kg * 10000) / (height_cm * height_cm);
-
-if (bmi_approx < 185) category_code = 1;
-else if (bmi_approx < 250) category_code = 2;
-else category_code = 3;
-
-if (bmi_approx / 10 > 25) bmi_int = 25;
-else bmi_int = bmi_approx / 10;
-
-result = (bmi_int * 10) + category_code;
-
-if (result > 255) result = 255;
-
-return result;
+for(a = 0;;a = a+1) 1;
+return 0;
