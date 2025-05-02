@@ -135,7 +135,7 @@ pub mod node {
     #[derive(Debug, PartialEq, Clone)]
     pub struct For {
         pub initializer: Option<Box<Node>>,
-        pub condition: Option<Box<Node>>,
+        pub condition: Box<Node>,
         pub updater: Option<Box<Node>>,
         pub body: Box<Node>,
     }
@@ -184,7 +184,7 @@ pub mod node {
 
         pub fn r#for(
             init: Option<Box<Node>>,
-            cond: Option<Box<Node>>,
+            cond: Box<Node>,
             update: Option<Box<Node>>,
             body: Box<Node>,
         ) -> Box<Self> {
