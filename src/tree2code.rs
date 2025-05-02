@@ -122,6 +122,7 @@ fn gen_control(control: Control, cgs: &mut CodeGenStatus) -> String {
 
             IGNORE.to_string()
         }
+        _ => todo!(),
     }
 }
 
