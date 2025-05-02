@@ -101,8 +101,8 @@ pub mod token {
             (";", Self::stop()),
             ("if", Self::ctrl(ControlStructure::If)),
             ("else", Self::ctrl(ControlStructure::Else)),
-            ("while", Self::ctrl(ControlStructure::For)),
-            ("for", Self::ctrl(ControlStructure::While)),
+            ("while", Self::ctrl(ControlStructure::While)),
+            ("for", Self::ctrl(ControlStructure::For)),
             ("return", Self::ctrl(ControlStructure::Return)),
         ];
 
