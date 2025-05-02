@@ -101,8 +101,8 @@ pub mod token {
             (";", Self::stop()),
             ("if", Self::ctrl(ControlStructure::If)),
             ("else", Self::ctrl(ControlStructure::Else)),
-            ("while", Self::ctrl(ControlStructure::For)),
-            ("for", Self::ctrl(ControlStructure::While)),
+            ("while", Self::ctrl(ControlStructure::While)),
+            ("for", Self::ctrl(ControlStructure::For)),
             ("return", Self::ctrl(ControlStructure::Return)),
         ];
 
@@ -132,6 +132,11 @@ pub mod node {
         pub then_branch: Box<Node>,
         pub else_branch: Option<Box<Node>>,
     }
+    #[derive(Debug, PartialEq, Clone)]
+    pub struct While {
+        pub condition: Box<Node>,
+        pub body: Box<Node>,
+    }
 
     #[derive(Debug, PartialEq, Clone)]
     pub struct Return {
@@ -140,6 +145,7 @@ pub mod node {
     #[derive(Debug, PartialEq, Clone)]
     pub enum Control {
         If(If),
+        While(While),
         Return(Return),
     }
     // 抽象構文木のノードの型
@@ -171,6 +177,13 @@ pub mod node {
                 condition: cond,
                 then_branch,
                 else_branch,
+            })))
+        }
+
+        pub fn r#while(cond: Box<Node>, body: Box<Node>) -> Box<Self> {
+            Box::new(Node::Control(Control::While(While {
+                condition: cond,
+                body: body,
             })))
         }
     }

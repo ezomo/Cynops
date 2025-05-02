@@ -35,6 +35,16 @@ pub fn stmt(tokens: &mut Vec<Token>) -> Box<Node> {
                     }
                 },
             )
+        } else if consume(Token::ctrl(ControlStructure::While), tokens) {
+            Node::r#while(
+                {
+                    consume(Token::paren(Parentheses::L), tokens);
+                    let tmp = expr(tokens);
+                    consume(Token::paren(Parentheses::R), tokens);
+                    tmp
+                },
+                stmt(tokens),
+            )
         } else {
             let tmp = expr(tokens);
             if !consume(Token::stop(), tokens) {
