@@ -16,6 +16,12 @@ pub mod token {
     }
 
     #[derive(Debug, PartialEq, Clone, Copy)]
+    pub enum BlockBrace {
+        L, // {
+        R, // }
+    }
+
+    #[derive(Debug, PartialEq, Clone, Copy)]
     pub enum Comparison {
         Eq,  // ==
         Neq, // !=
@@ -29,6 +35,7 @@ pub mod token {
     pub enum ExprSymbol {
         Arithmetic(Arithmetic),
         Parentheses(Parentheses),
+        BlockDelimiter(BlockBrace),
         Comparison(Comparison),
         Assignment,
         Stop,
@@ -66,6 +73,9 @@ pub mod token {
         pub const fn paren(p: Parentheses) -> Self {
             Self::ExprSymbol(ExprSymbol::Parentheses(p))
         }
+        pub const fn block(b: BlockBrace) -> Self {
+            Self::ExprSymbol(ExprSymbol::BlockDelimiter(b))
+        }
         pub const fn assign() -> Self {
             Self::ExprSymbol(ExprSymbol::Assignment)
         }
@@ -84,13 +94,15 @@ pub mod token {
     }
 
     impl Token {
-        pub const SYMBOLS: [(&str, Self); 19] = [
+        pub const SYMBOLS: [(&str, Self); 21] = [
             ("+", Self::arith(Arithmetic::Add)),
             ("-", Self::arith(Arithmetic::Sub)),
             ("*", Self::arith(Arithmetic::Mul)),
             ("/", Self::arith(Arithmetic::Div)),
             ("(", Self::paren(Parentheses::L)),
             (")", Self::paren(Parentheses::R)),
+            ("{", Self::block(BlockBrace::L)),
+            ("}", Self::block(BlockBrace::R)),
             ("==", Self::comp(Comparison::Eq)),
             ("!=", Self::comp(Comparison::Neq)),
             ("<", Self::comp(Comparison::Lt)),
