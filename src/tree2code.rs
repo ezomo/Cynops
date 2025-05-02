@@ -144,6 +144,31 @@ fn gen_control(control: Control, cgs: &mut CodeGenStatus) -> String {
 
             IGNORE.to_string()
         }
+        node::Control::For(be) => {
+            let for_name = cgs.name_gen.next();
+
+            be.initializer.map(|x| generate(x, cgs)).unwrap();
+
+            println!("br label %begin{}", for_name);
+            println!("begin{}:", for_name);
+
+            let con = i32toi1(generate(be.condition, cgs), cgs);
+
+            println!(
+                "br i1 %{}, label %for_true{}, label %end{}",
+                con, for_name, for_name
+            );
+
+            println!("for_true{}:", for_name);
+
+            be.updater.map(|x| generate(x, cgs)).unwrap();
+            generate(be.body, cgs);
+
+            println!("br label %begin{}", for_name);
+            println!("end{}:", for_name);
+
+            IGNORE.to_string()
+        }
     }
 }
 

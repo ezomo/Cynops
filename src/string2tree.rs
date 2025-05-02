@@ -45,6 +45,38 @@ pub fn stmt(tokens: &mut Vec<Token>) -> Box<Node> {
                 },
                 stmt(tokens),
             )
+        } else if consume(Token::ctrl(ControlStructure::For), tokens) {
+            consume(Token::paren(Parentheses::L), tokens);
+            Node::r#for(
+                {
+                    if consume(Token::stop(), tokens) {
+                        None
+                    } else {
+                        let tmp = Some(expr(tokens));
+                        consume(Token::stop(), tokens);
+                        tmp
+                    }
+                },
+                {
+                    if consume(Token::stop(), tokens) {
+                        Node::value(Value::Number(1))
+                    } else {
+                        let tmp = expr(tokens);
+                        consume(Token::stop(), tokens);
+                        tmp
+                    }
+                },
+                {
+                    if consume(Token::paren(Parentheses::R), tokens) {
+                        None
+                    } else {
+                        let tmp = Some(expr(tokens));
+                        consume(Token::paren(Parentheses::R), tokens);
+                        tmp
+                    }
+                },
+                stmt(tokens),
+            )
         } else {
             let tmp = expr(tokens);
             if !consume(Token::stop(), tokens) {
@@ -187,14 +219,14 @@ pub fn consume_atom(tokens: &mut Vec<Token>) -> Value {
         tokens.remove(0); // 要素を削除
         return value.clone();
     } else {
-        panic!("Expected a Token::Value, found something else.");
+        panic!("Expected a Token::Value, found {:?}.", next);
     }
 }
 
 #[test]
 fn test_program() {
     use crate::tokenize::tokenize;
-    let mut a = tokenize("a = 2; return a*5;");
+    let mut a = tokenize("for(a = 0;a < 5;a = a+1) 1;");
     let b = program(&mut a);
     println!("{:#?}", b);
 }
