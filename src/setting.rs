@@ -132,6 +132,13 @@ pub mod node {
         pub then_branch: Box<Node>,
         pub else_branch: Option<Box<Node>>,
     }
+    #[derive(Debug, PartialEq, Clone)]
+    pub struct For {
+        pub initializer: Option<Box<Node>>,
+        pub condition: Option<Box<Node>>,
+        pub updater: Option<Box<Node>>,
+        pub body: Box<Node>,
+    }
 
     #[derive(Debug, PartialEq, Clone)]
     pub struct Return {
@@ -140,6 +147,7 @@ pub mod node {
     #[derive(Debug, PartialEq, Clone)]
     pub enum Control {
         If(If),
+        For(For),
         Return(Return),
     }
     // 抽象構文木のノードの型
@@ -171,6 +179,20 @@ pub mod node {
                 condition: cond,
                 then_branch,
                 else_branch,
+            })))
+        }
+
+        pub fn r#for(
+            init: Option<Box<Node>>,
+            cond: Option<Box<Node>>,
+            update: Option<Box<Node>>,
+            body: Box<Node>,
+        ) -> Box<Self> {
+            Box::new(Node::Control(Control::For(For {
+                initializer: init,
+                condition: cond,
+                updater: update,
+                body: body,
             })))
         }
     }
