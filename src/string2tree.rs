@@ -77,6 +77,12 @@ pub fn stmt(tokens: &mut Vec<Token>) -> Box<Node> {
                 },
                 stmt(tokens),
             )
+        } else if consume(Token::block(BlockBrace::L), tokens) {
+            let mut code = vec![];
+            while !consume(Token::block(BlockBrace::R), tokens) {
+                code.push(stmt(tokens));
+            }
+            Node::program(code)
         } else {
             let tmp = expr(tokens);
             if !consume(Token::stop(), tokens) {
@@ -226,7 +232,14 @@ pub fn consume_atom(tokens: &mut Vec<Token>) -> Value {
 #[test]
 fn test_program() {
     use crate::tokenize::tokenize;
-    let mut a = tokenize("for(a = 0;a < 5;a = a+1) 1;");
+    let mut a = tokenize(
+        "
+    b = 0;
+    for(a = 0; a < 5 ;a = a+1){
+        b = b+1;
+    }   
+    ",
+    );
     let b = program(&mut a);
     println!("{:#?}", b);
 }
