@@ -2,12 +2,12 @@ use crate::setting::node::Node;
 use crate::setting::token::*;
 use crate::setting::token::{ControlStructure, Token, Value};
 
-pub fn program(tokens: &mut Vec<Token>) -> Vec<Box<Node>> {
+pub fn program(tokens: &mut Vec<Token>) -> Box<Node> {
     let mut code = vec![];
     while !tokens.is_empty() {
         code.push(stmt(tokens));
     }
-    code
+    Node::program(code)
 }
 
 pub fn stmt(tokens: &mut Vec<Token>) -> Box<Node> {
