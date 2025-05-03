@@ -147,7 +147,9 @@ fn gen_control(control: Control, cgs: &mut CodeGenStatus) -> String {
         node::Control::For(be) => {
             let for_name = cgs.name_gen.next();
 
-            be.initializer.map(|x| generate(x, cgs)).unwrap();
+            be.initializer
+                .map(|x| generate(x, cgs))
+                .unwrap_or(IGNORE.to_string());
 
             println!("br label %begin{}", for_name);
             println!("begin{}:", for_name);
@@ -161,7 +163,9 @@ fn gen_control(control: Control, cgs: &mut CodeGenStatus) -> String {
 
             println!("for_true{}:", for_name);
 
-            be.updater.map(|x| generate(x, cgs)).unwrap();
+            be.updater
+                .map(|x| generate(x, cgs))
+                .unwrap_or(IGNORE.to_string());
             generate(be.body, cgs);
 
             println!("br label %begin{}", for_name);

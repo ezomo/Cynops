@@ -168,12 +168,19 @@ pub mod node {
         For(For),
         Return(Return),
     }
+
+    #[derive(Debug, PartialEq, Clone)]
+    pub struct Program {
+        pub statements: Vec<Box<Node>>,
+    }
+
     // 抽象構文木のノードの型
     #[derive(Debug, PartialEq, Clone)]
     pub enum Node {
         Value(Value),
         Expr(Expr),
         Control(Control),
+        Program(Program),
     }
     impl Node {
         pub fn value(val: Value) -> Box<Self> {
@@ -218,6 +225,12 @@ pub mod node {
                 updater: update,
                 body: body,
             })))
+        }
+
+        pub fn program(statements: Vec<Box<Node>>) -> Box<Node> {
+            Box::new(Node::Program(Program {
+                statements: statements,
+            }))
         }
     }
 }
