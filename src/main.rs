@@ -25,8 +25,6 @@ fn main() {
     let mut b = tokenize(&args[1].to_string());
     let ast = program(&mut b);
     let mut cgs = CodeGenStatus::new();
-    for i in &ast {
-        generate(i.clone(), &mut cgs);
-    }
+    generate(ast, &mut cgs);
     println!("}}")
 }
