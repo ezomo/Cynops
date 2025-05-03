@@ -1,5 +1,5 @@
 use crate::setting::{
-    node::{Control, Expr, Node},
+    node::{Control, Expr, Node, Program},
     token::{Arithmetic, Comparison, ExprSymbol, Value},
     *,
 };
@@ -199,11 +199,20 @@ fn gen_value(value: Value, cgs: &mut CodeGenStatus) -> String {
         }
     }
 }
+
+fn gen_program(program: Program, cgs: &mut CodeGenStatus) -> String {
+    for statement in program.statements {
+        generate(statement, cgs);
+    }
+    IGNORE.to_string()
+}
+
 pub fn generate(node: Box<Node>, cgs: &mut CodeGenStatus) -> String {
     match *node {
         Node::Expr(expr) => gen_expr(expr, cgs),
         Node::Control(control) => gen_control(control, cgs),
         Node::Value(value) => gen_value(value, cgs),
+        Node::Program(program) => gen_program(program, cgs),
     }
 }
 
@@ -211,12 +220,15 @@ pub fn generate(node: Box<Node>, cgs: &mut CodeGenStatus) -> String {
 fn test() {
     use crate::string2tree::program;
     use crate::tokenize::tokenize;
-    let a = "a = 0; while (a < 5) a= a+1; return a;";
+    let a = "
+    b = 0;
+    for(a = 0; a < 5 ;a = a+1){
+        b = b+1;
+    }   
+    ";
     let mut b = tokenize(&a.to_string());
     let ast = program(&mut b);
     println!("{:#?}", ast);
     let mut cgs = CodeGenStatus::new();
-    for i in &ast {
-        generate(i.clone(), &mut cgs);
-    }
+    generate(ast, &mut cgs);
 }
