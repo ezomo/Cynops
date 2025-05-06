@@ -38,7 +38,8 @@ pub mod token {
         BlockDelimiter(BlockBrace),
         Comparison(Comparison),
         Assignment,
-        Stop,
+        Stop,  //;
+        Comma, //,
     }
 
     #[derive(Debug, PartialEq, Clone)]
@@ -82,6 +83,9 @@ pub mod token {
         pub const fn stop() -> Self {
             Self::ExprSymbol(ExprSymbol::Stop)
         }
+        pub const fn comma() -> Self {
+            Self::ExprSymbol(ExprSymbol::Comma)
+        }
         pub const fn ctrl(c: ControlStructure) -> Self {
             Self::ControlStructure(c)
         }
@@ -94,7 +98,7 @@ pub mod token {
     }
 
     impl Token {
-        pub const SYMBOLS: [(&str, Self); 21] = [
+        pub const SYMBOLS: [(&str, Self); 22] = [
             ("+", Self::arith(Arithmetic::Add)),
             ("-", Self::arith(Arithmetic::Sub)),
             ("*", Self::arith(Arithmetic::Mul)),
@@ -111,6 +115,7 @@ pub mod token {
             (">=", Self::comp(Comparison::Ge)),
             ("=", Self::assign()),
             (";", Self::stop()),
+            (",", Self::comma()),
             ("if", Self::ctrl(ControlStructure::If)),
             ("else", Self::ctrl(ControlStructure::Else)),
             ("while", Self::ctrl(ControlStructure::While)),

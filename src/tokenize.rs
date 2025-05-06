@@ -55,5 +55,5 @@ pub fn tokenize(input: &str) -> Vec<Token> {
 
 #[test]
 fn test_tokenize() {
-    println!("{:?}", tokenize("if (1 == 2) a = 2; else a = 3;"));
+    println!("{:?}", tokenize("1,2"));
 }
