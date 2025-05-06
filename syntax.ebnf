@@ -1,4 +1,6 @@
-program    = stmt*
+program    = (function_def | stmt)*
+function_def = ident "(" param_list? ")" "{" stmt* "}"
+
 stmt       = expr ";"
             | "return" expr ";"
             | "if" "(" expr ")" stmt ("else" stmt)?
