@@ -1,5 +1,5 @@
 use crate::setting::{
-    node::{Control, Expr, Node, Program},
+    node::{Call, Control, Expr, Node, Program},
     token::{Arithmetic, Comparison, ExprSymbol, Value},
     *,
 };
@@ -207,12 +207,29 @@ fn gen_program(program: Program, cgs: &mut CodeGenStatus) -> String {
     IGNORE.to_string()
 }
 
+fn gen_call(call: Call, cgs: &mut CodeGenStatus) -> String {
+    let name = cgs.name_gen.next();
+    let args: Vec<String> = call
+        .arguments
+        .iter()
+        .map(|arg| generate(arg.clone(), cgs))
+        .collect();
+
+    let fn_name = match *call.callee {
+        Node::Value(Value::Ident(ref idn)) => idn.clone(),
+        _ => panic!("The callee is not a function!"),
+    };
+    println!("%{} = call i32 @{}({})", name, fn_name, args.join(", "));
+    return name;
+}
+
 pub fn generate(node: Box<Node>, cgs: &mut CodeGenStatus) -> String {
     match *node {
         Node::Expr(expr) => gen_expr(expr, cgs),
         Node::Control(control) => gen_control(control, cgs),
         Node::Value(value) => gen_value(value, cgs),
         Node::Program(program) => gen_program(program, cgs),
+        Node::Call(call) => gen_call(call, cgs),
     }
 }
 
@@ -220,12 +237,7 @@ pub fn generate(node: Box<Node>, cgs: &mut CodeGenStatus) -> String {
 fn test() {
     use crate::string2tree::program;
     use crate::tokenize::tokenize;
-    let a = "
-    b = 0;
-    for(a = 0; a < 5 ;a = a+1){
-        b = b+1;
-    }   
-    ";
+    let a = "return a(1,2);";
     let mut b = tokenize(&a.to_string());
     let ast = program(&mut b);
     println!("{:#?}", ast);

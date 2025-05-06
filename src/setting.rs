@@ -145,8 +145,8 @@ pub mod node {
 
     #[derive(Debug, PartialEq, Clone)]
     pub struct Call {
-        pub callee: Box<Node>,    // 関数名（識別子）など
-        pub arguments: Box<Node>, // 引数
+        pub callee: Box<Node>,         // 関数名（識別子）など
+        pub arguments: Vec<Box<Node>>, // 引数
     }
     #[derive(Debug, PartialEq, Clone)]
     pub struct If {
@@ -202,7 +202,7 @@ pub mod node {
             Box::new(Node::Expr(Expr { op, lhs, rhs }))
         }
 
-        pub fn call(callee: Box<Node>, arguments: Box<Node>) -> Box<Self> {
+        pub fn call(callee: Box<Node>, arguments: Vec<Box<Node>>) -> Box<Self> {
             Box::new(Node::Call(Call { callee, arguments }))
         }
 

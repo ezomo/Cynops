@@ -206,13 +206,13 @@ pub fn primary(tokens: &mut Vec<Token>) -> Box<Node> {
     }
 }
 
-pub fn arg_list(tokens: &mut Vec<Token>) -> Box<Node> {
+pub fn arg_list(tokens: &mut Vec<Token>) -> Vec<Box<Node>> {
     let mut node = vec![expr(tokens)];
     loop {
         if consume(Token::comma(), tokens) {
             node.push(expr(tokens));
         } else {
-            return Node::program(node);
+            return node;
         }
     }
 }
