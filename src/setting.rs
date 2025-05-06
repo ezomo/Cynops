@@ -144,6 +144,11 @@ pub mod node {
     }
 
     #[derive(Debug, PartialEq, Clone)]
+    pub struct Call {
+        pub callee: Box<Node>,    // 関数名（識別子）など
+        pub arguments: Box<Node>, // 引数
+    }
+    #[derive(Debug, PartialEq, Clone)]
     pub struct If {
         pub condition: Box<Node>,
         pub then_branch: Box<Node>,
@@ -183,6 +188,7 @@ pub mod node {
     #[derive(Debug, PartialEq, Clone)]
     pub enum Node {
         Value(Value),
+        Call(Call),
         Expr(Expr),
         Control(Control),
         Program(Program),
@@ -194,6 +200,10 @@ pub mod node {
 
         pub fn expr(op: ExprSymbol, lhs: Box<Node>, rhs: Box<Node>) -> Box<Self> {
             Box::new(Node::Expr(Expr { op, lhs, rhs }))
+        }
+
+        pub fn call(callee: Box<Node>, arguments: Box<Node>) -> Box<Self> {
+            Box::new(Node::Call(Call { callee, arguments }))
         }
 
         pub fn r#return(val: Box<Node>) -> Box<Self> {
