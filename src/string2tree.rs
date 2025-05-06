@@ -5,9 +5,33 @@ use crate::setting::token::{ControlStructure, Token, Value};
 pub fn program(tokens: &mut Vec<Token>) -> Box<Node> {
     let mut code = vec![];
     while !tokens.is_empty() {
-        code.push(stmt(tokens));
+        if is_next_atom(tokens) {
+            code.push(function_def(tokens));
+        } else {
+            code.push(stmt(tokens));
+        }
     }
     Node::program(code)
+}
+
+pub fn function_def(tokens: &mut Vec<Token>) -> Box<Node> {
+    let name = consume_atom(tokens);
+
+    consume(Token::paren(Parentheses::L), tokens);
+    let mut arguments = vec![];
+    while !consume(Token::paren(Parentheses::R), tokens) {
+        arguments.push(consume_atom(tokens));
+        consume(Token::comma(), tokens);
+    }
+
+    consume(Token::block(BlockBrace::L), tokens);
+    let mut code = vec![];
+    while !consume(Token::block(BlockBrace::R), tokens) {
+        code.push(stmt(tokens));
+    }
+    let body = Node::program(code);
+
+    Node::function(name, arguments, body)
 }
 
 pub fn stmt(tokens: &mut Vec<Token>) -> Box<Node> {
@@ -248,10 +272,21 @@ pub fn consume_atom(tokens: &mut Vec<Token>) -> Value {
     }
 }
 
+pub fn is_next_atom(tokens: &mut Vec<Token>) -> bool {
+    if tokens.is_empty() {
+        return false;
+    }
+    let next = tokens.first().unwrap();
+    if let Token::Value(_) = next {
+        return true;
+    }
+    false
+}
+
 #[test]
 fn test_program() {
     use crate::tokenize::tokenize;
-    let mut a = tokenize(" a(2,3);");
+    let mut a = tokenize("a(b,y){return 1;}");
     let b = program(&mut a);
     println!("{:#?}", b);
 }

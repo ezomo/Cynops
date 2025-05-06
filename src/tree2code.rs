@@ -230,6 +230,9 @@ pub fn generate(node: Box<Node>, cgs: &mut CodeGenStatus) -> String {
         Node::Value(value) => gen_value(value, cgs),
         Node::Program(program) => gen_program(program, cgs),
         Node::Call(call) => gen_call(call, cgs),
+        Node::Function(_) => {
+            panic!("Function is not supported yet!");
+        }
     }
 }
 

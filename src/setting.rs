@@ -181,8 +181,8 @@ pub mod node {
     #[derive(Debug, PartialEq, Clone)]
     pub struct Function {
         pub name: Value, //本当はIdentが良いのだが
-        pub arguments: Vec<Node>,
-        pub body: Program,
+        pub arguments: Vec<Value>,
+        pub body: Box<Node>,
     }
     #[derive(Debug, PartialEq, Clone)]
     pub struct Program {
@@ -247,7 +247,7 @@ pub mod node {
                 body: body,
             })))
         }
-        pub fn function(name: Value, arguments: Vec<Node>, body: Program) -> Box<Node> {
+        pub fn function(name: Value, arguments: Vec<Value>, body: Box<Node>) -> Box<Self> {
             Box::new(Node::Function(Function {
                 name,
                 arguments,
