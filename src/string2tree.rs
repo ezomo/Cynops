@@ -193,9 +193,28 @@ pub fn primary(tokens: &mut Vec<Token>) -> Box<Node> {
         let _ = consume(Token::paren(Parentheses::R), tokens);
         return node;
     }
-    // そうでなければ数値か変数のはず
+    // そうでなければ数値か変数か関数のはず
 
-    return Box::new(Node::Value(consume_atom(tokens)));
+    let value = Node::value(consume_atom(tokens));
+
+    if consume(Token::paren(Parentheses::L), tokens) {
+        let tmp = Node::call(value, arg_list(tokens));
+        consume(Token::paren(Parentheses::R), tokens);
+        tmp
+    } else {
+        value
+    }
+}
+
+pub fn arg_list(tokens: &mut Vec<Token>) -> Box<Node> {
+    let mut node = vec![expr(tokens)];
+    loop {
+        if consume(Token::comma(), tokens) {
+            node.push(expr(tokens));
+        } else {
+            return Node::program(node);
+        }
+    }
 }
 
 pub fn consume(op: Token, tokens: &mut Vec<Token>) -> bool {
@@ -232,14 +251,7 @@ pub fn consume_atom(tokens: &mut Vec<Token>) -> Value {
 #[test]
 fn test_program() {
     use crate::tokenize::tokenize;
-    let mut a = tokenize(
-        "
-    b = 0;
-    for(a = 0; a < 5 ;a = a+1){
-        b = b+1;
-    }   
-    ",
-    );
+    let mut a = tokenize(" a(2,3);");
     let b = program(&mut a);
     println!("{:#?}", b);
 }
