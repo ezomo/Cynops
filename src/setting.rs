@@ -178,7 +178,12 @@ pub mod node {
         For(For),
         Return(Return),
     }
-
+    #[derive(Debug, PartialEq, Clone)]
+    pub struct Function {
+        pub name: Value, //本当はIdentが良いのだが
+        pub arguments: Vec<Node>,
+        pub body: Program,
+    }
     #[derive(Debug, PartialEq, Clone)]
     pub struct Program {
         pub statements: Vec<Box<Node>>,
@@ -191,6 +196,7 @@ pub mod node {
         Call(Call),
         Expr(Expr),
         Control(Control),
+        Function(Function),
         Program(Program),
     }
     impl Node {
@@ -240,6 +246,13 @@ pub mod node {
                 updater: update,
                 body: body,
             })))
+        }
+        pub fn function(name: Value, arguments: Vec<Node>, body: Program) -> Box<Node> {
+            Box::new(Node::Function(Function {
+                name,
+                arguments,
+                body,
+            }))
         }
 
         pub fn program(statements: Vec<Box<Node>>) -> Box<Node> {
