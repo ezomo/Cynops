@@ -212,7 +212,7 @@ fn gen_call(call: Call, cgs: &mut CodeGenStatus) -> String {
     let args: Vec<String> = call
         .arguments
         .iter()
-        .map(|arg| generate(arg.clone(), cgs))
+        .map(|arg| format!("i32 noundef %{}", generate(arg.clone(), cgs)))
         .collect();
 
     let fn_name = match *call.callee {
