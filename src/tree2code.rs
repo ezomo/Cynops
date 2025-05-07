@@ -1,5 +1,5 @@
 use crate::setting::{
-    node::{Call, Control, Expr, Node, Program},
+    node::{Call, Control, Expr, Function, Node, Program},
     token::{Arithmetic, Comparison, ExprSymbol, Value},
     *,
 };
@@ -223,6 +223,41 @@ fn gen_call(call: Call, cgs: &mut CodeGenStatus) -> String {
     return name;
 }
 
+fn gen_function(function: Function, cgs: &mut CodeGenStatus) -> String {
+    let get_name = |x: &Value| match x {
+        Value::Ident(idn) => idn.clone(),
+        _ => panic!("The callee is not a function!"),
+    };
+
+    let name = get_name(&function.name);
+    let args: Vec<String> = function
+        .arguments
+        .iter()
+        .map(|_| cgs.name_gen.next())
+        .collect();
+
+    println!(
+        "define i32 @{}({}) {{",
+        name,
+        args.iter()
+            .map(|x| format!("i32 noundef %{}", x))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+
+    (0..args.len()).for_each(|i| {
+        let ptr = cgs.name_gen.next();
+        println!("%{} = alloca i32", ptr);
+        println!("store i32 %{}, i32* %{}", args[i], ptr);
+
+        cgs.variables
+            .insert(get_name(&function.arguments[i]), ptr.clone());
+    });
+    generate(function.body, cgs);
+    println!("}}");
+    return IGNORE.to_string();
+}
+
 pub fn generate(node: Box<Node>, cgs: &mut CodeGenStatus) -> String {
     match *node {
         Node::Expr(expr) => gen_expr(expr, cgs),
@@ -230,9 +265,7 @@ pub fn generate(node: Box<Node>, cgs: &mut CodeGenStatus) -> String {
         Node::Value(value) => gen_value(value, cgs),
         Node::Program(program) => gen_program(program, cgs),
         Node::Call(call) => gen_call(call, cgs),
-        Node::Function(_) => {
-            panic!("Function is not supported yet!");
-        }
+        Node::Function(function) => gen_function(function, cgs),
     }
 }
 

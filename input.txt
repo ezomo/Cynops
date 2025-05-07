@@ -1,23 +1,9 @@
-a = 500;
-b = 3124;
-
-temp = 0;
-
-if (a < b) {
-    temp = a;
-    a = b;
-    b = temp;
+a( x,y){
+    return x+y;
 }
 
-while (b > 0) {
-    r = a;
-    
-    while (r >= b) {
-        r = r - b;
-    }
-    
-    a = b;
-    b = r;
-}
+main(){
 
-return a;
+    c  = 0;
+    return a(10,5);
+}
