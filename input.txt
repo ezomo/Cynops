@@ -1,9 +1,26 @@
-a( x,y){
-    return x+y;
+mod(x, y){
+    if (x*y == 0){
+        return 120;
+    }
+
+
+    while (x >= y){
+        x = x - y;
+    }
+
+    return x;
+}
+
+gcd(a, b){
+    if (b == 0){
+        return a;
+    } else {
+        return gcd(b, mod(a, b));
+    }
+
+    return 0;
 }
 
 main(){
-
-    c  = 0;
-    return a(10,5);
+    return gcd(630, 300);
 }
