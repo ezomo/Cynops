@@ -255,6 +255,10 @@ fn gen_function(function: Function, cgs: &mut CodeGenStatus) -> String {
     });
     generate(function.body, cgs);
     println!("}}");
+
+    //名前空間のクリア
+    cgs.variables.clear();
+
     return IGNORE.to_string();
 }
 
