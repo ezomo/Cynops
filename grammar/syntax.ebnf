@@ -1,0 +1,48 @@
+// プログラム全体
+program         = { function_def | stmt } ;
+
+// 関数定義
+function_def    = type ident "(" [param_list] ")" "{" { stmt } "}" ;
+
+// (文)statement
+stmt            = expr ";"                        // 式文
+                | decl_stmt                       // 宣言文 ← new!
+                | "return" expr ";"               // return 文
+                | "if" "(" expr ")" stmt ["else" stmt]    // if 文
+                | "while" "(" expr ")" stmt       // while 文
+                | "for" "(" [expr] ";" [expr] ";" [expr] ")" stmt // for 文
+                | "{" { stmt } "}" ;              // ブロック文
+
+// 宣言文
+decl_stmt       = type ident [ "=" expr ] ";" ;
+
+// 型
+type            = "int" | "char" | "void" | type "*" ; // ポインタ対応
+
+// 式(expression)
+expr            = assign ;
+assign          = equality [ "=" assign ] ;
+equality        = relational { ("==" | "!=") relational } ;
+relational      = add { ("<" | "<=" | ">" | ">=") add } ;
+add             = mul { ("+" | "-") mul } ;
+mul             = unary { ("*" | "/") unary } ;
+unary           = ( "+" | "-" | "*" | "&" | "!" ) unary
+                | primary ;
+
+// プライマリ式(関数呼び出し・識別子・数値など)
+primary         = ident "(" [arg_list] ")"    // 関数呼び出し
+                | ident                       // 変数
+                | num                         // 整数リテラル
+                | char_lit                    // 文字
+                | "(" expr ")" ;              // 括弧つき式
+
+// 関数の引数・引数リスト
+arg_list        = expr { "," expr } ;
+param_list      = param { "," param } ;
+param           = type ident ;
+
+
+// 終端記号
+num         = /[0-9]+/ ;
+ident       = /[a-zA-Z_][a-zA-Z0-9_]*/ ;
+char_lit    = /'(\\.|[^\\'])'/ ;
