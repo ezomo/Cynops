@@ -26,8 +26,6 @@ pub enum Token {
     Comma,     // ','
 
     Keyword(Keyword), // keywords (int, return, if, etc.)
-
-    Eof, // end of input
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -43,7 +41,7 @@ pub enum Keyword {
 }
 
 impl Token {
-    pub const SYMBOLS: [(&str, Self); 22] = [
+    pub const SYMBOLS: [(&str, Self); 25] = [
         ("+", Self::Plus),
         ("-", Self::Minus),
         ("*", Self::Asterisk),
@@ -61,6 +59,9 @@ impl Token {
         (">=", Self::GreaterEqual),
         (";", Self::Semicolon),
         (",", Self::Comma),
+        ("int", Self::Keyword(Keyword::Int)),
+        ("char", Self::Keyword(Keyword::Char)),
+        ("void", Self::Keyword(Keyword::Void)),
         ("if", Self::Keyword(Keyword::If)),
         ("else", Self::Keyword(Keyword::Else)),
         ("while", Self::Keyword(Keyword::While)),

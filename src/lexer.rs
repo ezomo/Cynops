@@ -68,9 +68,11 @@ fn test_tokenize() {
     println!(
         "{:?}",
         tokenize(
-            "a = \'a\';
-    b= 3;
-    "
+            "
+            void main(){}
+            char a = \'a\';
+        int b= 3;
+        "
         )
     );
 }
