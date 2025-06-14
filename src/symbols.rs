@@ -106,10 +106,16 @@ pub struct Call {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct Param {
+    pub ty: Type,
+    pub name: Ident,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct FunctionDef {
     pub ret_type: Type,
     pub name: Ident,
-    pub params: Vec<(Type, String)>,
+    pub params: Vec<Param>,
     pub body: Block,
 }
 
@@ -159,10 +165,10 @@ impl Stmt {
         Box::new(Stmt::ExprStmt(expr))
     }
 
-    pub fn decl(ty: Type, name: impl Into<String>, init: Option<Expr>) -> Box<Self> {
+    pub fn decl(ty: Type, name: Ident, init: Option<Expr>) -> Box<Self> {
         Box::new(Stmt::Decl(Decl {
             ty,
-            name: Ident { name: name.into() },
+            name,
             init: init.map(Box::new),
         }))
     }
@@ -202,8 +208,8 @@ impl Stmt {
         }))
     }
 
-    pub fn block(stmts: Vec<Box<Stmt>>) -> Box<Self> {
-        Box::new(Stmt::Block(Block { statements: stmts }))
+    pub fn block(block: Block) -> Box<Self> {
+        Box::new(Stmt::Block(block))
     }
 }
 
@@ -279,5 +285,34 @@ impl Ident {
     /// 新しく Ident を作る（&str, String 両方対応）
     pub fn new(name: impl Into<String>) -> Self {
         Self { name: name.into() }
+    }
+}
+
+impl Type {
+    pub fn pointer(inner: Type) -> Self {
+        Type::Pointer(Box::new(inner))
+    }
+}
+
+impl Param {
+    pub fn new(ty: Type, name: Ident) -> Self {
+        Self { ty, name }
+    }
+}
+
+impl FunctionDef {
+    pub fn new(ret_type: Type, name: Ident, params: Vec<Param>, body: Block) -> Box<Self> {
+        Box::new(Self {
+            ret_type,
+            name,
+            params,
+            body,
+        })
+    }
+}
+
+impl Block {
+    pub fn new(statements: Vec<Box<Stmt>>) -> Box<Self> {
+        Box::new(Self { statements })
     }
 }

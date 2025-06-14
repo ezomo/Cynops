@@ -1,11 +1,11 @@
 use crate::symbols::{BinaryOp, Expr, FunctionDef, Stmt};
-use crate::symbols::{Ident, Program, TopLevel};
+use crate::symbols::{Block, Ident, Param, Program, TopLevel, Type};
 use crate::token::*;
 
 pub fn program(tokens: &mut Vec<Token>) -> Program {
     let mut code = Program::new();
     while !tokens.is_empty() {
-        if is_next_atom(tokens) {
+        if is_next_type(tokens) {
             code.items
                 .push(TopLevel::function_def(*function_def(tokens)));
         } else {
@@ -15,9 +15,23 @@ pub fn program(tokens: &mut Vec<Token>) -> Program {
 
     code
 }
+
+pub fn function_def(tokens: &mut Vec<Token>) -> Box<FunctionDef> {
+    let ret_type = consume_type(tokens);
+    let name = consume_ident(tokens);
+    consume(Token::LParen, tokens);
+    let params = param_list(tokens);
+    consume(Token::RParen, tokens);
+    consume(Token::LBrace, tokens);
+
+    let body = block(tokens);
+
+    FunctionDef::new(ret_type, name, params, *body)
+}
+
 pub fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
     if consume(Token::r#return(), tokens) {
-        let tmp = Stmt::r#return(expr(tokens));
+        let tmp = Stmt::r#return(Some(*expr(tokens)));
         if !consume(Token::Semicolon, tokens) {
             panic!("error");
         }
@@ -82,8 +96,9 @@ pub fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
             *stmt(tokens),
         )
     } else if consume(Token::LBrace, tokens) {
-        let mut code = vec![];
-        block(tokens)
+        Stmt::block(*block(tokens))
+    } else if is_next_type(tokens) {
+        decl(tokens)
     } else {
         let tmp = expr(tokens);
         if !consume(Token::Semicolon, tokens) {
@@ -93,14 +108,28 @@ pub fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
     }
 }
 
-fn block(tokens: &mut Vec<Token>) -> Box<Stmt> {
+pub fn decl(tokens: &mut Vec<Token>) -> Box<Stmt> {
+    let ty = consume_type(tokens);
+    let name = consume_ident(tokens);
+    let init = if consume(Token::Equal, tokens) {
+        Some(*expr(tokens))
+    } else {
+        None
+    };
+    if !consume(Token::Semicolon, tokens) {
+        panic!("error");
+    }
+    Stmt::decl(ty, name, init)
+}
+
+fn block(tokens: &mut Vec<Token>) -> Box<Block> {
     let mut code = vec![];
 
     while !consume(Token::RBrace, tokens) {
         code.push(stmt(tokens));
     }
 
-    Stmt::block(code)
+    Block::new(code)
 }
 
 pub fn expr(tokens: &mut Vec<Token>) -> Box<Expr> {
@@ -215,6 +244,23 @@ pub fn arg_list(tokens: &mut Vec<Token>) -> Vec<Box<Expr>> {
     args
 }
 
+pub fn param_list(tokens: &mut Vec<Token>) -> Vec<Param> {
+    let mut params = Vec::new();
+    if !tokens.is_empty() && *tokens.first().unwrap() != Token::RParen {
+        params.push(param(tokens));
+        while consume(Token::Comma, tokens) {
+            params.push(param(tokens));
+        }
+    }
+    params
+}
+
+pub fn param(tokens: &mut Vec<Token>) -> Param {
+    let name = consume_ident(tokens);
+    let ty = consume_type(tokens);
+    Param::new(ty, name)
+}
+
 pub fn consume(op: Token, tokens: &mut Vec<Token>) -> bool {
     if tokens.is_empty() {
         return false;
@@ -246,6 +292,20 @@ pub fn is_next_ident(tokens: &mut Vec<Token>) -> bool {
     return matches!(next, Token::Ident(_));
 }
 
+pub fn is_next_type(tokens: &mut Vec<Token>) -> bool {
+    if tokens.is_empty() {
+        return false;
+    }
+    let next = tokens.first().unwrap();
+
+    return matches!(
+        next,
+        Token::Keyword(Keyword::Int)
+            | Token::Keyword(Keyword::Char)
+            | Token::Keyword(Keyword::Void)
+    );
+}
+
 pub fn consume_atom(tokens: &mut Vec<Token>) -> Box<Expr> {
     if tokens.is_empty() {
         panic!("Expected atom, but no tokens available");
@@ -274,29 +334,40 @@ pub fn consume_ident(tokens: &mut Vec<Token>) -> Ident {
     }
 }
 
-#[test]
-fn test_program() {
-    use crate::tokenize::tokenize;
-    let mut a = tokenize("a(b,y){return 1;}");
-    let b = program(&mut a);
-    println!("{:#?}", b);
-}
-pub fn function_def(tokens: &mut Vec<Token>) -> Box<FunctionDef> {
-    let name = consume_atom(tokens);
-
-    consume(Token::LParen, tokens);
-    let mut arguments = vec![];
-    while !consume(Token::RParen, tokens) {
-        arguments.push(consume_atom(tokens));
-        consume(Token::Comma, tokens);
+pub fn consume_type(tokens: &mut Vec<Token>) -> Type {
+    if tokens.is_empty() {
+        panic!("Expected type, but no tokens available");
     }
 
-    consume(Token::LBrace, tokens);
-    let mut code = vec![];
-    while !consume(Token::RBrace, tokens) {
-        code.push(stmt(tokens));
+    if consume(Token::Asterisk, tokens) {
+        return Type::pointer(consume_type(tokens));
     }
-    let body = Stmt::block(code);
 
-    Stmt::function_def(name, arguments, body)
+    if let Some(Token::Keyword(kw)) = tokens.first() {
+        match kw {
+            Keyword::Int => {
+                tokens.remove(0);
+                Type::Int
+            }
+            Keyword::Char => {
+                tokens.remove(0);
+                Type::Char
+            }
+            Keyword::Void => {
+                tokens.remove(0);
+                Type::Void
+            }
+            _ => panic!("Expected type, found {:?}", kw),
+        }
+    } else {
+        panic!("Expected type, found {:?}", tokens.first());
+    }
 }
+
+// #[test]
+// fn test_program() {
+//     use crate::tokenize::tokenize;
+//     let mut a = tokenize("a(b,y){return 1;}");
+//     let b = program(&mut a);
+//     println!("{:#?}", b);
+// }
