@@ -78,3 +78,37 @@ impl Token {
         None
     }
 }
+
+impl Token {
+    pub fn r#int() -> Self {
+        Token::Keyword(Keyword::Int)
+    }
+
+    pub fn r#char() -> Self {
+        Token::Keyword(Keyword::Char)
+    }
+
+    pub fn r#void() -> Self {
+        Token::Keyword(Keyword::Void)
+    }
+
+    pub fn r#return() -> Self {
+        Token::Keyword(Keyword::Return)
+    }
+
+    pub fn r#if() -> Self {
+        Token::Keyword(Keyword::If)
+    }
+
+    pub fn r#else() -> Self {
+        Token::Keyword(Keyword::Else)
+    }
+
+    pub fn r#while() -> Self {
+        Token::Keyword(Keyword::While)
+    }
+
+    pub fn r#for() -> Self {
+        Token::Keyword(Keyword::For)
+    }
+}

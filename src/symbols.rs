@@ -36,10 +36,15 @@ pub struct Assign {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct Ident {
+    pub name: String,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Num(usize),
     Char(char),
-    Ident(String),
+    Ident(Ident),
     Binary(Binary),
     Call(Call),
     Assign(Assign),
@@ -69,10 +74,10 @@ pub struct While {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct For {
-    pub init: Option<Box<Stmt>>,
-    pub cond: Option<Box<Expr>>,
-    pub step: Option<Box<Stmt>>,
-    pub body: Box<Stmt>,
+    pub init: Option<Box<Expr>>, // 式（文じゃない）← int i = 0; はNG
+    pub cond: Option<Box<Expr>>, // 式
+    pub step: Option<Box<Expr>>, // 式（例: y += 1, x--）
+    pub body: Box<Stmt>,         // 本体（文）
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -90,27 +95,33 @@ pub enum Control {
 #[derive(Debug, PartialEq, Clone)]
 pub struct Decl {
     pub ty: Type,
-    pub name: String,
+    pub name: Ident,
     pub init: Option<Box<Expr>>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Call {
-    pub func: String,
+    pub func: Ident,
     pub args: Vec<Box<Expr>>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct FunctionDef {
     pub ret_type: Type,
-    pub name: String,
+    pub name: Ident,
     pub params: Vec<(Type, String)>,
     pub body: Block,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Program {
-    pub statements: Vec<Box<Stmt>>,
+    pub items: Vec<TopLevel>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum TopLevel {
+    FunctionDef(FunctionDef),
+    Stmt(Stmt),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -125,5 +136,148 @@ pub enum Stmt {
     Control(Control),
     Return(Return),
     Block(Block),
-    FunctionDef(FunctionDef),
+}
+
+impl Program {
+    pub fn new() -> Self {
+        Self { items: vec![] }
+    }
+}
+
+impl TopLevel {
+    pub fn function_def(def: FunctionDef) -> Self {
+        TopLevel::FunctionDef(def)
+    }
+
+    pub fn stmt(stmt: Stmt) -> Self {
+        TopLevel::Stmt(stmt)
+    }
+}
+
+impl Stmt {
+    pub fn expr(expr: Expr) -> Box<Self> {
+        Box::new(Stmt::ExprStmt(expr))
+    }
+
+    pub fn decl(ty: Type, name: impl Into<String>, init: Option<Expr>) -> Box<Self> {
+        Box::new(Stmt::Decl(Decl {
+            ty,
+            name: Ident { name: name.into() },
+            init: init.map(Box::new),
+        }))
+    }
+
+    pub fn r#if(cond: Expr, then_branch: Stmt, else_branch: Option<Stmt>) -> Box<Self> {
+        Box::new(Stmt::Control(Control::If(If {
+            cond: Box::new(cond),
+            then_branch: Box::new(then_branch),
+            else_branch: else_branch.map(Box::new),
+        })))
+    }
+
+    pub fn r#while(cond: Expr, body: Stmt) -> Box<Self> {
+        Box::new(Stmt::Control(Control::While(While {
+            cond: Box::new(cond),
+            body: Box::new(body),
+        })))
+    }
+
+    pub fn r#for(
+        init: Option<Expr>,
+        cond: Option<Expr>,
+        step: Option<Expr>,
+        body: Stmt,
+    ) -> Box<Self> {
+        Box::new(Stmt::Control(Control::For(For {
+            init: init.map(Box::new),
+            cond: cond.map(Box::new),
+            step: step.map(Box::new),
+            body: Box::new(body),
+        })))
+    }
+
+    pub fn r#return(value: Option<Expr>) -> Box<Self> {
+        Box::new(Stmt::Return(Return {
+            value: value.map(Box::new),
+        }))
+    }
+
+    pub fn block(stmts: Vec<Box<Stmt>>) -> Box<Self> {
+        Box::new(Stmt::Block(Block { statements: stmts }))
+    }
+}
+
+impl Expr {
+    pub fn num(n: usize) -> Box<Self> {
+        Box::new(Expr::Num(n))
+    }
+
+    pub fn char_lit(c: char) -> Box<Self> {
+        Box::new(Expr::Char(c))
+    }
+
+    pub fn ident(name: Ident) -> Box<Self> {
+        Box::new(Expr::Ident(name))
+    }
+
+    pub fn binary(op: BinaryOp, lhs: Box<Expr>, rhs: Box<Expr>) -> Box<Self> {
+        Box::new(Expr::Binary(Binary { op, lhs, rhs }))
+    }
+
+    pub fn assign(lhs: Box<Expr>, rhs: Box<Expr>) -> Box<Self> {
+        Box::new(Expr::Assign(Assign { lhs, rhs }))
+    }
+
+    pub fn call(func: Ident, args: Vec<Box<Expr>>) -> Box<Self> {
+        Box::new(Expr::Call(Call { func: func, args }))
+    }
+}
+
+impl BinaryOp {
+    pub fn add() -> Self {
+        BinaryOp::Arithmetic(Arithmetic::Plus)
+    }
+
+    pub fn sub() -> Self {
+        BinaryOp::Arithmetic(Arithmetic::Minus)
+    }
+
+    pub fn mul() -> Self {
+        BinaryOp::Arithmetic(Arithmetic::Asterisk)
+    }
+
+    pub fn div() -> Self {
+        BinaryOp::Arithmetic(Arithmetic::Slash)
+    }
+
+    pub fn eq() -> Self {
+        BinaryOp::Comparison(Comparison::EqualEqual)
+    }
+
+    pub fn ne() -> Self {
+        BinaryOp::Comparison(Comparison::NotEqual)
+    }
+
+    pub fn lt() -> Self {
+        BinaryOp::Comparison(Comparison::Less)
+    }
+
+    pub fn le() -> Self {
+        BinaryOp::Comparison(Comparison::LessEqual)
+    }
+
+    pub fn gt() -> Self {
+        BinaryOp::Comparison(Comparison::Greater)
+    }
+
+    pub fn ge() -> Self {
+        BinaryOp::Comparison(Comparison::GreaterEqual)
+    }
+}
+
+impl Ident {
+    /// 新しく Ident を作る（&str, String 両方対応）
+    pub fn new(name: impl Into<String>) -> Self {
+        Self { name: name.into() }
+    }
 }
