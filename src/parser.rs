@@ -21,6 +21,7 @@ pub fn function_def(tokens: &mut Vec<Token>) -> Box<FunctionDef> {
     let name = consume_ident(tokens);
     consume(Token::LParen, tokens);
     let params = param_list(tokens);
+    println!("{:?}", tokens);
     consume(Token::RParen, tokens);
     consume(Token::LBrace, tokens);
 
@@ -246,7 +247,7 @@ pub fn arg_list(tokens: &mut Vec<Token>) -> Vec<Box<Expr>> {
 
 pub fn param_list(tokens: &mut Vec<Token>) -> Vec<Param> {
     let mut params = Vec::new();
-    if !tokens.is_empty() && *tokens.first().unwrap() != Token::RParen {
+    if !tokens.is_empty() && *tokens.first().unwrap() != Token::RParen && is_next_type(tokens) {
         params.push(param(tokens));
         while consume(Token::Comma, tokens) {
             params.push(param(tokens));
@@ -256,8 +257,8 @@ pub fn param_list(tokens: &mut Vec<Token>) -> Vec<Param> {
 }
 
 pub fn param(tokens: &mut Vec<Token>) -> Param {
-    let name = consume_ident(tokens);
     let ty = consume_type(tokens);
+    let name = consume_ident(tokens);
     Param::new(ty, name)
 }
 
@@ -339,35 +340,36 @@ pub fn consume_type(tokens: &mut Vec<Token>) -> Type {
         panic!("Expected type, but no tokens available");
     }
 
-    if consume(Token::Asterisk, tokens) {
-        return Type::pointer(consume_type(tokens));
-    }
-
-    if let Some(Token::Keyword(kw)) = tokens.first() {
-        match kw {
-            Keyword::Int => {
-                tokens.remove(0);
-                Type::Int
-            }
-            Keyword::Char => {
-                tokens.remove(0);
-                Type::Char
-            }
-            Keyword::Void => {
-                tokens.remove(0);
-                Type::Void
-            }
+    let base_type = if let Some(Token::Keyword(kw)) = tokens.first() {
+        let ty = match kw {
+            Keyword::Int => Type::Int,
+            Keyword::Char => Type::Char,
+            Keyword::Void => Type::Void,
             _ => panic!("Expected type, found {:?}", kw),
-        }
+        };
+        tokens.remove(0); // consume the keyword
+        ty
     } else {
         panic!("Expected type, found {:?}", tokens.first());
+    };
+
+    let mut pointer_depth: usize = 0;
+    while consume(Token::Asterisk, tokens) {
+        pointer_depth += 1;
     }
+    // ポインタの深さに応じてネスト
+    let mut ty = base_type;
+    for _ in 0..pointer_depth {
+        ty = Type::pointer(ty);
+    }
+
+    ty
 }
 
-// #[test]
-// fn test_program() {
-//     use crate::tokenize::tokenize;
-//     let mut a = tokenize("a(b,y){return 1;}");
-//     let b = program(&mut a);
-//     println!("{:#?}", b);
-// }
+#[test]
+fn test_program() {
+    use crate::lexer::tokenize;
+    let mut a = tokenize("int main() { int *p = 0; }");
+    let b = program(&mut a);
+    println!("{:#?}", b);
+}
