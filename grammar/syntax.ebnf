@@ -32,7 +32,7 @@ unary           = ( "++" | "--" | "+" | "-" | "*" | "&" | "!" | "~" ) unary
                 | postfix ;
 
 //後置式(postfix)
-postfix          = primary { "++" | "--" } ;
+postfix          = primary [ "++" | "--" ] ;
 
 // プライマリ式(関数呼び出し・識別子・数値など)
 primary         = ident "(" [arg_list] ")"    // 関数呼び出し

@@ -1,4 +1,4 @@
-use crate::symbols::{BinaryOp, Expr, FunctionDef, Stmt};
+use crate::symbols::{BinaryOp, Expr, FunctionDef, PostfixOp, Stmt};
 use crate::symbols::{Block, Ident, Param, Program, TopLevel, Type, UnaryOp};
 use crate::token::*;
 
@@ -205,24 +205,35 @@ pub fn mul(tokens: &mut Vec<Token>) -> Box<Expr> {
 
 pub fn unary(tokens: &mut Vec<Token>) -> Box<Expr> {
     if consume(Token::Plus, tokens) {
-        return unary(tokens);
+        unary(tokens)
+    } else if consume(Token::Minus, tokens) {
+        Expr::unary(UnaryOp::Minus, unary(tokens))
+    } else if consume(Token::Bang, tokens) {
+        Expr::unary(UnaryOp::Bang, unary(tokens))
+    } else if consume(Token::Tilde, tokens) {
+        Expr::unary(UnaryOp::bit_not(), unary(tokens))
+    } else if consume(Token::Ampersand, tokens) {
+        Expr::unary(UnaryOp::Ampersand, unary(tokens))
+    } else if consume(Token::Asterisk, tokens) {
+        Expr::unary(UnaryOp::Asterisk, unary(tokens))
+    } else if consume(Token::PlusPlus, tokens) {
+        Expr::unary(UnaryOp::PlusPlus, unary(tokens))
+    } else if consume(Token::MinusMinus, tokens) {
+        Expr::unary(UnaryOp::MinusMinus, unary(tokens))
+    } else {
+        postfix(tokens)
     }
-    if consume(Token::Minus, tokens) {
-        return Expr::unary(UnaryOp::Negate, unary(tokens));
+}
+
+pub fn postfix(tokens: &mut Vec<Token>) -> Box<Expr> {
+    let node = primary(tokens);
+    if consume(Token::PlusPlus, tokens) {
+        Expr::postfix(PostfixOp::PlusPlus, node)
+    } else if consume(Token::MinusMinus, tokens) {
+        Expr::postfix(PostfixOp::MinusMinus, node)
+    } else {
+        node
     }
-    if consume(Token::Bang, tokens) {
-        return Expr::unary(UnaryOp::Not, unary(tokens));
-    }
-    if consume(Token::Tilde, tokens) {
-        return Expr::unary(UnaryOp::bit_not(), unary(tokens));
-    }
-    if consume(Token::Ampersand, tokens) {
-        return Expr::unary(UnaryOp::Address, unary(tokens));
-    }
-    if consume(Token::Asterisk, tokens) {
-        return Expr::unary(UnaryOp::Deref, unary(tokens));
-    }
-    return primary(tokens);
 }
 
 pub fn primary(tokens: &mut Vec<Token>) -> Box<Expr> {
