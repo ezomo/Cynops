@@ -22,6 +22,25 @@ pub enum BinaryOp {
     Comparison(Comparison),
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum UnaryOp {
+    Negate,  // -x
+    Not,     // !x
+    BitNot,  // ~x
+    Address, // &x
+    Deref,   // *x
+    PreInc,  // ++x
+    PreDec,  // --x
+    PostInc, // x++
+    PostDec, // x--
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Unary {
+    pub op: UnaryOp,
+    pub expr: Box<Expr>,
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct Binary {
     pub op: BinaryOp,
@@ -46,6 +65,7 @@ pub enum Expr {
     Char(char),
     Ident(Ident),
     Binary(Binary),
+    Unary(Unary),
     Call(Call),
     Assign(Assign),
 }
@@ -226,6 +246,10 @@ impl Expr {
         Box::new(Expr::Ident(name))
     }
 
+    pub fn unary(op: UnaryOp, expr: Box<Expr>) -> Box<Self> {
+        Box::new(Expr::Unary(Unary { op, expr }))
+    }
+
     pub fn binary(op: BinaryOp, lhs: Box<Expr>, rhs: Box<Expr>) -> Box<Self> {
         Box::new(Expr::Binary(Binary { op, lhs, rhs }))
     }
@@ -314,5 +338,43 @@ impl FunctionDef {
 impl Block {
     pub fn new(statements: Vec<Box<Stmt>>) -> Box<Self> {
         Box::new(Self { statements })
+    }
+}
+
+impl UnaryOp {
+    pub fn neg() -> Self {
+        UnaryOp::Negate // -x
+    }
+
+    pub fn not() -> Self {
+        UnaryOp::Not // !x
+    }
+
+    pub fn bit_not() -> Self {
+        UnaryOp::BitNot // ~x
+    }
+
+    pub fn addr() -> Self {
+        UnaryOp::Address // &x
+    }
+
+    pub fn deref() -> Self {
+        UnaryOp::Deref // *x
+    }
+
+    pub fn pre_inc() -> Self {
+        UnaryOp::PreInc // ++x
+    }
+
+    pub fn pre_dec() -> Self {
+        UnaryOp::PreDec // --x
+    }
+
+    pub fn post_inc() -> Self {
+        UnaryOp::PostInc // x++
+    }
+
+    pub fn post_dec() -> Self {
+        UnaryOp::PostDec // x--
     }
 }

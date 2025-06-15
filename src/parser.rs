@@ -1,11 +1,11 @@
 use crate::symbols::{BinaryOp, Expr, FunctionDef, Stmt};
-use crate::symbols::{Block, Ident, Param, Program, TopLevel, Type};
+use crate::symbols::{Block, Ident, Param, Program, TopLevel, Type, UnaryOp};
 use crate::token::*;
 
 pub fn program(tokens: &mut Vec<Token>) -> Program {
     let mut code = Program::new();
     while !tokens.is_empty() {
-        if is_next_type(tokens) {
+        if is_next_type(tokens) && is_next_fn(&tokens[1..]) {
             code.items
                 .push(TopLevel::function_def(*function_def(tokens)));
         } else {
@@ -206,7 +206,19 @@ pub fn unary(tokens: &mut Vec<Token>) -> Box<Expr> {
         return unary(tokens);
     }
     if consume(Token::Minus, tokens) {
-        return Expr::binary(BinaryOp::sub(), Expr::num(0), unary(tokens));
+        return Expr::unary(UnaryOp::Negate, unary(tokens));
+    }
+    if consume(Token::Bang, tokens) {
+        return Expr::unary(UnaryOp::Not, unary(tokens));
+    }
+    if consume(Token::Tilde, tokens) {
+        return Expr::unary(UnaryOp::bit_not(), unary(tokens));
+    }
+    if consume(Token::Ampersand, tokens) {
+        return Expr::unary(UnaryOp::Address, unary(tokens));
+    }
+    if consume(Token::Asterisk, tokens) {
+        return Expr::unary(UnaryOp::Deref, unary(tokens));
     }
     return primary(tokens);
 }
@@ -223,13 +235,12 @@ pub fn primary(tokens: &mut Vec<Token>) -> Box<Expr> {
     if is_next_atom(tokens) {
         consume_atom(tokens)
     } else {
-        let ind = consume_ident(tokens);
-        if consume(Token::LParen, tokens) {
-            let tmp = Expr::call(ind, arg_list(tokens));
+        if is_next_fn(tokens) {
+            let tmp = Expr::call(consume_ident(tokens), arg_list(tokens));
             consume(Token::RParen, tokens);
             tmp
         } else {
-            Expr::ident(ind)
+            Expr::ident(consume_ident(tokens))
         }
     }
 }
@@ -275,7 +286,7 @@ pub fn consume(op: Token, tokens: &mut Vec<Token>) -> bool {
     return true;
 }
 
-pub fn is_next_atom(tokens: &mut Vec<Token>) -> bool {
+pub fn is_next_atom(tokens: &[Token]) -> bool {
     if tokens.is_empty() {
         return false;
     }
@@ -284,7 +295,7 @@ pub fn is_next_atom(tokens: &mut Vec<Token>) -> bool {
     return matches!(next, Token::Num(_) | Token::Char(_));
 }
 
-pub fn is_next_ident(tokens: &mut Vec<Token>) -> bool {
+pub fn is_next_ident(tokens: &[Token]) -> bool {
     if tokens.is_empty() {
         return false;
     }
@@ -293,7 +304,21 @@ pub fn is_next_ident(tokens: &mut Vec<Token>) -> bool {
     return matches!(next, Token::Ident(_));
 }
 
-pub fn is_next_type(tokens: &mut Vec<Token>) -> bool {
+pub fn is_next_fn(tokens: &[Token]) -> bool {
+    if tokens.is_empty() {
+        return false;
+    }
+    if !is_next_ident(tokens) {
+        return false;
+    }
+    if tokens.len() < 2 {
+        return false;
+    }
+    let second = tokens.get(1).unwrap();
+    return matches!(second, Token::LParen);
+}
+
+pub fn is_next_type(tokens: &[Token]) -> bool {
     if tokens.is_empty() {
         return false;
     }
