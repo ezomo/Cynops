@@ -4,6 +4,7 @@ pub enum Arithmetic {
     Minus,    // '-'
     Asterisk, // '*'
     Slash,    // '/'
+    Percent,  // '%'
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -278,6 +279,9 @@ impl BinaryOp {
 
     pub fn div() -> Self {
         BinaryOp::Arithmetic(Arithmetic::Slash)
+    }
+    pub fn modulo() -> Self {
+        BinaryOp::Arithmetic(Arithmetic::Percent)
     }
 
     pub fn eq() -> Self {

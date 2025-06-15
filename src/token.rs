@@ -8,6 +8,7 @@ pub enum Token {
     Plus,       // '+'
     Minus,      // '-'
     Asterisk,   // '*'
+    Percent,    // '%'
     Slash,      // '/'
     PlusPlus,   // '++'
     MinusMinus, // '--'
@@ -51,11 +52,18 @@ pub enum Keyword {
 }
 
 impl Token {
-    pub const SYMBOLS: [(&str, Self); 30] = [
+    pub const SYMBOLS: [(&str, Self); 32] = [
         ("+", Self::Plus),
         ("-", Self::Minus),
         ("*", Self::Asterisk),
         ("/", Self::Slash),
+        ("%", Self::Percent),
+        ("++", Self::PlusPlus),
+        ("--", Self::MinusMinus),
+        ("*", Self::Asterisk), // Note: '*' is also used for multiplication
+        ("!", Self::Bang),
+        ("~", Self::Tilde),
+        ("&", Self::Ampersand),
         ("(", Self::LParen),
         (")", Self::RParen),
         ("{", Self::LBrace),
@@ -77,11 +85,6 @@ impl Token {
         ("while", Self::Keyword(Keyword::While)),
         ("for", Self::Keyword(Keyword::For)),
         ("return", Self::Keyword(Keyword::Return)),
-        ("++", Self::PlusPlus),
-        ("--", Self::MinusMinus),
-        ("!", Self::Bang),
-        ("~", Self::Tilde),
-        ("&", Self::Ampersand),
     ];
 
     pub fn classify(input: &str) -> Option<Self> {

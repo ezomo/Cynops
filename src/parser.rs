@@ -195,6 +195,8 @@ pub fn mul(tokens: &mut Vec<Token>) -> Box<Expr> {
             node = Expr::binary(BinaryOp::mul(), node, unary(tokens));
         } else if consume(Token::Slash, tokens) {
             node = Expr::binary(BinaryOp::div(), node, unary(tokens));
+        } else if consume(Token::Percent, tokens) {
+            node = Expr::binary(BinaryOp::modulo(), node, unary(tokens));
         } else {
             return node;
         }
