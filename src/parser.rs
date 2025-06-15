@@ -40,9 +40,9 @@ pub fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
     } else if consume(Token::r#if(), tokens) {
         Stmt::r#if(
             {
-                consume(Token::RParen, tokens);
-                let tmp = expr(tokens);
                 consume(Token::LParen, tokens);
+                let tmp = expr(tokens);
+                consume(Token::RParen, tokens);
                 *tmp
             },
             *stmt(tokens),
