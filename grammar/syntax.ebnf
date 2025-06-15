@@ -11,6 +11,8 @@ stmt            = expr ";"                        // 式文
                 | "if" "(" expr ")" stmt ["else" stmt]    // if 文
                 | "while" "(" expr ")" stmt       // while 文
                 | "for" "(" [expr] ";" [expr] ";" [expr] ")" stmt // for 文
+                | "continue" ";"                  // continue
+                | "break" ";"                     // break
                 | "{" { stmt } "}" ;              // ブロック文
 
 // 宣言文
@@ -25,9 +27,12 @@ assign          = equality [ "=" assign ] ;
 equality        = relational { ("==" | "!=") relational } ;
 relational      = add { ("<" | "<=" | ">" | ">=") add } ;
 add             = mul { ("+" | "-") mul } ;
-mul             = unary { ("*" | "/") unary } ;
-unary           = ( "+" | "-" | "*" | "&" | "!" ) unary
-                | primary ;
+mul             = unary { ("*" | "/" | "%") unary } ;
+unary           = ( "++" | "--" | "+" | "-" | "*" | "&" | "!" | "~" ) unary
+                | postfix ;
+
+//後置式(postfix)
+postfix          = primary { "++" | "--" } ;
 
 // プライマリ式(関数呼び出し・識別子・数値など)
 primary         = ident "(" [arg_list] ")"    // 関数呼び出し
