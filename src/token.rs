@@ -1,23 +1,32 @@
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
-    Ident(String), // identifier (e.g. foo, var1, x)
-    Num(usize),    // integer literal (e.g. 123)
-    Char(char),    // character literal (e.g. 'a', 'Z')
+    Ident(String), // e.g., foo
+    Num(usize),    // e.g., 123
+    Char(char),    // e.g., 'a'
 
-    Plus,     // '+'
-    Minus,    // '-'
-    Asterisk, // '*'
-    Slash,    // '/'
+    // Arithmetic operators
+    Plus,       // '+'
+    Minus,      // '-'
+    Asterisk,   // '*'
+    Slash,      // '/'
+    PlusPlus,   // '++'
+    MinusMinus, // '--'
 
-    Equal,      // '='
-    EqualEqual, // '=='
-    NotEqual,   // '!='
+    // Unary-specific operators
+    Bang,      // '!'
+    Tilde,     // '~'
+    Ampersand, // '&'
 
+    // Comparison and assignment
+    Equal,        // '='
+    EqualEqual,   // '=='
+    NotEqual,     // '!='
     Less,         // '<'
     LessEqual,    // '<='
     Greater,      // '>'
     GreaterEqual, // '>='
 
+    // Delimiters
     LParen,    // '('
     RParen,    // ')'
     LBrace,    // '{'
@@ -25,7 +34,8 @@ pub enum Token {
     Semicolon, // ';'
     Comma,     // ','
 
-    Keyword(Keyword), // keywords (int, return, if, etc.)
+    // Keywords
+    Keyword(Keyword), // e.g., int, return
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -41,7 +51,7 @@ pub enum Keyword {
 }
 
 impl Token {
-    pub const SYMBOLS: [(&str, Self); 25] = [
+    pub const SYMBOLS: [(&str, Self); 30] = [
         ("+", Self::Plus),
         ("-", Self::Minus),
         ("*", Self::Asterisk),
@@ -67,6 +77,11 @@ impl Token {
         ("while", Self::Keyword(Keyword::While)),
         ("for", Self::Keyword(Keyword::For)),
         ("return", Self::Keyword(Keyword::Return)),
+        ("++", Self::PlusPlus),
+        ("--", Self::MinusMinus),
+        ("!", Self::Bang),
+        ("~", Self::Tilde),
+        ("&", Self::Ampersand),
     ];
 
     pub fn classify(input: &str) -> Option<Self> {

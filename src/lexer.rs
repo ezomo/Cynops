@@ -69,9 +69,9 @@ fn test_tokenize() {
         "{:?}",
         tokenize(
             "
-            void main(){}
-            char a = \'a\';
-        int b= 3;
+        int a = 0;
+
+        a ++
         "
         )
     );
