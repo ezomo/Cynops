@@ -54,6 +54,28 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 visualize_expr(expr, indent + 1, true, extend_prefix(&prefix, !is_last));
             }
         }
+        Stmt::Decl(decl) => {
+            print_branch("Decl", &decl.name.name, indent, is_last, &prefix);
+
+            print_branch(
+                "Type",
+                &format!("{:?}", decl.ty),
+                indent + 1,
+                false,
+                &extend_prefix(&prefix, !is_last),
+            );
+
+            if let Some(init) = &decl.init {
+                print_branch(
+                    "Init",
+                    "",
+                    indent + 1,
+                    true,
+                    &extend_prefix(&prefix, !is_last),
+                );
+                visualize_expr(init, indent + 2, true, extend_prefix(&prefix, !is_last));
+            }
+        }
         _ => {
             print_branch("Stmt", &format!("{:?}", stmt), indent, is_last, &prefix);
         }
@@ -67,6 +89,43 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
         }
         Expr::Ident(name) => {
             print_branch("Ident", &name.name, indent, is_last, &prefix);
+        }
+        Expr::Binary(binary) => {
+            print_branch(
+                "Binary",
+                &format!("{:?}", binary.op),
+                indent,
+                is_last,
+                &prefix,
+            );
+
+            let new_prefix = extend_prefix(&prefix, !is_last);
+            visualize_expr(&binary.lhs, indent + 1, false, new_prefix.clone());
+            visualize_expr(&binary.rhs, indent + 1, true, new_prefix);
+        }
+        Expr::Unary(unary) => {
+            print_branch(
+                "Unary",
+                &format!("{:?}", unary.op),
+                indent,
+                is_last,
+                &prefix,
+            );
+
+            visualize_expr(
+                &unary.expr,
+                indent + 1,
+                true,
+                extend_prefix(&prefix, !is_last),
+            );
+        }
+        Expr::Call(call) => {
+            print_branch("Call", &call.func.name, indent, is_last, &prefix);
+
+            for (i, arg) in call.args.iter().enumerate() {
+                let last = i == call.args.len() - 1;
+                visualize_expr(arg, indent + 1, last, extend_prefix(&prefix, !is_last));
+            }
         }
         _ => {
             print_branch("Expr", &format!("{:?}", expr), indent, is_last, &prefix);
