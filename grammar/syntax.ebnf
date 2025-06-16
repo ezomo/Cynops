@@ -23,10 +23,15 @@ type            = "int" | "char" | "void" | type "*" ; // ポインタ対応
 
 // 式(expression)
 expr            = assign ;
-assign          = equality [ "=" assign ] ;
+assign          = equality
+                [ assign_op assign ] ;
+assign_op       = "="
+                | "+=" | "-=" | "*=" | "/=" | "%="
+                | "^=" | "|=" | "&="
+                | "<<=" | ">>=" ;
 equality        = relational { ("==" | "!=") relational } ;
 relational      = bitwise_or { ("<" | "<=" | ">" | ">=") bitwise_or } ;
-bitwise_or      = bitwise_and { "|" bitwise_and } ;
+bitwise_or      = bitwise_xor { "|" bitwise_xor } ;
 bitwise_xor     = bitwise_and { "^" bitwise_and } ;
 bitwise_and     = bitwise_shift { "&" bitwise_shift } ;
 bitwise_shift   = add { ("<<" | ">>") add } ;
