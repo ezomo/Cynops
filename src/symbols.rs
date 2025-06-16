@@ -292,61 +292,61 @@ impl Expr {
 }
 
 impl BinaryOp {
-    pub fn add() -> Self {
+    pub fn plus() -> Self {
         BinaryOp::Arithmetic(Arithmetic::Plus)
     }
 
-    pub fn sub() -> Self {
+    pub fn minus() -> Self {
         BinaryOp::Arithmetic(Arithmetic::Minus)
     }
 
-    pub fn mul() -> Self {
+    pub fn asterisk() -> Self {
         BinaryOp::Arithmetic(Arithmetic::Asterisk)
     }
 
-    pub fn div() -> Self {
+    pub fn slash() -> Self {
         BinaryOp::Arithmetic(Arithmetic::Slash)
     }
-    pub fn modulo() -> Self {
+    pub fn percent() -> Self {
         BinaryOp::Arithmetic(Arithmetic::Percent)
     }
-    pub fn bit_and() -> Self {
+    pub fn ampersand() -> Self {
         BinaryOp::Arithmetic(Arithmetic::Ampersand)
     }
-    pub fn bit_or() -> Self {
+    pub fn pipe() -> Self {
         BinaryOp::Arithmetic(Arithmetic::Pipe)
     }
-    pub fn bit_xor() -> Self {
+    pub fn caret() -> Self {
         BinaryOp::Arithmetic(Arithmetic::Caret)
     }
-    pub fn shl() -> Self {
+    pub fn less_less() -> Self {
         BinaryOp::Arithmetic(Arithmetic::LessLess)
     }
-    pub fn shr() -> Self {
+    pub fn greater_greater() -> Self {
         BinaryOp::Arithmetic(Arithmetic::GreaterGreater)
     }
 
-    pub fn eq() -> Self {
+    pub fn equal_equal() -> Self {
         BinaryOp::Comparison(Comparison::EqualEqual)
     }
 
-    pub fn ne() -> Self {
+    pub fn not_equal() -> Self {
         BinaryOp::Comparison(Comparison::NotEqual)
     }
 
-    pub fn lt() -> Self {
+    pub fn less() -> Self {
         BinaryOp::Comparison(Comparison::Less)
     }
 
-    pub fn le() -> Self {
+    pub fn less_equal() -> Self {
         BinaryOp::Comparison(Comparison::LessEqual)
     }
 
-    pub fn gt() -> Self {
+    pub fn greater() -> Self {
         BinaryOp::Comparison(Comparison::Greater)
     }
 
-    pub fn ge() -> Self {
+    pub fn greater_equal() -> Self {
         BinaryOp::Comparison(Comparison::GreaterEqual)
     }
 }
@@ -388,30 +388,30 @@ impl Block {
 }
 
 impl UnaryOp {
-    pub fn neg() -> Self {
+    pub fn minus() -> Self {
         UnaryOp::Minus // -x
     }
 
-    pub fn not() -> Self {
+    pub fn bang() -> Self {
         UnaryOp::Bang // !x
     }
 
-    pub fn bit_not() -> Self {
+    pub fn tilde() -> Self {
         UnaryOp::Tilde // ~x
     }
 
-    pub fn addr() -> Self {
+    pub fn ampersand() -> Self {
         UnaryOp::Ampersand // &x
     }
 
-    pub fn deref() -> Self {
+    pub fn asterisk() -> Self {
         UnaryOp::Asterisk // *x
     }
 
-    pub fn pre_inc() -> Self {
+    pub fn plus_plus() -> Self {
         UnaryOp::PlusPlus // ++x
     }
-    pub fn pre_dec() -> Self {
+    pub fn minus_minus() -> Self {
         UnaryOp::MinusMinus // --x
     }
 }
