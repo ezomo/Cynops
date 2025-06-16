@@ -86,6 +86,13 @@ pub struct Binary {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct Ternary {
+    pub cond: Box<Expr>,
+    pub then_branch: Box<Expr>,
+    pub else_branch: Box<Expr>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct Assign {
     pub op: AssignOp,
     pub lhs: Box<Expr>,
@@ -103,6 +110,7 @@ pub enum Expr {
     Char(char),
     Ident(Ident),
     Binary(Binary),
+    Ternary(Ternary), // 三項演算子（条件 ? 真の値 : 偽の値）
     Unary(Unary),
     Postfix(Postfix),
     Call(Call),
@@ -303,6 +311,14 @@ impl Expr {
 
     pub fn binary(op: BinaryOp, lhs: Box<Expr>, rhs: Box<Expr>) -> Box<Self> {
         Box::new(Expr::Binary(Binary { op, lhs, rhs }))
+    }
+
+    pub fn ternary(cond: Box<Expr>, then_branch: Box<Expr>, else_branch: Box<Expr>) -> Box<Self> {
+        Box::new(Expr::Ternary(Ternary {
+            cond,
+            then_branch,
+            else_branch,
+        }))
     }
 
     pub fn assign(op: AssignOp, lhs: Box<Expr>, rhs: Box<Expr>) -> Box<Self> {

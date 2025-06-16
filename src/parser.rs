@@ -128,7 +128,7 @@ pub fn decl(tokens: &mut Vec<Token>) -> Box<Stmt> {
         None
     };
     if !consume(Token::Semicolon, tokens) {
-        panic!("error");
+        panic!("expected semicolon after declaration");
     }
     Stmt::decl(ty, name, init)
 }
@@ -148,7 +148,7 @@ pub fn expr(tokens: &mut Vec<Token>) -> Box<Expr> {
 }
 
 pub fn assign(tokens: &mut Vec<Token>) -> Box<Expr> {
-    let mut node = logical_or(tokens);
+    let mut node = conditional(tokens);
     if consume(Token::Equal, tokens) {
         node = Expr::assign(AssignOp::equal(), node, assign(tokens));
     } else if consume(Token::PlusEqual, tokens) {
@@ -171,6 +171,17 @@ pub fn assign(tokens: &mut Vec<Token>) -> Box<Expr> {
         node = Expr::assign(AssignOp::greater_greater_equal(), node, assign(tokens));
     } else if consume(Token::AmpersandEqual, tokens) {
         node = Expr::assign(AssignOp::ampersand_equal(), node, assign(tokens));
+    }
+    node
+}
+
+pub fn conditional(tokens: &mut Vec<Token>) -> Box<Expr> {
+    let mut node = logical_or(tokens);
+    if consume(Token::Question, tokens) {
+        let then_branch = expr(tokens);
+        consume(Token::Colon, tokens);
+        let else_branch = expr(tokens);
+        node = Expr::ternary(node, then_branch, else_branch);
     }
     node
 }

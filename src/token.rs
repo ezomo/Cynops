@@ -4,6 +4,10 @@ pub enum Token {
     Num(usize),    // e.g., 123
     Char(char),    // e.g., 'a'
 
+    //other symbols
+    Question, // '?'
+    Colon,    // ':'
+
     // Arithmetic operators
     Plus,       // '+'
     Minus,      // '-'
@@ -76,7 +80,9 @@ pub enum Keyword {
 }
 
 impl Token {
-    pub const SYMBOLS: [(&str, Self); 50] = [
+    pub const SYMBOLS: [(&str, Self); 52] = [
+        ("?", Self::Question),
+        (":", Self::Colon),
         ("+", Self::Plus),
         ("-", Self::Minus),
         ("*", Self::Asterisk),

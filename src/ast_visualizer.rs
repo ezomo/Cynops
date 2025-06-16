@@ -243,6 +243,31 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
             visualize_expr(&assign.lhs, indent + 1, false, new_prefix.clone());
             visualize_expr(&assign.rhs, indent + 1, true, new_prefix);
         }
+        Expr::Ternary(ternary) => {
+            print_branch("Ternary", "", indent, is_last, &prefix);
+            let new_prefix = extend_prefix(&prefix, !is_last);
+            print_branch("Cond", "", indent + 1, false, &new_prefix);
+            visualize_expr(
+                &ternary.cond,
+                indent + 2,
+                false,
+                extend_prefix(&new_prefix, true),
+            );
+            print_branch("Then", "", indent + 1, false, &new_prefix);
+            visualize_expr(
+                &ternary.then_branch,
+                indent + 2,
+                false,
+                extend_prefix(&new_prefix, true),
+            );
+            print_branch("Else", "", indent + 1, true, &new_prefix);
+            visualize_expr(
+                &ternary.else_branch,
+                indent + 2,
+                true,
+                extend_prefix(&new_prefix, false),
+            );
+        }
     }
 }
 
