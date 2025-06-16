@@ -73,6 +73,7 @@ pub enum Keyword {
     If,       // 'if'
     Else,     // 'else'
     While,    // 'while'
+    Do,       // 'do'
     For,      // 'for'
     Void,     // 'void'
     Break,    // 'break'
@@ -80,7 +81,7 @@ pub enum Keyword {
 }
 
 impl Token {
-    pub const SYMBOLS: [(&str, Self); 52] = [
+    pub const SYMBOLS: [(&str, Self); 53] = [
         ("?", Self::Question),
         (":", Self::Colon),
         ("+", Self::Plus),
@@ -129,6 +130,7 @@ impl Token {
         ("if", Self::Keyword(Keyword::If)),
         ("else", Self::Keyword(Keyword::Else)),
         ("while", Self::Keyword(Keyword::While)),
+        ("do", Self::Keyword(Keyword::Do)),
         ("for", Self::Keyword(Keyword::For)),
         ("return", Self::Keyword(Keyword::Return)),
         ("break", Self::Keyword(Keyword::Break)),
@@ -172,6 +174,10 @@ impl Token {
 
     pub fn r#while() -> Self {
         Token::Keyword(Keyword::While)
+    }
+
+    pub fn r#do() -> Self {
+        Token::Keyword(Keyword::Do)
     }
 
     pub fn r#for() -> Self {

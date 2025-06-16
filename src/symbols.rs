@@ -140,6 +140,12 @@ pub struct While {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct DoWhile {
+    pub body: Box<Stmt>,
+    pub cond: Box<Expr>, // 条件は式
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct For {
     pub init: Option<Box<Expr>>, // 式（文じゃない）← int i = 0; はNG
     pub cond: Option<Box<Expr>>, // 式
@@ -156,6 +162,7 @@ pub struct Return {
 pub enum Control {
     If(If),
     While(While),
+    DoWhile(DoWhile),
     For(For),
 }
 
@@ -254,6 +261,12 @@ impl Stmt {
         Box::new(Stmt::Control(Control::While(While {
             cond: Box::new(cond),
             body: Box::new(body),
+        })))
+    }
+    pub fn r#do_while(body: Stmt, cond: Expr) -> Box<Self> {
+        Box::new(Stmt::Control(Control::DoWhile(DoWhile {
+            body: Box::new(body),
+            cond: Box::new(cond),
         })))
     }
 
@@ -509,11 +522,11 @@ impl UnaryOp {
 }
 
 impl PostfixOp {
-    pub fn post_inc() -> Self {
+    pub fn plus_plus() -> Self {
         PostfixOp::PlusPlus // x++
     }
 
-    pub fn post_dec() -> Self {
+    pub fn minus_minus() -> Self {
         PostfixOp::MinusMinus // x--
     }
 }

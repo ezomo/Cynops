@@ -9,7 +9,7 @@ pub fn program(tokens: &mut Vec<Token>) -> Program {
             code.items
                 .push(TopLevel::function_def(*function_def(tokens)));
         } else {
-            code.items.push(TopLevel::Stmt(*stmt(tokens)));
+            code.items.push(TopLevel::stmt(*stmt(tokens)));
         }
     }
 
@@ -64,6 +64,18 @@ pub fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
             },
             *stmt(tokens),
         )
+    } else if consume(Token::r#do(), tokens) {
+        let body = *stmt(tokens);
+        if !consume(Token::r#while(), tokens) {
+            panic!("expected 'while' after 'do' statement");
+        }
+        consume(Token::LParen, tokens);
+        let condition = expr(tokens);
+        consume(Token::RParen, tokens);
+        if !consume(Token::Semicolon, tokens) {
+            panic!("expected semicolon after do-while statement");
+        }
+        Stmt::do_while(body, *condition)
     } else if consume(Token::r#for(), tokens) {
         consume(Token::LParen, tokens);
         Stmt::r#for(
@@ -337,9 +349,9 @@ pub fn unary(tokens: &mut Vec<Token>) -> Box<Expr> {
 pub fn postfix(tokens: &mut Vec<Token>) -> Box<Expr> {
     let node = primary(tokens);
     if consume(Token::PlusPlus, tokens) {
-        Expr::postfix(PostfixOp::PlusPlus, node)
+        Expr::postfix(PostfixOp::plus_plus(), node)
     } else if consume(Token::MinusMinus, tokens) {
-        Expr::postfix(PostfixOp::MinusMinus, node)
+        Expr::postfix(PostfixOp::minus_minus(), node)
     } else {
         node
     }

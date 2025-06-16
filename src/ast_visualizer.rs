@@ -149,6 +149,24 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                     extend_prefix(&next_prefix, false),
                 );
             }
+            Control::DoWhile(do_while_stmt) => {
+                print_branch("DoWhile", "", indent, is_last, &prefix);
+                let next_prefix = extend_prefix(&prefix, !is_last);
+                print_branch("Body", "", indent + 1, false, &next_prefix);
+                visualize_stmt(
+                    &do_while_stmt.body,
+                    indent + 2,
+                    true,
+                    extend_prefix(&next_prefix, true),
+                );
+                print_branch("Cond", "", indent + 1, true, &next_prefix);
+                visualize_expr(
+                    &do_while_stmt.cond,
+                    indent + 2,
+                    true,
+                    extend_prefix(&next_prefix, false),
+                );
+            }
         },
         Stmt::Block(block) => {
             print_branch("Block", "", indent, is_last, &prefix);
