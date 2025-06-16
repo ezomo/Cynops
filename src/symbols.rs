@@ -23,9 +23,16 @@ pub enum Comparison {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
+pub enum Logical {
+    AmpersandAmpersand, // '&&'
+    PipePipe,           // '||'
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum BinaryOp {
     Arithmetic(Arithmetic),
     Comparison(Comparison),
+    Logical(Logical),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -410,6 +417,13 @@ impl BinaryOp {
 
     pub fn greater_equal() -> Self {
         BinaryOp::Comparison(Comparison::GreaterEqual)
+    }
+
+    pub fn ampersand_ampersand() -> Self {
+        BinaryOp::Logical(Logical::AmpersandAmpersand)
+    }
+    pub fn pipe_pipe() -> Self {
+        BinaryOp::Logical(Logical::PipePipe)
     }
 }
 

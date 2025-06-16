@@ -19,6 +19,10 @@ pub enum Token {
     LessLess,       // '<<'
     GreaterGreater, // '>>'
 
+    //logical operators
+    AmpersandAmpersand, // '&&'
+    PipePipe,           // '||'
+
     // Unary-specific operators
     Bang,      // '!'
     Tilde,     // '~'
@@ -72,7 +76,7 @@ pub enum Keyword {
 }
 
 impl Token {
-    pub const SYMBOLS: [(&str, Self); 48] = [
+    pub const SYMBOLS: [(&str, Self); 50] = [
         ("+", Self::Plus),
         ("-", Self::Minus),
         ("*", Self::Asterisk),
@@ -84,6 +88,8 @@ impl Token {
         ("|", Self::Pipe),
         ("<<", Self::LessLess),
         (">>", Self::GreaterGreater),
+        ("&&", Self::AmpersandAmpersand),
+        ("||", Self::PipePipe),
         ("*", Self::Asterisk), // Note: '*' is also used for multiplication
         ("!", Self::Bang),
         ("~", Self::Tilde),

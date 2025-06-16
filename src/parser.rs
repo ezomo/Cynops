@@ -148,7 +148,7 @@ pub fn expr(tokens: &mut Vec<Token>) -> Box<Expr> {
 }
 
 pub fn assign(tokens: &mut Vec<Token>) -> Box<Expr> {
-    let mut node = equality(tokens);
+    let mut node = logical_or(tokens);
     if consume(Token::Equal, tokens) {
         node = Expr::assign(AssignOp::equal(), node, assign(tokens));
     } else if consume(Token::PlusEqual, tokens) {
@@ -175,6 +175,28 @@ pub fn assign(tokens: &mut Vec<Token>) -> Box<Expr> {
     node
 }
 
+pub fn logical_or(tokens: &mut Vec<Token>) -> Box<Expr> {
+    let mut node = logical_and(tokens);
+    loop {
+        if consume(Token::PipePipe, tokens) {
+            node = Expr::binary(BinaryOp::pipe_pipe(), node, logical_and(tokens));
+        } else {
+            return node;
+        }
+    }
+}
+
+pub fn logical_and(tokens: &mut Vec<Token>) -> Box<Expr> {
+    let mut node = equality(tokens);
+    loop {
+        if consume(Token::AmpersandAmpersand, tokens) {
+            node = Expr::binary(BinaryOp::ampersand_ampersand(), node, equality(tokens));
+        } else {
+            return node;
+        }
+    }
+}
+
 pub fn equality(tokens: &mut Vec<Token>) -> Box<Expr> {
     let mut node = relational(tokens);
     loop {
@@ -194,7 +216,7 @@ pub fn relational(tokens: &mut Vec<Token>) -> Box<Expr> {
         if consume(Token::Less, tokens) {
             node = Expr::binary(BinaryOp::less(), node, bitwise_or(tokens));
         } else if consume(Token::LessEqual, tokens) {
-            node = Expr::binary(BinaryOp::less(), node, bitwise_or(tokens));
+            node = Expr::binary(BinaryOp::less_equal(), node, bitwise_or(tokens));
         } else if consume(Token::Greater, tokens) {
             node = Expr::binary(BinaryOp::greater(), node, bitwise_or(tokens));
         } else if consume(Token::GreaterEqual, tokens) {
