@@ -1,5 +1,5 @@
+use crate::symbols::{AssignOp, Block, Ident, Param, Program, TopLevel, Type, UnaryOp};
 use crate::symbols::{BinaryOp, Expr, FunctionDef, PostfixOp, Stmt};
-use crate::symbols::{Block, Ident, Param, Program, TopLevel, Type, UnaryOp};
 use crate::token::*;
 
 pub fn program(tokens: &mut Vec<Token>) -> Program {
@@ -150,7 +150,27 @@ pub fn expr(tokens: &mut Vec<Token>) -> Box<Expr> {
 pub fn assign(tokens: &mut Vec<Token>) -> Box<Expr> {
     let mut node = equality(tokens);
     if consume(Token::Equal, tokens) {
-        node = Expr::assign(node, assign(tokens));
+        node = Expr::assign(AssignOp::equal(), node, assign(tokens));
+    } else if consume(Token::PlusEqual, tokens) {
+        node = Expr::assign(AssignOp::plus_equal(), node, assign(tokens));
+    } else if consume(Token::MinusEqual, tokens) {
+        node = Expr::assign(AssignOp::minus_equal(), node, assign(tokens));
+    } else if consume(Token::AsteriskEqual, tokens) {
+        node = Expr::assign(AssignOp::asterisk_equal(), node, assign(tokens));
+    } else if consume(Token::SlashEqual, tokens) {
+        node = Expr::assign(AssignOp::slash_equal(), node, assign(tokens));
+    } else if consume(Token::PercentEqual, tokens) {
+        node = Expr::assign(AssignOp::percent_equal(), node, assign(tokens));
+    } else if consume(Token::CaretEqual, tokens) {
+        node = Expr::assign(AssignOp::caret_equal(), node, assign(tokens));
+    } else if consume(Token::PipeEqual, tokens) {
+        node = Expr::assign(AssignOp::pipe_equal(), node, assign(tokens));
+    } else if consume(Token::LessLessEqual, tokens) {
+        node = Expr::assign(AssignOp::less_less_equal(), node, assign(tokens));
+    } else if consume(Token::GreaterGreaterEqual, tokens) {
+        node = Expr::assign(AssignOp::greater_greater_equal(), node, assign(tokens));
+    } else if consume(Token::AmpersandEqual, tokens) {
+        node = Expr::assign(AssignOp::ampersand_equal(), node, assign(tokens));
     }
     node
 }

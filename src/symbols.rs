@@ -29,6 +29,21 @@ pub enum BinaryOp {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
+pub enum AssignOp {
+    Equal,               // '='
+    PlusEqual,           // '+='
+    MinusEqual,          // '-='
+    AsteriskEqual,       // '*='
+    SlashEqual,          // '/='
+    PercentEqual,        // '%='
+    CaretEqual,          // '^='
+    PipeEqual,           // '|='
+    LessLessEqual,       // '<<='
+    GreaterGreaterEqual, // '>>='
+    AmpersandEqual,      // '&='
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum UnaryOp {
     Minus,      // -x
     Bang,       // !x
@@ -65,8 +80,9 @@ pub struct Binary {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Assign {
-    lhs: Box<Expr>,
-    rhs: Box<Expr>,
+    pub op: AssignOp,
+    pub lhs: Box<Expr>,
+    pub rhs: Box<Expr>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -282,12 +298,58 @@ impl Expr {
         Box::new(Expr::Binary(Binary { op, lhs, rhs }))
     }
 
-    pub fn assign(lhs: Box<Expr>, rhs: Box<Expr>) -> Box<Self> {
-        Box::new(Expr::Assign(Assign { lhs, rhs }))
+    pub fn assign(op: AssignOp, lhs: Box<Expr>, rhs: Box<Expr>) -> Box<Self> {
+        Box::new(Expr::Assign(Assign { op, lhs, rhs }))
     }
 
     pub fn call(func: Ident, args: Vec<Box<Expr>>) -> Box<Self> {
         Box::new(Expr::Call(Call { func: func, args }))
+    }
+}
+
+impl AssignOp {
+    pub fn equal() -> Self {
+        AssignOp::Equal
+    }
+
+    pub fn plus_equal() -> Self {
+        AssignOp::PlusEqual
+    }
+
+    pub fn minus_equal() -> Self {
+        AssignOp::MinusEqual
+    }
+
+    pub fn asterisk_equal() -> Self {
+        AssignOp::AsteriskEqual
+    }
+
+    pub fn slash_equal() -> Self {
+        AssignOp::SlashEqual
+    }
+
+    pub fn percent_equal() -> Self {
+        AssignOp::PercentEqual
+    }
+
+    pub fn caret_equal() -> Self {
+        AssignOp::CaretEqual
+    }
+
+    pub fn pipe_equal() -> Self {
+        AssignOp::PipeEqual
+    }
+
+    pub fn less_less_equal() -> Self {
+        AssignOp::LessLessEqual
+    }
+
+    pub fn greater_greater_equal() -> Self {
+        AssignOp::GreaterGreaterEqual
+    }
+
+    pub fn ampersand_equal() -> Self {
+        AssignOp::AmpersandEqual
     }
 }
 

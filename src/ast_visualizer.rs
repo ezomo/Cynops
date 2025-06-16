@@ -1,4 +1,4 @@
-use crate::symbols::{Expr, FunctionDef, Program, Stmt, TopLevel, Type};
+use crate::symbols::{Expr, FunctionDef, Program, Stmt, TopLevel};
 
 pub fn visualize_program(program: &Program) {
     println!("Program");
