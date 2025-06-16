@@ -16,7 +16,7 @@ pub fn program(tokens: &mut Vec<Token>) -> Program {
     code
 }
 
-pub fn function_def(tokens: &mut Vec<Token>) -> Box<FunctionDef> {
+fn function_def(tokens: &mut Vec<Token>) -> Box<FunctionDef> {
     let ret_type = consume_type(tokens);
     let name = consume_ident(tokens);
     consume(Token::LParen, tokens);
@@ -30,7 +30,7 @@ pub fn function_def(tokens: &mut Vec<Token>) -> Box<FunctionDef> {
     FunctionDef::new(ret_type, name, params, *body)
 }
 
-pub fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
+fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
     if consume(Token::r#return(), tokens) {
         let tmp = Stmt::r#return(Some(*expr(tokens)));
         if !consume(Token::Semicolon, tokens) {
@@ -131,7 +131,7 @@ pub fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
     }
 }
 
-pub fn decl(tokens: &mut Vec<Token>) -> Box<Stmt> {
+fn decl(tokens: &mut Vec<Token>) -> Box<Stmt> {
     let ty = consume_type(tokens);
     let name = consume_ident(tokens);
     let init = if consume(Token::Equal, tokens) {
@@ -155,11 +155,11 @@ fn block(tokens: &mut Vec<Token>) -> Box<Block> {
     Block::new(code)
 }
 
-pub fn expr(tokens: &mut Vec<Token>) -> Box<Expr> {
+fn expr(tokens: &mut Vec<Token>) -> Box<Expr> {
     assign(tokens)
 }
 
-pub fn assign(tokens: &mut Vec<Token>) -> Box<Expr> {
+fn assign(tokens: &mut Vec<Token>) -> Box<Expr> {
     let mut node = conditional(tokens);
     if consume(Token::Equal, tokens) {
         node = Expr::assign(AssignOp::equal(), node, assign(tokens));
@@ -187,7 +187,7 @@ pub fn assign(tokens: &mut Vec<Token>) -> Box<Expr> {
     node
 }
 
-pub fn conditional(tokens: &mut Vec<Token>) -> Box<Expr> {
+fn conditional(tokens: &mut Vec<Token>) -> Box<Expr> {
     let mut node = logical_or(tokens);
     if consume(Token::Question, tokens) {
         let then_branch = expr(tokens);
@@ -198,7 +198,7 @@ pub fn conditional(tokens: &mut Vec<Token>) -> Box<Expr> {
     node
 }
 
-pub fn logical_or(tokens: &mut Vec<Token>) -> Box<Expr> {
+fn logical_or(tokens: &mut Vec<Token>) -> Box<Expr> {
     let mut node = logical_and(tokens);
     loop {
         if consume(Token::PipePipe, tokens) {
@@ -209,7 +209,7 @@ pub fn logical_or(tokens: &mut Vec<Token>) -> Box<Expr> {
     }
 }
 
-pub fn logical_and(tokens: &mut Vec<Token>) -> Box<Expr> {
+fn logical_and(tokens: &mut Vec<Token>) -> Box<Expr> {
     let mut node = equality(tokens);
     loop {
         if consume(Token::AmpersandAmpersand, tokens) {
@@ -220,7 +220,7 @@ pub fn logical_and(tokens: &mut Vec<Token>) -> Box<Expr> {
     }
 }
 
-pub fn equality(tokens: &mut Vec<Token>) -> Box<Expr> {
+fn equality(tokens: &mut Vec<Token>) -> Box<Expr> {
     let mut node = relational(tokens);
     loop {
         if consume(Token::EqualEqual, tokens) {
@@ -233,7 +233,7 @@ pub fn equality(tokens: &mut Vec<Token>) -> Box<Expr> {
     }
 }
 
-pub fn relational(tokens: &mut Vec<Token>) -> Box<Expr> {
+fn relational(tokens: &mut Vec<Token>) -> Box<Expr> {
     let mut node = bitwise_or(tokens);
     loop {
         if consume(Token::Less, tokens) {
@@ -250,7 +250,7 @@ pub fn relational(tokens: &mut Vec<Token>) -> Box<Expr> {
     }
 }
 
-pub fn bitwise_or(tokens: &mut Vec<Token>) -> Box<Expr> {
+fn bitwise_or(tokens: &mut Vec<Token>) -> Box<Expr> {
     let mut node = bitwise_xor(tokens);
     loop {
         if consume(Token::Pipe, tokens) {
@@ -261,7 +261,7 @@ pub fn bitwise_or(tokens: &mut Vec<Token>) -> Box<Expr> {
     }
 }
 
-pub fn bitwise_xor(tokens: &mut Vec<Token>) -> Box<Expr> {
+fn bitwise_xor(tokens: &mut Vec<Token>) -> Box<Expr> {
     let mut node = bitwise_and(tokens);
     loop {
         if consume(Token::Caret, tokens) {
@@ -272,7 +272,7 @@ pub fn bitwise_xor(tokens: &mut Vec<Token>) -> Box<Expr> {
     }
 }
 
-pub fn bitwise_and(tokens: &mut Vec<Token>) -> Box<Expr> {
+fn bitwise_and(tokens: &mut Vec<Token>) -> Box<Expr> {
     let mut node = shift(tokens);
     loop {
         if consume(Token::Ampersand, tokens) {
@@ -283,7 +283,7 @@ pub fn bitwise_and(tokens: &mut Vec<Token>) -> Box<Expr> {
     }
 }
 
-pub fn shift(tokens: &mut Vec<Token>) -> Box<Expr> {
+fn shift(tokens: &mut Vec<Token>) -> Box<Expr> {
     let mut node = add(tokens);
     loop {
         if consume(Token::LessLess, tokens) {
@@ -296,7 +296,7 @@ pub fn shift(tokens: &mut Vec<Token>) -> Box<Expr> {
     }
 }
 
-pub fn add(tokens: &mut Vec<Token>) -> Box<Expr> {
+fn add(tokens: &mut Vec<Token>) -> Box<Expr> {
     let mut node = mul(tokens);
     loop {
         if consume(Token::Plus, tokens) {
@@ -309,7 +309,7 @@ pub fn add(tokens: &mut Vec<Token>) -> Box<Expr> {
     }
 }
 
-pub fn mul(tokens: &mut Vec<Token>) -> Box<Expr> {
+fn mul(tokens: &mut Vec<Token>) -> Box<Expr> {
     let mut node = unary(tokens);
     loop {
         if consume(Token::Asterisk, tokens) {
@@ -324,7 +324,7 @@ pub fn mul(tokens: &mut Vec<Token>) -> Box<Expr> {
     }
 }
 
-pub fn unary(tokens: &mut Vec<Token>) -> Box<Expr> {
+fn unary(tokens: &mut Vec<Token>) -> Box<Expr> {
     if consume(Token::Plus, tokens) {
         unary(tokens)
     } else if consume(Token::Minus, tokens) {
@@ -346,7 +346,7 @@ pub fn unary(tokens: &mut Vec<Token>) -> Box<Expr> {
     }
 }
 
-pub fn postfix(tokens: &mut Vec<Token>) -> Box<Expr> {
+fn postfix(tokens: &mut Vec<Token>) -> Box<Expr> {
     let node = primary(tokens);
     if consume(Token::PlusPlus, tokens) {
         Expr::postfix(PostfixOp::plus_plus(), node)
@@ -357,7 +357,7 @@ pub fn postfix(tokens: &mut Vec<Token>) -> Box<Expr> {
     }
 }
 
-pub fn primary(tokens: &mut Vec<Token>) -> Box<Expr> {
+fn primary(tokens: &mut Vec<Token>) -> Box<Expr> {
     // 次のトークンが"("なら、"(" expr ")"のはず
     if consume(Token::LParen, tokens) {
         let node = expr(tokens);
@@ -379,7 +379,7 @@ pub fn primary(tokens: &mut Vec<Token>) -> Box<Expr> {
     }
 }
 
-pub fn arg_list(tokens: &mut Vec<Token>) -> Vec<Box<Expr>> {
+fn arg_list(tokens: &mut Vec<Token>) -> Vec<Box<Expr>> {
     let mut args = Vec::new();
     if !tokens.is_empty() && *tokens.first().unwrap() != Token::RParen {
         args.push(expr(tokens));
@@ -390,7 +390,7 @@ pub fn arg_list(tokens: &mut Vec<Token>) -> Vec<Box<Expr>> {
     args
 }
 
-pub fn param_list(tokens: &mut Vec<Token>) -> Vec<Param> {
+fn param_list(tokens: &mut Vec<Token>) -> Vec<Param> {
     let mut params = Vec::new();
     if !tokens.is_empty() && *tokens.first().unwrap() != Token::RParen && is_next_type(tokens) {
         params.push(param(tokens));
@@ -401,13 +401,13 @@ pub fn param_list(tokens: &mut Vec<Token>) -> Vec<Param> {
     params
 }
 
-pub fn param(tokens: &mut Vec<Token>) -> Param {
+fn param(tokens: &mut Vec<Token>) -> Param {
     let ty = consume_type(tokens);
     let name = consume_ident(tokens);
     Param::new(ty, name)
 }
 
-pub fn consume(op: Token, tokens: &mut Vec<Token>) -> bool {
+fn consume(op: Token, tokens: &mut Vec<Token>) -> bool {
     if tokens.is_empty() {
         return false;
     }
@@ -420,7 +420,7 @@ pub fn consume(op: Token, tokens: &mut Vec<Token>) -> bool {
     return true;
 }
 
-pub fn is_next_atom(tokens: &[Token]) -> bool {
+fn is_next_atom(tokens: &[Token]) -> bool {
     if tokens.is_empty() {
         return false;
     }
@@ -429,7 +429,7 @@ pub fn is_next_atom(tokens: &[Token]) -> bool {
     return matches!(next, Token::Num(_) | Token::Char(_));
 }
 
-pub fn is_next_ident(tokens: &[Token]) -> bool {
+fn is_next_ident(tokens: &[Token]) -> bool {
     if tokens.is_empty() {
         return false;
     }
@@ -438,7 +438,7 @@ pub fn is_next_ident(tokens: &[Token]) -> bool {
     return matches!(next, Token::Ident(_));
 }
 
-pub fn is_next_fn(tokens: &[Token]) -> bool {
+fn is_next_fn(tokens: &[Token]) -> bool {
     if tokens.is_empty() {
         return false;
     }
@@ -452,7 +452,7 @@ pub fn is_next_fn(tokens: &[Token]) -> bool {
     return matches!(second, Token::LParen);
 }
 
-pub fn is_next_type(tokens: &[Token]) -> bool {
+fn is_next_type(tokens: &[Token]) -> bool {
     if tokens.is_empty() {
         return false;
     }
@@ -466,7 +466,7 @@ pub fn is_next_type(tokens: &[Token]) -> bool {
     );
 }
 
-pub fn consume_atom(tokens: &mut Vec<Token>) -> Box<Expr> {
+fn consume_atom(tokens: &mut Vec<Token>) -> Box<Expr> {
     if tokens.is_empty() {
         panic!("Expected atom, but no tokens available");
     }
@@ -484,7 +484,7 @@ pub fn consume_atom(tokens: &mut Vec<Token>) -> Box<Expr> {
     }
 }
 
-pub fn consume_ident(tokens: &mut Vec<Token>) -> Ident {
+fn consume_ident(tokens: &mut Vec<Token>) -> Ident {
     if let Some(Token::Ident(name)) = tokens.first() {
         let name = name.clone();
         tokens.remove(0);
@@ -494,7 +494,7 @@ pub fn consume_ident(tokens: &mut Vec<Token>) -> Ident {
     }
 }
 
-pub fn consume_type(tokens: &mut Vec<Token>) -> Type {
+fn consume_type(tokens: &mut Vec<Token>) -> Type {
     if tokens.is_empty() {
         panic!("Expected type, but no tokens available");
     }
