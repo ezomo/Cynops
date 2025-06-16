@@ -169,16 +169,60 @@ pub fn equality(tokens: &mut Vec<Token>) -> Box<Expr> {
 }
 
 pub fn relational(tokens: &mut Vec<Token>) -> Box<Expr> {
-    let mut node = add(tokens);
+    let mut node = bitwise_or(tokens);
     loop {
         if consume(Token::Less, tokens) {
-            node = Expr::binary(BinaryOp::lt(), node, add(tokens));
+            node = Expr::binary(BinaryOp::lt(), node, bitwise_or(tokens));
         } else if consume(Token::LessEqual, tokens) {
-            node = Expr::binary(BinaryOp::le(), node, add(tokens));
+            node = Expr::binary(BinaryOp::le(), node, bitwise_or(tokens));
         } else if consume(Token::Greater, tokens) {
-            node = Expr::binary(BinaryOp::gt(), node, add(tokens));
+            node = Expr::binary(BinaryOp::gt(), node, bitwise_or(tokens));
         } else if consume(Token::GreaterEqual, tokens) {
-            node = Expr::binary(BinaryOp::ge(), node, add(tokens));
+            node = Expr::binary(BinaryOp::ge(), node, bitwise_or(tokens));
+        } else {
+            return node;
+        }
+    }
+}
+
+pub fn bitwise_or(tokens: &mut Vec<Token>) -> Box<Expr> {
+    let mut node = bitwise_xor(tokens);
+    loop {
+        if consume(Token::Pipe, tokens) {
+            node = Expr::binary(BinaryOp::bit_or(), node, bitwise_xor(tokens));
+        } else {
+            return node;
+        }
+    }
+}
+
+pub fn bitwise_xor(tokens: &mut Vec<Token>) -> Box<Expr> {
+    let mut node = bitwise_and(tokens);
+    loop {
+        if consume(Token::Caret, tokens) {
+            node = Expr::binary(BinaryOp::bit_xor(), node, bitwise_and(tokens));
+        } else {
+            return node;
+        }
+    }
+}
+pub fn bitwise_and(tokens: &mut Vec<Token>) -> Box<Expr> {
+    let mut node = shift(tokens);
+    loop {
+        if consume(Token::Ampersand, tokens) {
+            node = Expr::binary(BinaryOp::bit_and(), node, shift(tokens));
+        } else {
+            return node;
+        }
+    }
+}
+pub fn shift(tokens: &mut Vec<Token>) -> Box<Expr> {
+    let mut node = add(tokens);
+    loop {
+        if consume(Token::LessLess, tokens) {
+            node = Expr::binary(BinaryOp::shl(), node, add(tokens));
+        } else if consume(Token::GreaterGreater, tokens) {
+            node = Expr::binary(BinaryOp::shr(), node, add(tokens));
         } else {
             return node;
         }

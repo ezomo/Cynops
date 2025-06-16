@@ -13,13 +13,31 @@ pub enum Token {
     PlusPlus,   // '++'
     MinusMinus, // '--'
 
+    // Bitwise Operators
+    Caret,          // '^'
+    Pipe,           // '|'
+    LessLess,       // '<<'
+    GreaterGreater, // '>>'
+
     // Unary-specific operators
     Bang,      // '!'
     Tilde,     // '~'
     Ampersand, // '&'
 
-    // Comparison and assignment
-    Equal,        // '='
+    // Assignment
+    Equal,               // '='
+    PlusEqual,           // '+='
+    MinusEqual,          // '-='
+    AsteriskEqual,       // '*='
+    SlashEqual,          // '/='
+    PercentEqual,        // '%='
+    CaretEqual,          // '^='
+    PipeEqual,           // '|='
+    LessLessEqual,       // '<<='
+    GreaterGreaterEqual, // '>>='
+    AmpersandEqual,      // '&='
+
+    // Comparison
     EqualEqual,   // '=='
     NotEqual,     // '!='
     Less,         // '<'
@@ -54,7 +72,7 @@ pub enum Keyword {
 }
 
 impl Token {
-    pub const SYMBOLS: [(&str, Self); 34] = [
+    pub const SYMBOLS: [(&str, Self); 48] = [
         ("+", Self::Plus),
         ("-", Self::Minus),
         ("*", Self::Asterisk),
@@ -62,6 +80,10 @@ impl Token {
         ("%", Self::Percent),
         ("++", Self::PlusPlus),
         ("--", Self::MinusMinus),
+        ("^", Self::Caret),
+        ("|", Self::Pipe),
+        ("<<", Self::LessLess),
+        (">>", Self::GreaterGreater),
         ("*", Self::Asterisk), // Note: '*' is also used for multiplication
         ("!", Self::Bang),
         ("~", Self::Tilde),
@@ -71,6 +93,16 @@ impl Token {
         ("{", Self::LBrace),
         ("}", Self::RBrace),
         ("=", Self::Equal),
+        ("+=", Self::PlusEqual),
+        ("-=", Self::MinusEqual),
+        ("*=", Self::AsteriskEqual),
+        ("/=", Self::SlashEqual),
+        ("%=", Self::PercentEqual),
+        ("^=", Self::CaretEqual),
+        ("|=", Self::PipeEqual),
+        ("<<=", Self::LessLessEqual),
+        (">>=", Self::GreaterGreaterEqual),
+        ("&=", Self::AmpersandEqual),
         ("==", Self::EqualEqual),
         ("!=", Self::NotEqual),
         ("<", Self::Less),

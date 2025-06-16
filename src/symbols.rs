@@ -1,10 +1,15 @@
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Arithmetic {
-    Plus,     // '+'
-    Minus,    // '-'
-    Asterisk, // '*'
-    Slash,    // '/'
-    Percent,  // '%'
+    Plus,           // '+'
+    Minus,          // '-'
+    Asterisk,       // '*'
+    Slash,          // '/'
+    Percent,        // '%'
+    Caret,          // '^'
+    Pipe,           // '|'
+    LessLess,       // '<<'
+    GreaterGreater, // '>>'
+    Ampersand,      // '&'
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -304,6 +309,21 @@ impl BinaryOp {
     }
     pub fn modulo() -> Self {
         BinaryOp::Arithmetic(Arithmetic::Percent)
+    }
+    pub fn bit_and() -> Self {
+        BinaryOp::Arithmetic(Arithmetic::Ampersand)
+    }
+    pub fn bit_or() -> Self {
+        BinaryOp::Arithmetic(Arithmetic::Pipe)
+    }
+    pub fn bit_xor() -> Self {
+        BinaryOp::Arithmetic(Arithmetic::Caret)
+    }
+    pub fn shl() -> Self {
+        BinaryOp::Arithmetic(Arithmetic::LessLess)
+    }
+    pub fn shr() -> Self {
+        BinaryOp::Arithmetic(Arithmetic::GreaterGreater)
     }
 
     pub fn eq() -> Self {
