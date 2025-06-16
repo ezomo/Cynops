@@ -23,12 +23,13 @@ type            = "int" | "char" | "void" | type "*" ; // ポインタ対応
 
 // 式(expression)
 expr            = assign ;
-assign          = logical_or
+assign          = conditional
                 [ assign_op assign ] ;
 assign_op       = "="
                 | "+=" | "-=" | "*=" | "/=" | "%="
                 | "^=" | "|=" | "&="
                 | "<<=" | ">>=" ;
+conditional     = logical_or [ "?" expr ":" conditional ] ;
 logical_or      = logical_and { "||" logical_and } ;
 logical_and     = equality    { "&&" equality } ;
 equality        = relational { ("==" | "!=") relational } ;
