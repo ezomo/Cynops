@@ -25,17 +25,26 @@ pub enum BinaryOp {
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum UnaryOp {
-    Negate,  // -x
-    Not,     // !x
-    BitNot,  // ~x
-    Address, // &x
-    Deref,   // *x
-    PreInc,  // ++x
-    PreDec,  // --x
-    PostInc, // x++
-    PostDec, // x--
+    Minus,      // -x
+    Bang,       // !x
+    Tilde,      // ~x
+    Ampersand,  // &x
+    Asterisk,   // *x
+    PlusPlus,   // ++x
+    MinusMinus, // --x
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum PostfixOp {
+    PlusPlus,   // x++
+    MinusMinus, // x--
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Postfix {
+    pub op: PostfixOp,
+    pub expr: Box<Expr>,
+}
 #[derive(Debug, PartialEq, Clone)]
 pub struct Unary {
     pub op: UnaryOp,
@@ -67,6 +76,7 @@ pub enum Expr {
     Ident(Ident),
     Binary(Binary),
     Unary(Unary),
+    Postfix(Postfix),
     Call(Call),
     Assign(Assign),
 }
@@ -163,6 +173,8 @@ pub enum Stmt {
     Control(Control),
     Return(Return),
     Block(Block),
+    Break,
+    Continue,
 }
 
 impl Program {
@@ -232,6 +244,12 @@ impl Stmt {
     pub fn block(block: Block) -> Box<Self> {
         Box::new(Stmt::Block(block))
     }
+    pub fn r#break() -> Box<Self> {
+        Box::new(Stmt::Break)
+    }
+    pub fn r#continue() -> Box<Self> {
+        Box::new(Stmt::Continue)
+    }
 }
 
 impl Expr {
@@ -249,6 +267,10 @@ impl Expr {
 
     pub fn unary(op: UnaryOp, expr: Box<Expr>) -> Box<Self> {
         Box::new(Expr::Unary(Unary { op, expr }))
+    }
+
+    pub fn postfix(op: PostfixOp, expr: Box<Expr>) -> Box<Self> {
+        Box::new(Expr::Postfix(Postfix { op, expr }))
     }
 
     pub fn binary(op: BinaryOp, lhs: Box<Expr>, rhs: Box<Expr>) -> Box<Self> {
@@ -347,38 +369,39 @@ impl Block {
 
 impl UnaryOp {
     pub fn neg() -> Self {
-        UnaryOp::Negate // -x
+        UnaryOp::Minus // -x
     }
 
     pub fn not() -> Self {
-        UnaryOp::Not // !x
+        UnaryOp::Bang // !x
     }
 
     pub fn bit_not() -> Self {
-        UnaryOp::BitNot // ~x
+        UnaryOp::Tilde // ~x
     }
 
     pub fn addr() -> Self {
-        UnaryOp::Address // &x
+        UnaryOp::Ampersand // &x
     }
 
     pub fn deref() -> Self {
-        UnaryOp::Deref // *x
+        UnaryOp::Asterisk // *x
     }
 
     pub fn pre_inc() -> Self {
-        UnaryOp::PreInc // ++x
+        UnaryOp::PlusPlus // ++x
     }
-
     pub fn pre_dec() -> Self {
-        UnaryOp::PreDec // --x
+        UnaryOp::MinusMinus // --x
     }
+}
 
+impl PostfixOp {
     pub fn post_inc() -> Self {
-        UnaryOp::PostInc // x++
+        PostfixOp::PlusPlus // x++
     }
 
     pub fn post_dec() -> Self {
-        UnaryOp::PostDec // x--
+        PostfixOp::MinusMinus // x--
     }
 }

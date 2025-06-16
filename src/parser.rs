@@ -96,6 +96,16 @@ pub fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
             },
             *stmt(tokens),
         )
+    } else if consume(Token::r#break(), tokens) {
+        if !consume(Token::Semicolon, tokens) {
+            panic!("expected semicolon after break statement");
+        }
+        Stmt::r#break()
+    } else if consume(Token::r#continue(), tokens) {
+        if !consume(Token::Semicolon, tokens) {
+            panic!("expected semicolon after continue statement");
+        }
+        Stmt::r#continue()
     } else if consume(Token::LBrace, tokens) {
         Stmt::block(*block(tokens))
     } else if is_next_type(tokens) {

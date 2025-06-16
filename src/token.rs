@@ -41,18 +41,20 @@ pub enum Token {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Keyword {
-    Int,    // 'int'
-    Char,   // 'char'
-    Return, // 'return'
-    If,     // 'if'
-    Else,   // 'else'
-    While,  // 'while'
-    For,    // 'for'
-    Void,   // 'void'
+    Int,      // 'int'
+    Char,     // 'char'
+    Return,   // 'return'
+    If,       // 'if'
+    Else,     // 'else'
+    While,    // 'while'
+    For,      // 'for'
+    Void,     // 'void'
+    Break,    // 'break'
+    Continue, // 'continue'
 }
 
 impl Token {
-    pub const SYMBOLS: [(&str, Self); 32] = [
+    pub const SYMBOLS: [(&str, Self); 34] = [
         ("+", Self::Plus),
         ("-", Self::Minus),
         ("*", Self::Asterisk),
@@ -85,6 +87,8 @@ impl Token {
         ("while", Self::Keyword(Keyword::While)),
         ("for", Self::Keyword(Keyword::For)),
         ("return", Self::Keyword(Keyword::Return)),
+        ("break", Self::Keyword(Keyword::Break)),
+        ("continue", Self::Keyword(Keyword::Continue)),
     ];
 
     pub fn classify(input: &str) -> Option<Self> {
@@ -128,5 +132,11 @@ impl Token {
 
     pub fn r#for() -> Self {
         Token::Keyword(Keyword::For)
+    }
+    pub fn r#break() -> Self {
+        Token::Keyword(Keyword::Break)
+    }
+    pub fn r#continue() -> Self {
+        Token::Keyword(Keyword::Continue)
     }
 }
