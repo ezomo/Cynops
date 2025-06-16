@@ -25,7 +25,12 @@ type            = "int" | "char" | "void" | type "*" ; // ポインタ対応
 expr            = assign ;
 assign          = equality [ "=" assign ] ;
 equality        = relational { ("==" | "!=") relational } ;
-relational      = add { ("<" | "<=" | ">" | ">=") add } ;
+relational      = bitwise_or { ("<" | "<=" | ">" | ">=") bitwise_or } ;
+bitwise_or      = bitwise_and { "|" bitwise_and } ;
+bitwise_xor     = bitwise_and { "^" bitwise_and } ;
+bitwise_and     = bitwise_shift { "&" bitwise_shift } ;
+bitwise_shift   = add { ("<<" | ">>") add } ;
+
 add             = mul { ("+" | "-") mul } ;
 mul             = unary { ("*" | "/" | "%") unary } ;
 unary           = ( "++" | "--" | "+" | "-" | "*" | "&" | "!" | "~" ) unary
