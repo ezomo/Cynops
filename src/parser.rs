@@ -1,5 +1,7 @@
+use std::thread::panicking;
+
 use crate::symbols::{AssignOp, Block, Ident, Param, Program, TopLevel, Type, UnaryOp};
-use crate::symbols::{BinaryOp, Expr, FunctionDef, PostfixOp, Stmt, SwitchCase};
+use crate::symbols::{BinaryOp, Expr, FunctionDef, ParamList, PostfixOp, Stmt, SwitchCase};
 use crate::token::*;
 
 pub fn program(tokens: &mut Vec<Token>) -> Program {
@@ -404,9 +406,11 @@ fn primary(tokens: &mut Vec<Token>) -> Box<Expr> {
         consume_atom(tokens)
     } else {
         if is_next_fn(tokens) {
-            let tmp = Expr::call(consume_ident(tokens), arg_list(tokens));
+            let tmp1 = consume_ident(tokens);
+            consume(Token::LParen, tokens);
+            let tmp2 = Expr::call(tmp1, arg_list(tokens));
             consume(Token::RParen, tokens);
-            tmp
+            tmp2
         } else {
             Expr::ident(consume_ident(tokens))
         }
@@ -424,15 +428,16 @@ fn arg_list(tokens: &mut Vec<Token>) -> Vec<Box<Expr>> {
     args
 }
 
-fn param_list(tokens: &mut Vec<Token>) -> Vec<Param> {
-    let mut params = Vec::new();
-    if !tokens.is_empty() && *tokens.first().unwrap() != Token::RParen && is_next_type(tokens) {
-        params.push(param(tokens));
+fn param_list(tokens: &mut Vec<Token>) -> ParamList {
+    if consume(Token::void(), tokens) {
+        ParamList::Void
+    } else {
+        let mut params = Vec::new();
         while consume(Token::Comma, tokens) {
             params.push(param(tokens));
         }
+        ParamList::Params(params)
     }
-    params
 }
 
 fn param(tokens: &mut Vec<Token>) -> Param {

@@ -2,7 +2,7 @@
 program         = { function_def | stmt } ;
 
 // 関数定義
-function_def    = type ident "(" [param_list] ")" "{" { stmt } "}" ;
+function_def = type ident "(" ( "void" | param_list ) ")" "{" { stmt } "}" ;
 
 // (文)statement
 stmt            = expr ";"                        // 式文

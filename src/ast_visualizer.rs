@@ -18,7 +18,6 @@ pub fn visualize_program(program: &Program) {
 fn visualize_function_def(func: &FunctionDef, indent: usize, is_last: bool, prefix: Vec<bool>) {
     print_branch("FunctionDef", &func.name.name, indent, is_last, &prefix);
 
-    let param_count = func.params.len();
     let has_body = !func.body.statements.is_empty();
     let total_items = 2 + if has_body { 1 } else { 0 }; // ReturnType, Params, optionally Body
 
@@ -30,32 +29,46 @@ fn visualize_function_def(func: &FunctionDef, indent: usize, is_last: bool, pref
         &extend_prefix(&prefix, !is_last),
     );
 
-    if param_count > 0 {
-        print_branch(
-            "Params",
-            "",
-            indent + 1,
-            !has_body,
-            &extend_prefix(&prefix, !is_last),
-        );
-        for (i, param) in func.params.iter().enumerate() {
-            let is_last_param = i == param_count - 1;
+    match &func.params {
+        crate::symbols::ParamList::Void => {
             print_branch(
-                "Param",
-                &format!("{:?} {}", param.ty, param.name.name),
-                indent + 2,
-                is_last_param,
-                &extend_prefix(&extend_prefix(&prefix, !is_last), !has_body),
+                "Params",
+                "void",
+                indent + 1,
+                !has_body,
+                &extend_prefix(&prefix, !is_last),
             );
         }
-    } else {
-        print_branch(
-            "Params",
-            "(empty)",
-            indent + 1,
-            !has_body,
-            &extend_prefix(&prefix, !is_last),
-        );
+        crate::symbols::ParamList::Params(params) => {
+            let param_count = params.len();
+            if param_count > 0 {
+                print_branch(
+                    "Params",
+                    "",
+                    indent + 1,
+                    !has_body,
+                    &extend_prefix(&prefix, !is_last),
+                );
+                for (i, param) in params.iter().enumerate() {
+                    let is_last_param = i == param_count - 1;
+                    print_branch(
+                        "Param",
+                        &format!("{:?} {}", param.ty, param.name.name),
+                        indent + 2,
+                        is_last_param,
+                        &extend_prefix(&extend_prefix(&prefix, !is_last), !has_body),
+                    );
+                }
+            } else {
+                print_branch(
+                    "Params",
+                    "(empty)",
+                    indent + 1,
+                    !has_body,
+                    &extend_prefix(&prefix, !is_last),
+                );
+            }
+        }
     }
 
     if has_body {

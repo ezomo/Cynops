@@ -207,12 +207,16 @@ pub struct Param {
     pub ty: Type,
     pub name: Ident,
 }
-
+#[derive(Debug, PartialEq, Clone)]
+pub enum ParamList {
+    Void,               // f(void)
+    Params(Vec<Param>), // f(int x, char y)
+}
 #[derive(Debug, PartialEq, Clone)]
 pub struct FunctionDef {
     pub ret_type: Type,
     pub name: Ident,
-    pub params: Vec<Param>,
+    pub params: ParamList,
     pub body: Block,
 }
 
@@ -506,7 +510,7 @@ impl Param {
 }
 
 impl FunctionDef {
-    pub fn new(ret_type: Type, name: Ident, params: Vec<Param>, body: Block) -> Box<Self> {
+    pub fn new(ret_type: Type, name: Ident, params: ParamList, body: Block) -> Box<Self> {
         Box::new(Self {
             ret_type,
             name,
