@@ -78,10 +78,13 @@ pub enum Keyword {
     Void,     // 'void'
     Break,    // 'break'
     Continue, // 'continue'
+    Switch,   // 'switch'
+    Case,     // 'case'
+    Default,  // 'default'
 }
 
 impl Token {
-    pub const SYMBOLS: [(&str, Self); 53] = [
+    pub const SYMBOLS: [(&str, Self); 56] = [
         ("?", Self::Question),
         (":", Self::Colon),
         ("+", Self::Plus),
@@ -135,6 +138,9 @@ impl Token {
         ("return", Self::Keyword(Keyword::Return)),
         ("break", Self::Keyword(Keyword::Break)),
         ("continue", Self::Keyword(Keyword::Continue)),
+        ("switch", Self::Keyword(Keyword::Switch)),
+        ("case", Self::Keyword(Keyword::Case)),
+        ("default", Self::Keyword(Keyword::Default)),
     ];
 
     pub fn classify(input: &str) -> Option<Self> {
@@ -188,5 +194,14 @@ impl Token {
     }
     pub fn r#continue() -> Self {
         Token::Keyword(Keyword::Continue)
+    }
+    pub fn r#switch() -> Self {
+        Token::Keyword(Keyword::Switch)
+    }
+    pub fn r#case() -> Self {
+        Token::Keyword(Keyword::Case)
+    }
+    pub fn r#default() -> Self {
+        Token::Keyword(Keyword::Default)
     }
 }

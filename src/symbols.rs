@@ -134,6 +134,28 @@ pub struct If {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct Case {
+    pub expr: Expr,
+    pub stmts: Vec<Box<Stmt>>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct DefaultCase {
+    pub stmts: Vec<Box<Stmt>>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum SwitchCase {
+    Case(Case),
+    Default(DefaultCase),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Switch {
+    pub cond: Box<Expr>,
+    pub cases: Vec<SwitchCase>,
+}
+#[derive(Debug, PartialEq, Clone)]
 pub struct While {
     pub cond: Box<Expr>,
     pub body: Box<Stmt>,
@@ -164,6 +186,7 @@ pub enum Control {
     While(While),
     DoWhile(DoWhile),
     For(For),
+    Switch(Switch),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -254,6 +277,13 @@ impl Stmt {
             cond: Box::new(cond),
             then_branch: Box::new(then_branch),
             else_branch: else_branch.map(Box::new),
+        })))
+    }
+
+    pub fn r#switch(cond: Expr, cases: Vec<SwitchCase>) -> Box<Self> {
+        Box::new(Stmt::Control(Control::Switch(Switch {
+            cond: Box::new(cond),
+            cases,
         })))
     }
 
@@ -528,5 +558,15 @@ impl PostfixOp {
 
     pub fn minus_minus() -> Self {
         PostfixOp::MinusMinus // x--
+    }
+}
+
+impl SwitchCase {
+    pub fn case(expr: Expr, stmts: Vec<Box<Stmt>>) -> Self {
+        SwitchCase::Case(Case { expr, stmts })
+    }
+
+    pub fn default(stmts: Vec<Box<Stmt>>) -> Self {
+        SwitchCase::Default(DefaultCase { stmts })
     }
 }

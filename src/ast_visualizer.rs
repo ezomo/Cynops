@@ -1,11 +1,16 @@
-use crate::symbols::{Control, Expr, FunctionDef, Program, Stmt, TopLevel};
+use crate::symbols::{Control, Expr, FunctionDef, Program, Stmt, SwitchCase, TopLevel};
 
 pub fn visualize_program(program: &Program) {
     println!("Program");
     for (i, item) in program.items.iter().enumerate() {
         let is_last = i == program.items.len() - 1;
-        if let TopLevel::FunctionDef(func) = item {
-            visualize_function_def(func, 1, is_last, vec![]);
+        match item {
+            TopLevel::FunctionDef(func) => {
+                visualize_function_def(func, 1, is_last, vec![]);
+            }
+            TopLevel::Stmt(stmt) => {
+                visualize_stmt(stmt, 1, is_last, vec![]);
+            }
         }
     }
 }
@@ -13,36 +18,63 @@ pub fn visualize_program(program: &Program) {
 fn visualize_function_def(func: &FunctionDef, indent: usize, is_last: bool, prefix: Vec<bool>) {
     print_branch("FunctionDef", &func.name.name, indent, is_last, &prefix);
 
+    let param_count = func.params.len();
+    let has_body = !func.body.statements.is_empty();
+    let total_items = 2 + if has_body { 1 } else { 0 }; // ReturnType, Params, optionally Body
+
     print_branch(
         "ReturnType",
         &format!("{:?}", func.ret_type),
         indent + 1,
-        false,
-        &extend_prefix(&prefix, !is_last),
-    );
-    print_branch(
-        "Params",
-        &format!("{:?}", func.params),
-        indent + 1,
-        false,
+        total_items == 1,
         &extend_prefix(&prefix, !is_last),
     );
 
-    print_branch(
-        "Body",
-        "",
-        indent + 1,
-        true,
-        &extend_prefix(&prefix, !is_last),
-    );
-    for (i, stmt) in func.body.statements.iter().enumerate() {
-        let last_stmt = i == func.body.statements.len() - 1;
-        visualize_stmt(
-            stmt,
-            indent + 2,
-            last_stmt,
-            extend_prefix(&prefix, !is_last),
+    if param_count > 0 {
+        print_branch(
+            "Params",
+            "",
+            indent + 1,
+            !has_body,
+            &extend_prefix(&prefix, !is_last),
         );
+        for (i, param) in func.params.iter().enumerate() {
+            let is_last_param = i == param_count - 1;
+            print_branch(
+                "Param",
+                &format!("{:?} {}", param.ty, param.name.name),
+                indent + 2,
+                is_last_param,
+                &extend_prefix(&extend_prefix(&prefix, !is_last), !has_body),
+            );
+        }
+    } else {
+        print_branch(
+            "Params",
+            "(empty)",
+            indent + 1,
+            !has_body,
+            &extend_prefix(&prefix, !is_last),
+        );
+    }
+
+    if has_body {
+        print_branch(
+            "Body",
+            "",
+            indent + 1,
+            true,
+            &extend_prefix(&prefix, !is_last),
+        );
+        for (i, stmt) in func.body.statements.iter().enumerate() {
+            let last_stmt = i == func.body.statements.len() - 1;
+            visualize_stmt(
+                stmt,
+                indent + 2,
+                last_stmt,
+                extend_prefix(&extend_prefix(&prefix, !is_last), false),
+            );
+        }
     }
 }
 
@@ -61,7 +93,7 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 "Type",
                 &format!("{:?}", decl.ty),
                 indent + 1,
-                false,
+                decl.init.is_none(),
                 &extend_prefix(&prefix, !is_last),
             );
 
@@ -73,7 +105,12 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                     true,
                     &extend_prefix(&prefix, !is_last),
                 );
-                visualize_expr(init, indent + 2, true, extend_prefix(&prefix, !is_last));
+                visualize_expr(
+                    init,
+                    indent + 2,
+                    true,
+                    extend_prefix(&extend_prefix(&prefix, !is_last), false),
+                );
             }
         }
         Stmt::ExprStmt(expr) => {
@@ -91,12 +128,18 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                     true,
                     extend_prefix(&next_prefix, true),
                 );
-                print_branch("Then", "", indent + 1, false, &next_prefix);
+                print_branch(
+                    "Then",
+                    "",
+                    indent + 1,
+                    if_stmt.else_branch.is_none(),
+                    &next_prefix,
+                );
                 visualize_stmt(
                     &if_stmt.then_branch,
                     indent + 2,
                     true,
-                    extend_prefix(&next_prefix, true),
+                    extend_prefix(&next_prefix, if_stmt.else_branch.is_some()),
                 );
                 if let Some(else_branch) = &if_stmt.else_branch {
                     print_branch("Else", "", indent + 1, true, &next_prefix);
@@ -129,13 +172,27 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
             Control::For(for_stmt) => {
                 print_branch("For", "", indent, is_last, &prefix);
                 let next_prefix = extend_prefix(&prefix, !is_last);
+
+                let has_cond = for_stmt.cond.is_some();
+                let has_step = for_stmt.step.is_some();
+
                 if let Some(init) = &for_stmt.init {
-                    print_branch("Init", "", indent + 1, false, &next_prefix);
-                    visualize_expr(init, indent + 2, true, extend_prefix(&next_prefix, true));
+                    print_branch("Init", "", indent + 1, !has_cond && !has_step, &next_prefix);
+                    visualize_expr(
+                        init,
+                        indent + 2,
+                        true,
+                        extend_prefix(&next_prefix, has_cond || has_step),
+                    );
                 }
                 if let Some(cond) = &for_stmt.cond {
-                    print_branch("Cond", "", indent + 1, false, &next_prefix);
-                    visualize_expr(cond, indent + 2, true, extend_prefix(&next_prefix, true));
+                    print_branch("Cond", "", indent + 1, !has_step, &next_prefix);
+                    visualize_expr(
+                        cond,
+                        indent + 2,
+                        true,
+                        extend_prefix(&next_prefix, has_step),
+                    );
                 }
                 if let Some(step) = &for_stmt.step {
                     print_branch("Step", "", indent + 1, false, &next_prefix);
@@ -167,6 +224,27 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                     extend_prefix(&next_prefix, false),
                 );
             }
+            Control::Switch(switch_stmt) => {
+                print_branch("Switch", "", indent, is_last, &prefix);
+                let next_prefix = extend_prefix(&prefix, !is_last);
+                print_branch("Cond", "", indent + 1, false, &next_prefix);
+                visualize_expr(
+                    &switch_stmt.cond,
+                    indent + 2,
+                    true,
+                    extend_prefix(&next_prefix, true),
+                );
+                print_branch("Cases", "", indent + 1, true, &next_prefix);
+                for (i, case) in switch_stmt.cases.iter().enumerate() {
+                    let last_case = i == switch_stmt.cases.len() - 1;
+                    visualize_switch_case(
+                        case,
+                        indent + 2,
+                        last_case,
+                        extend_prefix(&next_prefix, false),
+                    );
+                }
+            }
         },
         Stmt::Block(block) => {
             print_branch("Block", "", indent, is_last, &prefix);
@@ -189,13 +267,64 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
     }
 }
 
+fn visualize_switch_case(case: &SwitchCase, indent: usize, is_last: bool, prefix: Vec<bool>) {
+    match case {
+        SwitchCase::Case(case_stmt) => {
+            print_branch("Case", "", indent, is_last, &prefix);
+            let next_prefix = extend_prefix(&prefix, !is_last);
+            print_branch(
+                "Expr",
+                "",
+                indent + 1,
+                case_stmt.stmts.is_empty(),
+                &next_prefix,
+            );
+            visualize_expr(
+                &case_stmt.expr,
+                indent + 2,
+                true,
+                extend_prefix(&next_prefix, !case_stmt.stmts.is_empty()),
+            );
+
+            if !case_stmt.stmts.is_empty() {
+                print_branch("Stmts", "", indent + 1, true, &next_prefix);
+                for (i, stmt) in case_stmt.stmts.iter().enumerate() {
+                    let last_stmt = i == case_stmt.stmts.len() - 1;
+                    visualize_stmt(
+                        stmt,
+                        indent + 2,
+                        last_stmt,
+                        extend_prefix(&next_prefix, false),
+                    );
+                }
+            }
+        }
+        SwitchCase::Default(default_case) => {
+            print_branch("Default", "", indent, is_last, &prefix);
+            if !default_case.stmts.is_empty() {
+                let next_prefix = extend_prefix(&prefix, !is_last);
+                print_branch("Stmts", "", indent + 1, true, &next_prefix);
+                for (i, stmt) in default_case.stmts.iter().enumerate() {
+                    let last_stmt = i == default_case.stmts.len() - 1;
+                    visualize_stmt(
+                        stmt,
+                        indent + 2,
+                        last_stmt,
+                        extend_prefix(&next_prefix, false),
+                    );
+                }
+            }
+        }
+    }
+}
+
 fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) {
     match expr {
         Expr::Num(n) => {
             print_branch("Num", &n.to_string(), indent, is_last, &prefix);
         }
         Expr::Char(c) => {
-            print_branch("Char", &format!("{:?}", c), indent, is_last, &prefix);
+            print_branch("Char", &format!("'{}'", c), indent, is_last, &prefix);
         }
         Expr::Ident(name) => {
             print_branch("Ident", &name.name, indent, is_last, &prefix);
@@ -209,8 +338,20 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 &prefix,
             );
             let new_prefix = extend_prefix(&prefix, !is_last);
-            visualize_expr(&binary.lhs, indent + 1, false, new_prefix.clone());
-            visualize_expr(&binary.rhs, indent + 1, true, new_prefix);
+            print_branch("LHS", "", indent + 1, false, &new_prefix);
+            visualize_expr(
+                &binary.lhs,
+                indent + 2,
+                true,
+                extend_prefix(&new_prefix, true),
+            );
+            print_branch("RHS", "", indent + 1, true, &new_prefix);
+            visualize_expr(
+                &binary.rhs,
+                indent + 2,
+                true,
+                extend_prefix(&new_prefix, false),
+            );
         }
         Expr::Unary(unary) => {
             print_branch(
@@ -244,9 +385,23 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
         }
         Expr::Call(call) => {
             print_branch("Call", &call.func.name, indent, is_last, &prefix);
-            for (i, arg) in call.args.iter().enumerate() {
-                let last = i == call.args.len() - 1;
-                visualize_expr(arg, indent + 1, last, extend_prefix(&prefix, !is_last));
+            if !call.args.is_empty() {
+                print_branch(
+                    "Args",
+                    "",
+                    indent + 1,
+                    true,
+                    &extend_prefix(&prefix, !is_last),
+                );
+                for (i, arg) in call.args.iter().enumerate() {
+                    let last = i == call.args.len() - 1;
+                    visualize_expr(
+                        arg,
+                        indent + 2,
+                        last,
+                        extend_prefix(&extend_prefix(&prefix, !is_last), false),
+                    );
+                }
             }
         }
         Expr::Assign(assign) => {
@@ -258,8 +413,20 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 &prefix,
             );
             let new_prefix = extend_prefix(&prefix, !is_last);
-            visualize_expr(&assign.lhs, indent + 1, false, new_prefix.clone());
-            visualize_expr(&assign.rhs, indent + 1, true, new_prefix);
+            print_branch("LHS", "", indent + 1, false, &new_prefix);
+            visualize_expr(
+                &assign.lhs,
+                indent + 2,
+                true,
+                extend_prefix(&new_prefix, true),
+            );
+            print_branch("RHS", "", indent + 1, true, &new_prefix);
+            visualize_expr(
+                &assign.rhs,
+                indent + 2,
+                true,
+                extend_prefix(&new_prefix, false),
+            );
         }
         Expr::Ternary(ternary) => {
             print_branch("Ternary", "", indent, is_last, &prefix);
@@ -268,14 +435,14 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
             visualize_expr(
                 &ternary.cond,
                 indent + 2,
-                false,
+                true,
                 extend_prefix(&new_prefix, true),
             );
             print_branch("Then", "", indent + 1, false, &new_prefix);
             visualize_expr(
                 &ternary.then_branch,
                 indent + 2,
-                false,
+                true,
                 extend_prefix(&new_prefix, true),
             );
             print_branch("Else", "", indent + 1, true, &new_prefix);

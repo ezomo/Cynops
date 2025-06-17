@@ -1,5 +1,5 @@
 use crate::symbols::{AssignOp, Block, Ident, Param, Program, TopLevel, Type, UnaryOp};
-use crate::symbols::{BinaryOp, Expr, FunctionDef, PostfixOp, Stmt};
+use crate::symbols::{BinaryOp, Expr, FunctionDef, PostfixOp, Stmt, SwitchCase};
 use crate::token::*;
 
 pub fn program(tokens: &mut Vec<Token>) -> Program {
@@ -21,7 +21,6 @@ fn function_def(tokens: &mut Vec<Token>) -> Box<FunctionDef> {
     let name = consume_ident(tokens);
     consume(Token::LParen, tokens);
     let params = param_list(tokens);
-    println!("{:?}", tokens);
     consume(Token::RParen, tokens);
     consume(Token::LBrace, tokens);
 
@@ -122,12 +121,47 @@ fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
         Stmt::block(*block(tokens))
     } else if is_next_type(tokens) {
         decl(tokens)
+    } else if consume(Token::r#switch(), tokens) {
+        consume(Token::LParen, tokens);
+        let cond = expr(tokens);
+        consume(Token::RParen, tokens);
+
+        consume(Token::LBrace, tokens);
+        let mut cases = Vec::new();
+        while !consume(Token::RBrace, tokens) {
+            let switch_case = case_clause(tokens);
+            cases.push(switch_case);
+        }
+        Stmt::r#switch(*cond, cases)
     } else {
         let tmp = expr(tokens);
         if !consume(Token::Semicolon, tokens) {
             panic!("error");
         }
         Stmt::expr(*tmp)
+    }
+}
+
+fn case_clause(tokens: &mut Vec<Token>) -> SwitchCase {
+    let get_tokens = |tokens: &mut Vec<Token>| {
+        if !consume(Token::Colon, tokens) {
+            panic!("expected ':' after case expression");
+        }
+
+        let mut stmts = vec![];
+        while !is_next_switch_stmt(tokens) {
+            stmts.push(stmt(tokens));
+        }
+
+        stmts
+    };
+
+    if consume(Token::case(), tokens) {
+        SwitchCase::case(*expr(tokens), get_tokens(tokens))
+    } else if consume(Token::default(), tokens) {
+        SwitchCase::default(get_tokens(tokens))
+    } else {
+        panic!("expected 'case' or 'default' in switch statement");
     }
 }
 
@@ -464,6 +498,15 @@ fn is_next_type(tokens: &[Token]) -> bool {
             | Token::Keyword(Keyword::Char)
             | Token::Keyword(Keyword::Void)
     );
+}
+
+fn is_next_switch_stmt(tokens: &[Token]) -> bool {
+    if tokens.is_empty() {
+        return false;
+    }
+    let next = tokens.first().unwrap();
+
+    return next == &Token::case() || next == &Token::default() || next == &Token::RBrace;
 }
 
 fn consume_atom(tokens: &mut Vec<Token>) -> Box<Expr> {

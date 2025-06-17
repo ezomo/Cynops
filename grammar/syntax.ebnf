@@ -14,7 +14,11 @@ stmt            = expr ";"                        // 式文
                 | "for" "(" [expr] ";" [expr] ";" [expr] ")" stmt // for 文
                 | "continue" ";"                  // continue
                 | "break" ";"                     // break
-                | "{" { stmt } "}" ;              // ブロック文
+                | "{" { stmt } "}"                // ブロック文
+                | "switch" "(" expr ")" "{" { case_clause } "}" ; // ← switch 文追加
+
+case_clause     = "case" expr ":" { stmt }                  // case 節
+                | "default" ":" { stmt } ;                  // default 節
 
 // 宣言文
 decl_stmt       = type ident [ "=" expr ] ";" ;
