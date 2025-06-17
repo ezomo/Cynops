@@ -135,6 +135,18 @@ fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
             cases.push(switch_case);
         }
         Stmt::r#switch(*cond, cases)
+    } else if consume(Token::r#goto(), tokens) {
+        let label = consume_ident(tokens);
+        if !consume(Token::Semicolon, tokens) {
+            panic!("expected semicolon after goto statement");
+        }
+        Stmt::goto(label)
+    } else if is_next_label(tokens) {
+        let name = consume_ident(tokens);
+        if !consume(Token::Colon, tokens) {
+            panic!("expected colon after label statement");
+        }
+        Stmt::label(name, *stmt(tokens))
     } else {
         let tmp = expr(tokens);
         if !consume(Token::Semicolon, tokens) {
@@ -512,6 +524,13 @@ fn is_next_switch_stmt(tokens: &[Token]) -> bool {
     let next = tokens.first().unwrap();
 
     return next == &Token::case() || next == &Token::default() || next == &Token::RBrace;
+}
+
+fn is_next_label(tokens: &[Token]) -> bool {
+    if tokens.len() < 2 {
+        return false;
+    }
+    return is_next_ident(tokens) && matches!(tokens[1], Token::Colon);
 }
 
 fn consume_atom(tokens: &mut Vec<Token>) -> Box<Expr> {

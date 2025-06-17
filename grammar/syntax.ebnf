@@ -14,6 +14,8 @@ stmt            = expr ";"                        // 式文
                 | "for" "(" [expr] ";" [expr] ";" [expr] ")" stmt // for 文
                 | "continue" ";"                  // continue
                 | "break" ";"                     // break
+                | "goto" ident ";"                // goto 文
+                | ident ":" stmt                  // ラベル
                 | "{" { stmt } "}"                // ブロック文
                 | "switch" "(" expr ")" "{" { case_clause } "}" ; // ← switch 文追加
 

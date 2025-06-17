@@ -1,4 +1,4 @@
-use crate::symbols::{Control, Expr, FunctionDef, Program, Stmt, SwitchCase, TopLevel};
+use crate::symbols::*;
 
 pub fn visualize_program(program: &Program) {
     println!("Program");
@@ -276,6 +276,38 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
         }
         Stmt::Continue => {
             print_branch("Continue", "", indent, is_last, &prefix);
+        }
+        Stmt::Goto(goto) => {
+            print_branch(
+                "Goto",
+                &format!("→ {}", goto.label.name),
+                indent,
+                is_last,
+                &prefix,
+            );
+        }
+        Stmt::Label(label) => {
+            print_branch(
+                "Label",
+                &format!("{}:", label.name.name),
+                indent,
+                is_last,
+                &prefix,
+            );
+            // ラベルに関連する文を表示
+            print_branch(
+                "Stmt",
+                "",
+                indent + 1,
+                true,
+                &extend_prefix(&prefix, !is_last),
+            );
+            visualize_stmt(
+                &label.stmt,
+                indent + 2,
+                true,
+                extend_prefix(&extend_prefix(&prefix, !is_last), false),
+            );
         }
     }
 }

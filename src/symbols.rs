@@ -181,6 +181,17 @@ pub struct Return {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct Label {
+    pub name: Ident,
+    pub stmt: Box<Stmt>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Goto {
+    pub label: Ident,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Control {
     If(If),
     While(While),
@@ -242,6 +253,8 @@ pub enum Stmt {
     Decl(Decl),
     Control(Control),
     Return(Return),
+    Goto(Goto),
+    Label(Label),
     Block(Block),
     Break,
     Continue,
@@ -321,6 +334,17 @@ impl Stmt {
     pub fn r#return(value: Option<Expr>) -> Box<Self> {
         Box::new(Stmt::Return(Return {
             value: value.map(Box::new),
+        }))
+    }
+
+    pub fn goto(label: Ident) -> Box<Self> {
+        Box::new(Stmt::Goto(Goto { label }))
+    }
+
+    pub fn label(name: Ident, stmt: Stmt) -> Box<Self> {
+        Box::new(Stmt::Label(Label {
+            name,
+            stmt: Box::new(stmt),
         }))
     }
 
