@@ -11,25 +11,87 @@ pub fn visualize_program(program: &Program) {
             TopLevel::Stmt(stmt) => {
                 visualize_stmt(stmt, 1, is_last, vec![]);
             }
+            TopLevel::FunctionProto(proto) => {
+                visualize_function_proto(proto, 1, is_last, vec![]);
+            }
         }
     }
 }
 
+fn visualize_function_proto(
+    proto: &FunctionProto,
+    indent: usize,
+    is_last: bool,
+    prefix: Vec<bool>,
+) {
+    print_branch(
+        "FunctionProto",
+        &proto.sig.name.name,
+        indent,
+        is_last,
+        &prefix,
+    );
+
+    let has_params = match &proto.sig.params {
+        ParamList::Void => false,
+        ParamList::Params(params) => !params.is_empty(),
+    };
+    let total_items = 1 + if has_params { 1 } else { 0 }; // ReturnType, Params
+
+    print_branch(
+        "ReturnType",
+        &format!("{:?}", proto.sig.ret_type),
+        indent + 1,
+        total_items == 1,
+        &extend_prefix(&prefix, !is_last),
+    );
+
+    if has_params {
+        print_branch(
+            "Params",
+            "",
+            indent + 1,
+            true,
+            &extend_prefix(&prefix, !is_last),
+        );
+        if let ParamList::Params(params) = &proto.sig.params {
+            for (i, param) in params.iter().enumerate() {
+                let is_last_param = i == params.len() - 1;
+                print_branch(
+                    "Param",
+                    &format!("{:?} {}", param.ty, param.name.name),
+                    indent + 2,
+                    is_last_param,
+                    &extend_prefix(&extend_prefix(&prefix, !is_last), !has_params),
+                );
+            }
+        }
+    } else {
+        print_branch(
+            "Params",
+            "(empty)",
+            indent + 1,
+            true,
+            &extend_prefix(&prefix, !is_last),
+        );
+    }
+}
+
 fn visualize_function_def(func: &FunctionDef, indent: usize, is_last: bool, prefix: Vec<bool>) {
-    print_branch("FunctionDef", &func.name.name, indent, is_last, &prefix);
+    print_branch("FunctionDef", &func.sig.name.name, indent, is_last, &prefix);
 
     let has_body = !func.body.statements.is_empty();
     let total_items = 2 + if has_body { 1 } else { 0 }; // ReturnType, Params, optionally Body
 
     print_branch(
         "ReturnType",
-        &format!("{:?}", func.ret_type),
+        &format!("{:?}", func.sig.ret_type),
         indent + 1,
         total_items == 1,
         &extend_prefix(&prefix, !is_last),
     );
 
-    match &func.params {
+    match &func.sig.params {
         crate::symbols::ParamList::Void => {
             print_branch(
                 "Params",

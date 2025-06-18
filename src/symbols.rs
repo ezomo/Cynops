@@ -224,10 +224,20 @@ pub enum ParamList {
     Params(Vec<Param>), // f(int x, char y)
 }
 #[derive(Debug, PartialEq, Clone)]
-pub struct FunctionDef {
+pub struct FunctionSig {
     pub ret_type: Type,
     pub name: Ident,
     pub params: ParamList,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct FunctionProto {
+    pub sig: FunctionSig,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct FunctionDef {
+    pub sig: FunctionSig,
     pub body: Block,
 }
 
@@ -239,6 +249,7 @@ pub struct Program {
 #[derive(Debug, PartialEq, Clone)]
 pub enum TopLevel {
     FunctionDef(FunctionDef),
+    FunctionProto(FunctionProto),
     Stmt(Stmt),
 }
 
@@ -273,6 +284,10 @@ impl TopLevel {
 
     pub fn stmt(stmt: Stmt) -> Self {
         TopLevel::Stmt(stmt)
+    }
+
+    pub fn function_proto(proto: FunctionProto) -> Self {
+        TopLevel::FunctionProto(proto)
     }
 }
 
@@ -533,14 +548,25 @@ impl Param {
     }
 }
 
-impl FunctionDef {
-    pub fn new(ret_type: Type, name: Ident, params: ParamList, body: Block) -> Box<Self> {
-        Box::new(Self {
+impl FunctionSig {
+    pub fn new(ret_type: Type, name: Ident, params: ParamList) -> Self {
+        Self {
             ret_type,
             name,
             params,
-            body,
-        })
+        }
+    }
+}
+
+impl FunctionProto {
+    pub fn new(sig: FunctionSig) -> Box<Self> {
+        Box::new(Self { sig })
+    }
+}
+
+impl FunctionDef {
+    pub fn new(sig: FunctionSig, body: Block) -> Box<Self> {
+        Box::new(Self { sig, body })
     }
 }
 

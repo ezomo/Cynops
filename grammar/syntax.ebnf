@@ -1,8 +1,15 @@
 // プログラム全体
 program         = { function_def | stmt } ;
 
+// 関数シグネチャ（定義と宣言で共通）
+function_sig     = type ident "(" ( "void" | param_list ) ")" ;
+
 // 関数定義
-function_def = type ident "(" ( "void" | param_list ) ")" "{" { stmt } "}" ;
+function_def     = function_sig "{" { stmt } "}" ;
+
+// 関数のプロトタイプ宣言
+prototype_decl   = function_sig ";" ;
+
 
 // (文)statement
 stmt            = expr ";"                        // 式文

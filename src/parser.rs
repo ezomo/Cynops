@@ -1,15 +1,21 @@
-use std::thread::panicking;
-
-use crate::symbols::{AssignOp, Block, Ident, Param, Program, TopLevel, Type, UnaryOp};
-use crate::symbols::{BinaryOp, Expr, FunctionDef, ParamList, PostfixOp, Stmt, SwitchCase};
+use crate::symbols::{
+    AssignOp, BinaryOp, Block, Expr, FunctionDef, FunctionProto, FunctionSig, Ident, Param,
+    ParamList, PostfixOp, Program, Stmt, SwitchCase, TopLevel, Type, UnaryOp,
+};
 use crate::token::*;
 
 pub fn program(tokens: &mut Vec<Token>) -> Program {
     let mut code = Program::new();
     while !tokens.is_empty() {
         if is_next_type(tokens) && is_next_fn(&tokens[1..]) {
-            code.items
-                .push(TopLevel::function_def(*function_def(tokens)));
+            let temp = function_proto(tokens);
+
+            if consume(Token::RBrace, tokens) {
+                code.items
+                    .push(TopLevel::function_def(*function_def(tokens)));
+            } else {
+                code.items.push(TopLevel::function_proto(*temp));
+            }
         } else {
             code.items.push(TopLevel::stmt(*stmt(tokens)));
         }
@@ -18,17 +24,27 @@ pub fn program(tokens: &mut Vec<Token>) -> Program {
     code
 }
 
-fn function_def(tokens: &mut Vec<Token>) -> Box<FunctionDef> {
+fn function_sig(tokens: &mut Vec<Token>) -> FunctionSig {
     let ret_type = consume_type(tokens);
     let name = consume_ident(tokens);
     consume(Token::LParen, tokens);
     let params = param_list(tokens);
     consume(Token::RParen, tokens);
+    FunctionSig::new(ret_type, name, params)
+}
+
+fn function_proto(tokens: &mut Vec<Token>) -> Box<FunctionProto> {
+    let sig = function_sig(tokens);
+    consume(Token::Semicolon, tokens);
+    FunctionProto::new(sig)
+}
+
+fn function_def(tokens: &mut Vec<Token>) -> Box<FunctionDef> {
+    let sig = function_sig(tokens);
     consume(Token::LBrace, tokens);
-
-    let body = block(tokens);
-
-    FunctionDef::new(ret_type, name, params, *body)
+    let body = *block(tokens);
+    consume(Token::RBrace, tokens);
+    FunctionDef::new(sig, body)
 }
 
 fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
@@ -447,6 +463,9 @@ fn param_list(tokens: &mut Vec<Token>) -> ParamList {
         let mut params = Vec::new();
         while consume(Token::Comma, tokens) {
             params.push(param(tokens));
+        }
+        if params.is_empty() {
+            eprintln!("警告: これは警告です");
         }
         ParamList::Params(params)
     }

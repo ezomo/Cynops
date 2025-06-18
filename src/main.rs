@@ -17,6 +17,8 @@ fn main() {
     let mut token = lexer::tokenize(&args[1].to_string());
     let program = parser::program(&mut token);
 
+    println!("{:#?}", program);
+
     println!("\nAST Visualization:");
     ast_visualizer::visualize_program(&program);
 }
