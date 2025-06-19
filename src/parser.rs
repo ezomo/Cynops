@@ -8,13 +8,12 @@ pub fn program(tokens: &mut Vec<Token>) -> Program {
     let mut code = Program::new();
     while !tokens.is_empty() {
         if is_next_type(tokens) && is_next_fn(&tokens[1..]) {
-            let temp = function_proto(tokens);
+            let sig = function_sig(tokens);
 
-            if consume(Token::RBrace, tokens) {
-                code.items
-                    .push(TopLevel::function_def(*function_def(tokens)));
+            if consume(Token::LBrace, tokens) {
+                code.items.push(TopLevel::function_def(sig, *block(tokens)));
             } else {
-                code.items.push(TopLevel::function_proto(*temp));
+                code.items.push(TopLevel::function_proto(sig));
             }
         } else {
             code.items.push(TopLevel::stmt(*stmt(tokens)));
@@ -459,13 +458,15 @@ fn arg_list(tokens: &mut Vec<Token>) -> Vec<Box<Expr>> {
 fn param_list(tokens: &mut Vec<Token>) -> ParamList {
     if consume(Token::void(), tokens) {
         ParamList::Void
+    } else if !is_next_type(tokens) {
+        // これは恐らくmain()のような書き方をしている
+        //だだしいのはmain(void)だけと一応通過させる後に禁止するかも
+        ParamList::Void
     } else {
-        let mut params = Vec::new();
+        let mut params = vec![param(tokens)];
+
         while consume(Token::Comma, tokens) {
             params.push(param(tokens));
-        }
-        if params.is_empty() {
-            eprintln!("worning: function has no parameters, you should use 'void' keyword");
         }
         ParamList::Params(params)
     }
