@@ -465,7 +465,7 @@ fn param_list(tokens: &mut Vec<Token>) -> ParamList {
             params.push(param(tokens));
         }
         if params.is_empty() {
-            eprintln!("警告: これは警告です");
+            eprintln!("worning: function has no parameters, you should use 'void' keyword");
         }
         ParamList::Params(params)
     }
