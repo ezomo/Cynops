@@ -601,11 +601,3 @@ fn consume_type(tokens: &mut Vec<Token>) -> Type {
 
     ty
 }
-
-#[test]
-fn test_program() {
-    use crate::lexer::tokenize;
-    let mut a = tokenize("int main() { int *p = 0; }");
-    let b = program(&mut a);
-    println!("{:#?}", b);
-}

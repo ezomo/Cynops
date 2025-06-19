@@ -1,9 +1,8 @@
-use std::env;
-use std::fs;
-use std::process;
+use std::{env, fs, process};
 mod ast_visualizer;
 mod lexer;
 mod parser;
+mod preprocessor;
 mod symbols;
 mod token;
 
@@ -14,7 +13,8 @@ fn main() {
         eprintln!("引数の個数が正しくありません");
         process::exit(1);
     }
-    let input = fs::read_to_string(&args[1]).unwrap();
+    let mut input = fs::read_to_string(&args[1]).unwrap();
+    preprocessor::remove_comments(&mut input);
     let mut token = lexer::tokenize(&input);
     let program = parser::program(&mut token);
 
