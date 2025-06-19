@@ -4,6 +4,7 @@ mod lexer;
 mod parser;
 mod preprocessor;
 mod symbols;
+mod test_cases;
 mod token;
 
 fn main() {
@@ -20,4 +21,9 @@ fn main() {
 
     println!("\nAST Visualization:");
     ast_visualizer::visualize_program(&program);
+}
+
+#[test]
+fn test() {
+    test_cases::run_tests("test_cases").expect("Test cases failed");
 }
