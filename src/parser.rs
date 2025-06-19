@@ -1,8 +1,8 @@
 use crate::symbols::{
-    AssignOp, BinaryOp, Block, Expr, FunctionDef, FunctionProto, FunctionSig, Ident, Param,
-    ParamList, PostfixOp, Program, Stmt, SwitchCase, TopLevel, Type, UnaryOp,
+    AssignOp, BinaryOp, Block, Expr, FunctionSig, Ident, Param, ParamList, PostfixOp, Program,
+    Stmt, SwitchCase, TopLevel, Type, UnaryOp,
 };
-use crate::token::*;
+use crate::token::{Keyword, Token};
 
 pub fn program(tokens: &mut Vec<Token>) -> Program {
     let mut code = Program::new();
@@ -10,8 +10,10 @@ pub fn program(tokens: &mut Vec<Token>) -> Program {
         if is_next_type(tokens) && is_next_fn(&tokens[1..]) {
             let sig = function_sig(tokens);
             if consume(Token::LBrace, tokens) {
+                // function definition
                 code.items.push(TopLevel::function_def(sig, *block(tokens)));
             } else {
+                // function prototype
                 code.items.push(TopLevel::function_proto(sig));
                 consume(Token::Semicolon, tokens);
             }
@@ -29,20 +31,6 @@ fn function_sig(tokens: &mut Vec<Token>) -> FunctionSig {
     let params = param_list(tokens);
     consume(Token::RParen, tokens);
     FunctionSig::new(ret_type, name, params)
-}
-
-fn function_proto(tokens: &mut Vec<Token>) -> Box<FunctionProto> {
-    let sig = function_sig(tokens);
-    consume(Token::Semicolon, tokens);
-    FunctionProto::new(sig)
-}
-
-fn function_def(tokens: &mut Vec<Token>) -> Box<FunctionDef> {
-    let sig = function_sig(tokens);
-    consume(Token::LBrace, tokens);
-    let body = *block(tokens);
-    consume(Token::RBrace, tokens);
-    FunctionDef::new(sig, body)
 }
 
 fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {

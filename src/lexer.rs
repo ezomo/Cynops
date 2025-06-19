@@ -37,7 +37,6 @@ pub fn tokenize(input: &str) -> Vec<Token> {
             }
 
             if input.starts_with('\'') {
-                println!("{:?}", input);
                 tokens.push(Token::Char(input.chars().nth(1).unwrap()));
                 if input.chars().nth(2).unwrap() != '\'' {
                     panic!("error")

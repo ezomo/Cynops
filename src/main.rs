@@ -1,4 +1,5 @@
 use std::env;
+use std::fs;
 use std::process;
 mod ast_visualizer;
 mod lexer;
@@ -13,8 +14,8 @@ fn main() {
         eprintln!("引数の個数が正しくありません");
         process::exit(1);
     }
-
-    let mut token = lexer::tokenize(&args[1].to_string());
+    let input = fs::read_to_string(&args[1]).unwrap();
+    let mut token = lexer::tokenize(&input);
     let program = parser::program(&mut token);
 
     println!("\nAST Visualization:");

@@ -561,18 +561,6 @@ impl FunctionSig {
     }
 }
 
-impl FunctionProto {
-    pub fn new(sig: FunctionSig) -> Box<Self> {
-        Box::new(Self { sig })
-    }
-}
-
-impl FunctionDef {
-    pub fn new(sig: FunctionSig, body: Block) -> Box<Self> {
-        Box::new(Self { sig, body })
-    }
-}
-
 impl Block {
     pub fn new(statements: Vec<Box<Stmt>>) -> Box<Self> {
         Box::new(Self { statements })
