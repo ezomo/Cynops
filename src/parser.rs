@@ -9,17 +9,16 @@ pub fn program(tokens: &mut Vec<Token>) -> Program {
     while !tokens.is_empty() {
         if is_next_type(tokens) && is_next_fn(&tokens[1..]) {
             let sig = function_sig(tokens);
-
             if consume(Token::LBrace, tokens) {
                 code.items.push(TopLevel::function_def(sig, *block(tokens)));
             } else {
                 code.items.push(TopLevel::function_proto(sig));
+                consume(Token::Semicolon, tokens);
             }
         } else {
             code.items.push(TopLevel::stmt(*stmt(tokens)));
         }
     }
-
     code
 }
 
@@ -48,11 +47,14 @@ fn function_def(tokens: &mut Vec<Token>) -> Box<FunctionDef> {
 
 fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
     if consume(Token::r#return(), tokens) {
-        let tmp = Stmt::r#return(Some(*expr(tokens)));
-        if !consume(Token::Semicolon, tokens) {
-            panic!("error");
-        }
-        tmp
+        let expr_opt = if consume(Token::Semicolon, tokens) {
+            None
+        } else {
+            let tmp = *expr(tokens);
+            consume(Token::Semicolon, tokens);
+            Some(tmp)
+        };
+        Stmt::r#return(expr_opt)
     } else if consume(Token::r#if(), tokens) {
         Stmt::r#if(
             {

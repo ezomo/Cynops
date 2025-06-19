@@ -278,16 +278,19 @@ impl Program {
 }
 
 impl TopLevel {
-    pub fn function_def(def: FunctionDef) -> Self {
-        TopLevel::FunctionDef(def)
+    pub fn function_def(function_sig: FunctionSig, stmt: Block) -> Self {
+        TopLevel::FunctionDef(FunctionDef {
+            sig: function_sig,
+            body: stmt,
+        })
     }
 
     pub fn stmt(stmt: Stmt) -> Self {
         TopLevel::Stmt(stmt)
     }
 
-    pub fn function_proto(proto: FunctionProto) -> Self {
-        TopLevel::FunctionProto(proto)
+    pub fn function_proto(function_sig: FunctionSig) -> Self {
+        TopLevel::FunctionProto(FunctionProto { sig: function_sig })
     }
 }
 
