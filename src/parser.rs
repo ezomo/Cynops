@@ -1,7 +1,4 @@
-use crate::symbols::{
-    AssignOp, BinaryOp, Block, Expr, FunctionSig, Ident, Param, ParamList, PostfixOp, Program,
-    Stmt, SwitchCase, TopLevel, Type, UnaryOp,
-};
+use crate::symbols::*;
 use crate::token::{Keyword, Token};
 
 pub fn program(tokens: &mut Vec<Token>) -> Program {
@@ -38,7 +35,7 @@ fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
         let expr_opt = if consume(Token::Semicolon, tokens) {
             None
         } else {
-            let tmp = *expr(tokens);
+            let tmp = expr(tokens);
             consume(Token::Semicolon, tokens);
             Some(tmp)
         };
@@ -49,7 +46,7 @@ fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
                 consume(Token::LParen, tokens);
                 let tmp = expr(tokens);
                 consume(Token::RParen, tokens);
-                *tmp
+                tmp
             },
             *stmt(tokens),
             {
@@ -66,7 +63,7 @@ fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
                 consume(Token::LParen, tokens);
                 let tmp = expr(tokens);
                 consume(Token::RParen, tokens);
-                *tmp
+                tmp
             },
             *stmt(tokens),
         )
@@ -81,7 +78,7 @@ fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
         if !consume(Token::Semicolon, tokens) {
             panic!("expected semicolon after do-while statement");
         }
-        Stmt::do_while(body, *condition)
+        Stmt::do_while(body, condition)
     } else if consume(Token::r#for(), tokens) {
         consume(Token::LParen, tokens);
         Stmt::r#for(
@@ -91,16 +88,16 @@ fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
                 } else {
                     let tmp = expr(tokens);
                     consume(Token::Semicolon, tokens);
-                    Some(*tmp)
+                    Some(tmp)
                 }
             },
             {
                 if consume(Token::Semicolon, tokens) {
-                    Some(*Expr::num(0))
+                    Some(Expr::num(0))
                 } else {
                     let tmp = expr(tokens);
                     consume(Token::Semicolon, tokens);
-                    Some(*tmp)
+                    Some(tmp)
                 }
             },
             {
@@ -109,7 +106,7 @@ fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
                 } else {
                     let tmp = expr(tokens);
                     consume(Token::RParen, tokens);
-                    Some(*tmp)
+                    Some(tmp)
                 }
             },
             *stmt(tokens),
@@ -127,7 +124,7 @@ fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
     } else if consume(Token::LBrace, tokens) {
         Stmt::block(*block(tokens))
     } else if is_next_type(tokens) {
-        decl(tokens)
+        Stmt::decl_stmt(decl_stmt(tokens))
     } else if consume(Token::r#switch(), tokens) {
         consume(Token::LParen, tokens);
         let cond = expr(tokens);
@@ -139,7 +136,7 @@ fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
             let switch_case = case_clause(tokens);
             cases.push(switch_case);
         }
-        Stmt::r#switch(*cond, cases)
+        Stmt::r#switch(cond, cases)
     } else if consume(Token::r#goto(), tokens) {
         let label = consume_ident(tokens);
         if !consume(Token::Semicolon, tokens) {
@@ -157,7 +154,7 @@ fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
         if !consume(Token::Semicolon, tokens) {
             panic!("error");
         }
-        Stmt::expr(*tmp)
+        Stmt::expr(tmp)
     }
 }
 
@@ -176,7 +173,7 @@ fn case_clause(tokens: &mut Vec<Token>) -> SwitchCase {
     };
 
     if consume(Token::case(), tokens) {
-        SwitchCase::case(*expr(tokens), get_tokens(tokens))
+        SwitchCase::case(expr(tokens), get_tokens(tokens))
     } else if consume(Token::default(), tokens) {
         SwitchCase::default(get_tokens(tokens))
     } else {
@@ -184,18 +181,92 @@ fn case_clause(tokens: &mut Vec<Token>) -> SwitchCase {
     }
 }
 
-fn decl(tokens: &mut Vec<Token>) -> Box<Stmt> {
-    let ty = consume_type(tokens);
-    let name = consume_ident(tokens);
-    let init = if consume(Token::Equal, tokens) {
-        Some(*expr(tokens))
+fn decl_stmt(tokens: &mut Vec<Token>) -> DeclStmt {
+    DeclStmt::new(consume_type(tokens), {
+        let mut init_declarators = vec![init_declarator(tokens)];
+        while consume(Token::Comma, tokens) {
+            init_declarators.push(init_declarator(tokens));
+        }
+        consume(Token::Semicolon, tokens);
+        init_declarators
+    })
+}
+fn init_declarator(tokens: &mut Vec<Token>) -> InitDeclarator {
+    InitDeclarator::new(declarator(tokens), {
+        if consume(Token::Equal, tokens) {
+            Some(initializer(tokens))
+        } else {
+            None
+        }
+    })
+}
+
+fn initializer(tokens: &mut Vec<Token>) -> Initializer {
+    if consume(Token::LBrace, tokens) {
+        let tmp = Initializer::list(initializer_list(tokens));
+        consume(Token::RBrace, tokens);
+        tmp
     } else {
-        None
-    };
-    if !consume(Token::Semicolon, tokens) {
-        panic!("expected semicolon after declaration");
+        Initializer::expr(expr(tokens))
     }
-    Stmt::decl(ty, name, init)
+}
+
+fn initializer_list(tokens: &mut Vec<Token>) -> Vec<Initializer> {
+    let mut initializers = vec![initializer(tokens)];
+    while consume(Token::Comma, tokens) {
+        initializers.push(initializer(tokens));
+    }
+    initializers
+}
+
+fn declarator(tokens: &mut Vec<Token>) -> Declarator {
+    let mut poiner_level = 0;
+    while consume(Token::Asterisk, tokens) {
+        poiner_level += 1;
+    }
+
+    if poiner_level == 0 {
+        Declarator::direct(direct_declarator(tokens))
+    } else {
+        Declarator::pointer(poiner_level, direct_declarator(tokens))
+    }
+}
+
+fn direct_declarator(tokens: &mut Vec<Token>) -> DirectDeclarator {
+    let mut base = if consume(Token::LParen, tokens) {
+        let inner = declarator(tokens);
+        consume(Token::RBrace, tokens);
+        DirectDeclarator::paren(inner)
+    } else if is_next_ident(tokens) {
+        DirectDeclarator::ident(consume_ident(tokens))
+    } else {
+        panic!("invalid start");
+    };
+
+    // ★ ここで左再帰をループに展開
+    loop {
+        if consume(Token::LBracket, tokens) {
+            let size = if !consume(Token::RBracket, tokens) {
+                Some(expr(tokens))
+            } else {
+                None
+            };
+            consume(Token::RBracket, tokens);
+            base = DirectDeclarator::array(base, size)
+        } else if consume(Token::LParen, tokens) {
+            let params = if !consume(Token::RParen, tokens) {
+                Some(param_list(tokens))
+            } else {
+                None
+            };
+            consume(Token::RParen, tokens);
+            base = DirectDeclarator::func(base, params)
+        } else {
+            break;
+        }
+    }
+
+    base
 }
 
 fn block(tokens: &mut Vec<Token>) -> Box<Block> {
@@ -208,8 +279,8 @@ fn block(tokens: &mut Vec<Token>) -> Box<Block> {
     Block::new(code)
 }
 
-fn expr(tokens: &mut Vec<Token>) -> Box<Expr> {
-    assign(tokens)
+fn expr(tokens: &mut Vec<Token>) -> Expr {
+    *assign(tokens)
 }
 
 fn assign(tokens: &mut Vec<Token>) -> Box<Expr> {
@@ -395,11 +466,11 @@ fn unary(tokens: &mut Vec<Token>) -> Box<Expr> {
     } else if consume(Token::MinusMinus, tokens) {
         Expr::unary(UnaryOp::minus_minus(), unary(tokens))
     } else {
-        postfix(tokens)
+        Box::new(postfix(tokens))
     }
 }
 
-fn postfix(tokens: &mut Vec<Token>) -> Box<Expr> {
+fn postfix(tokens: &mut Vec<Token>) -> Expr {
     let node = primary(tokens);
     if consume(Token::PlusPlus, tokens) {
         Expr::postfix(PostfixOp::plus_plus(), node)
@@ -410,7 +481,7 @@ fn postfix(tokens: &mut Vec<Token>) -> Box<Expr> {
     }
 }
 
-fn primary(tokens: &mut Vec<Token>) -> Box<Expr> {
+fn primary(tokens: &mut Vec<Token>) -> Expr {
     // 次のトークンが"("なら、"(" expr ")"のはず
     if consume(Token::LParen, tokens) {
         let node = expr(tokens);
@@ -437,9 +508,9 @@ fn primary(tokens: &mut Vec<Token>) -> Box<Expr> {
 fn arg_list(tokens: &mut Vec<Token>) -> Vec<Box<Expr>> {
     let mut args = Vec::new();
     if !tokens.is_empty() && *tokens.first().unwrap() != Token::RParen {
-        args.push(expr(tokens));
+        args.push(Box::new(expr(tokens)));
         while consume(Token::Comma, tokens) {
-            args.push(expr(tokens));
+            args.push(Box::new(expr(tokens)));
         }
     }
     args
@@ -543,7 +614,7 @@ fn is_next_label(tokens: &[Token]) -> bool {
     return is_next_ident(tokens) && matches!(tokens[1], Token::Colon);
 }
 
-fn consume_atom(tokens: &mut Vec<Token>) -> Box<Expr> {
+fn consume_atom(tokens: &mut Vec<Token>) -> Expr {
     if tokens.is_empty() {
         panic!("Expected atom, but no tokens available");
     }
@@ -567,7 +638,7 @@ fn consume_ident(tokens: &mut Vec<Token>) -> Ident {
         tokens.remove(0);
         Ident::new(name)
     } else {
-        panic!("Expected identifier, found {:?}", tokens.first());
+        panic!("Expected identifier, found {:?}", tokens);
     }
 }
 
@@ -576,7 +647,7 @@ fn consume_type(tokens: &mut Vec<Token>) -> Type {
         panic!("Expected type, but no tokens available");
     }
 
-    let base_type = if let Some(Token::Keyword(kw)) = tokens.first() {
+    if let Some(Token::Keyword(kw)) = tokens.first() {
         let ty = match kw {
             Keyword::Int => Type::Int,
             Keyword::Char => Type::Char,
@@ -587,17 +658,5 @@ fn consume_type(tokens: &mut Vec<Token>) -> Type {
         ty
     } else {
         panic!("Expected type, found {:?}", tokens.first());
-    };
-
-    let mut pointer_depth: usize = 0;
-    while consume(Token::Asterisk, tokens) {
-        pointer_depth += 1;
     }
-    // ポインタの深さに応じてネスト
-    let mut ty = base_type;
-    for _ in 0..pointer_depth {
-        ty = Type::pointer(ty);
-    }
-
-    ty
 }

@@ -58,6 +58,8 @@ pub enum Token {
     RParen,    // ')'
     LBrace,    // '{'
     RBrace,    // '}'
+    LBracket,  // '['
+    RBracket,  // ']'
     Semicolon, // ';'
     Comma,     // ','
 
@@ -85,7 +87,7 @@ pub enum Keyword {
 }
 
 impl Token {
-    pub const SYMBOLS: [(&str, Self); 57] = [
+    pub const SYMBOLS: [(&str, Self); 59] = [
         ("?", Self::Question),
         (":", Self::Colon),
         ("+", Self::Plus),
@@ -109,6 +111,8 @@ impl Token {
         (")", Self::RParen),
         ("{", Self::LBrace),
         ("}", Self::RBrace),
+        ("[", Self::LBracket),
+        ("]", Self::RBracket),
         ("=", Self::Equal),
         ("+=", Self::PlusEqual),
         ("-=", Self::MinusEqual),

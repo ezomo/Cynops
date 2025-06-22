@@ -122,7 +122,6 @@ pub enum Type {
     Void,
     Int,
     Char,
-    Pointer(Box<Type>),
 }
 
 // ステートメント（文）
@@ -201,10 +200,46 @@ pub enum Control {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Decl {
+pub struct DeclStmt {
     pub ty: Type,
-    pub name: Ident,
-    pub init: Option<Box<Expr>>,
+    pub declarators: Vec<InitDeclarator>,
+}
+#[derive(Debug, PartialEq, Clone)]
+pub struct InitDeclarator {
+    pub declarator: Declarator,
+    pub init: Option<Initializer>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Pointer {
+    pub level: usize,
+    pub inner: Box<DirectDeclarator>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Declarator {
+    Pointer(Pointer),
+    Direct(DirectDeclarator),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum DirectDeclarator {
+    Ident(Ident),
+    Paren(Box<Declarator>), // 例: (*f)
+    Array {
+        base: Box<DirectDeclarator>,
+        size: Option<Expr>,
+    },
+    Func {
+        base: Box<DirectDeclarator>,
+        params: Option<ParamList>,
+    },
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Initializer {
+    Expr(Box<Expr>),
+    List(Vec<Initializer>), // 複合初期化子: {1, 2}
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -261,7 +296,7 @@ pub struct Block {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Stmt {
     ExprStmt(Expr), // 式文（関数呼び出し、代入など）
-    Decl(Decl),
+    DeclStmt(DeclStmt),
     Control(Control),
     Return(Return),
     Goto(Goto),
@@ -299,12 +334,8 @@ impl Stmt {
         Box::new(Stmt::ExprStmt(expr))
     }
 
-    pub fn decl(ty: Type, name: Ident, init: Option<Expr>) -> Box<Self> {
-        Box::new(Stmt::Decl(Decl {
-            ty,
-            name,
-            init: init.map(Box::new),
-        }))
+    pub fn decl_stmt(decl_stmt: DeclStmt) -> Box<Self> {
+        Box::new(Stmt::DeclStmt(decl_stmt))
     }
 
     pub fn r#if(cond: Expr, then_branch: Stmt, else_branch: Option<Stmt>) -> Box<Self> {
@@ -378,35 +409,38 @@ impl Stmt {
 }
 
 impl Expr {
-    pub fn num(n: usize) -> Box<Self> {
-        Box::new(Expr::Num(n))
+    pub fn num(n: usize) -> Self {
+        Expr::Num(n)
     }
 
-    pub fn char_lit(c: char) -> Box<Self> {
-        Box::new(Expr::Char(c))
+    pub fn char_lit(c: char) -> Self {
+        Expr::Char(c)
     }
 
-    pub fn ident(name: Ident) -> Box<Self> {
-        Box::new(Expr::Ident(name))
+    pub fn ident(name: Ident) -> Self {
+        Expr::Ident(name)
     }
 
     pub fn unary(op: UnaryOp, expr: Box<Expr>) -> Box<Self> {
         Box::new(Expr::Unary(Unary { op, expr }))
     }
 
-    pub fn postfix(op: PostfixOp, expr: Box<Expr>) -> Box<Self> {
-        Box::new(Expr::Postfix(Postfix { op, expr }))
+    pub fn postfix(op: PostfixOp, expr: Expr) -> Self {
+        Expr::Postfix(Postfix {
+            op,
+            expr: Box::new(expr),
+        })
     }
 
     pub fn binary(op: BinaryOp, lhs: Box<Expr>, rhs: Box<Expr>) -> Box<Self> {
         Box::new(Expr::Binary(Binary { op, lhs, rhs }))
     }
 
-    pub fn ternary(cond: Box<Expr>, then_branch: Box<Expr>, else_branch: Box<Expr>) -> Box<Self> {
+    pub fn ternary(cond: Box<Expr>, then_branch: Expr, else_branch: Expr) -> Box<Self> {
         Box::new(Expr::Ternary(Ternary {
             cond,
-            then_branch,
-            else_branch,
+            then_branch: Box::new(then_branch),
+            else_branch: Box::new(else_branch),
         }))
     }
 
@@ -414,8 +448,8 @@ impl Expr {
         Box::new(Expr::Assign(Assign { op, lhs, rhs }))
     }
 
-    pub fn call(func: Ident, args: Vec<Box<Expr>>) -> Box<Self> {
-        Box::new(Expr::Call(Call { func: func, args }))
+    pub fn call(func: Ident, args: Vec<Box<Expr>>) -> Self {
+        Expr::Call(Call { func: func, args })
     }
 }
 
@@ -539,12 +573,6 @@ impl Ident {
     }
 }
 
-impl Type {
-    pub fn pointer(inner: Type) -> Self {
-        Type::Pointer(Box::new(inner))
-    }
-}
-
 impl Param {
     pub fn new(ty: Type, name: Ident) -> Self {
         Self { ty, name }
@@ -613,5 +641,70 @@ impl SwitchCase {
 
     pub fn default(stmts: Vec<Box<Stmt>>) -> Self {
         SwitchCase::Default(DefaultCase { stmts })
+    }
+}
+
+impl DeclStmt {
+    pub fn new(ty: Type, declarators: Vec<InitDeclarator>) -> Self {
+        DeclStmt { ty, declarators }
+    }
+}
+
+impl InitDeclarator {
+    pub fn new(declarator: Declarator, init: Option<Initializer>) -> Self {
+        InitDeclarator { declarator, init }
+    }
+}
+
+impl Declarator {
+    pub fn pointer(level: usize, inner: DirectDeclarator) -> Self {
+        Declarator::Pointer(Pointer {
+            level,
+            inner: Box::new(inner),
+        })
+    }
+
+    pub fn direct(direct: DirectDeclarator) -> Self {
+        Declarator::Direct(direct)
+    }
+}
+
+impl DirectDeclarator {
+    /// 識別子からDirectDeclaratorを作る
+    pub fn ident(name: Ident) -> Self {
+        DirectDeclarator::Ident(name)
+    }
+
+    /// 括弧つきDeclaratorからDirectDeclaratorを作る
+    pub fn paren(decl: Declarator) -> Self {
+        DirectDeclarator::Paren(Box::new(decl))
+    }
+
+    /// 配列型DirectDeclaratorを作る
+    pub fn array(base: DirectDeclarator, size: Option<Expr>) -> Self {
+        DirectDeclarator::Array {
+            base: Box::new(base),
+            size,
+        }
+    }
+
+    /// 関数型DirectDeclaratorを作る
+    pub fn func(base: DirectDeclarator, params: Option<ParamList>) -> Self {
+        DirectDeclarator::Func {
+            base: Box::new(base),
+            params,
+        }
+    }
+}
+
+impl Initializer {
+    /// 単一式による初期化子を作る
+    pub fn expr(expr: Expr) -> Self {
+        Initializer::Expr(Box::new(expr))
+    }
+
+    /// 複合リストによる初期化子を作る
+    pub fn list(list: Vec<Initializer>) -> Self {
+        Initializer::List(list)
     }
 }
