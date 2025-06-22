@@ -13,7 +13,7 @@ prototype_decl   = function_sig ";" ;
 
 // (文)statement
 stmt            = expr ";"                        // 式文
-                | decl_stmt                       // 宣言文 ← new!
+                | decl_stmt                       // 宣言文
                 | "return" expr ";"               // return 文
                 | "if" "(" expr ")" stmt ["else" stmt]    // if 文
                 | "while" "(" expr ")" stmt       // while 文
@@ -30,10 +30,18 @@ case_clause     = "case" expr ":" { stmt }                  // case 節
                 | "default" ":" { stmt } ;                  // default 節
 
 // 宣言文
-decl_stmt       = type ident [ "=" expr ] ";" ;
+decl_stmt         = type init_declarator { "," init_declarator } ";" ;
+init_declarator   = declarator [ "=" initializer  ] ;
+initializer       = expr | "{" initializer_list "}" ;
+initializer_list  = initializer { "," initializer } ;
+declarator        = { "*" } direct_declarator ;
+direct_declarator = ident
+                  | "(" declarator ")"                      // 関数ポインタなど
+                  | direct_declarator "[" [expr] "]"        // 配列
+                  | direct_declarator "(" [param_list] ")" ;// 関数
 
 // 型
-type            = "int" | "char" | "void" | type "*" ; // ポインタ対応
+type              = "int" | "char" | "void" ;
 
 // 式(expression)
 expr            = assign ;
