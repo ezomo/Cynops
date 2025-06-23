@@ -22,12 +22,7 @@ pub fn program(tokens: &mut Vec<Token>) -> Program {
 }
 
 fn function_sig(tokens: &mut Vec<Token>) -> FunctionSig {
-    let ret_type = consume_type(tokens);
-    let name = consume_ident(tokens);
-    consume(Token::LParen, tokens);
-    let params = param_list(tokens);
-    consume(Token::RParen, tokens);
-    FunctionSig::new(ret_type, name, params)
+    FunctionSig::new(consume_type(tokens), declarator(tokens))
 }
 
 fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
@@ -534,9 +529,7 @@ fn param_list(tokens: &mut Vec<Token>) -> ParamList {
 }
 
 fn param(tokens: &mut Vec<Token>) -> Param {
-    let ty = consume_type(tokens);
-    let name = consume_ident(tokens);
-    Param::new(ty, name)
+    Param::new(consume_type(tokens), declarator(tokens))
 }
 
 fn consume(op: Token, tokens: &mut Vec<Token>) -> bool {

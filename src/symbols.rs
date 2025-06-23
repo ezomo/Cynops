@@ -251,7 +251,7 @@ pub struct Call {
 #[derive(Debug, PartialEq, Clone)]
 pub struct Param {
     pub ty: Type,
-    pub name: Ident,
+    pub name: Declarator,
 }
 #[derive(Debug, PartialEq, Clone)]
 pub enum ParamList {
@@ -261,8 +261,7 @@ pub enum ParamList {
 #[derive(Debug, PartialEq, Clone)]
 pub struct FunctionSig {
     pub ret_type: Type,
-    pub name: Ident,
-    pub params: ParamList,
+    pub declarator: Declarator,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -574,17 +573,16 @@ impl Ident {
 }
 
 impl Param {
-    pub fn new(ty: Type, name: Ident) -> Self {
+    pub fn new(ty: Type, name: Declarator) -> Self {
         Self { ty, name }
     }
 }
 
 impl FunctionSig {
-    pub fn new(ret_type: Type, name: Ident, params: ParamList) -> Self {
-        Self {
+    pub fn new(ret_type: Type, declarator: Declarator) -> Self {
+        FunctionSig {
             ret_type,
-            name,
-            params,
+            declarator,
         }
     }
 }

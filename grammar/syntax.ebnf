@@ -2,7 +2,7 @@
 program         = { function_def | stmt } ;
 
 // 関数シグネチャ（定義と宣言で共通）
-function_sig     = type ident "(" ( "void" | param_list ) ")" ;
+function_sig     = type declarator;
 
 // 関数定義
 function_def     = function_sig "{" { stmt } "}" ;
@@ -79,7 +79,7 @@ primary         = ident "(" [arg_list] ")"    // 関数呼び出し
 // 関数の引数・引数リスト
 arg_list        = expr { "," expr } ;
 param_list      = param { "," param } ;
-param           = type ident ;
+param           = type declarator;
 
 
 // 終端記号
