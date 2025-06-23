@@ -738,32 +738,30 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
             );
         }
         Expr::Call(call) => {
-            print_branch("FunctionCall", &call.func.name, indent, is_last, &prefix);
+            print_branch("FunctionCall", "", indent, is_last, &prefix);
+            let next_prefix = extend_prefix(&prefix, !is_last);
+
+            print_branch("Function", "", indent + 1, false, &next_prefix);
+            visualize_expr(
+                &call.func,
+                indent + 2,
+                true,
+                extend_prefix(&next_prefix, true),
+            );
+
             if !call.args.is_empty() {
-                print_branch(
-                    "Arguments",
-                    "",
-                    indent + 1,
-                    true,
-                    &extend_prefix(&prefix, !is_last),
-                );
+                print_branch("Arguments", "", indent + 1, true, &next_prefix);
                 for (i, arg) in call.args.iter().enumerate() {
                     let last = i == call.args.len() - 1;
                     visualize_expr(
                         arg,
                         indent + 2,
                         last,
-                        extend_prefix(&extend_prefix(&prefix, !is_last), false),
+                        extend_prefix(&extend_prefix(&next_prefix, false), false),
                     );
                 }
             } else {
-                print_branch(
-                    "Arguments",
-                    "(empty)",
-                    indent + 1,
-                    true,
-                    &extend_prefix(&prefix, !is_last),
-                );
+                print_branch("Arguments", "(empty)", indent + 1, true, &next_prefix);
             }
         }
         Expr::Assign(assign) => {

@@ -244,7 +244,7 @@ pub enum Initializer {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Call {
-    pub func: Ident,
+    pub func: Box<Expr>,
     pub args: Vec<Box<Expr>>,
 }
 
@@ -447,8 +447,11 @@ impl Expr {
         Box::new(Expr::Assign(Assign { op, lhs, rhs }))
     }
 
-    pub fn call(func: Ident, args: Vec<Box<Expr>>) -> Self {
-        Expr::Call(Call { func: func, args })
+    pub fn call(func: Expr, args: Vec<Box<Expr>>) -> Self {
+        Expr::Call(Call {
+            func: Box::new(func),
+            args,
+        })
     }
 }
 

@@ -186,6 +186,7 @@ fn decl_stmt(tokens: &mut Vec<Token>) -> DeclStmt {
         init_declarators
     })
 }
+
 fn init_declarator(tokens: &mut Vec<Token>) -> InitDeclarator {
     InitDeclarator::new(declarator(tokens), {
         if consume(Token::Equal, tokens) {
@@ -471,6 +472,10 @@ fn postfix(tokens: &mut Vec<Token>) -> Expr {
         Expr::postfix(PostfixOp::plus_plus(), node)
     } else if consume(Token::MinusMinus, tokens) {
         Expr::postfix(PostfixOp::minus_minus(), node)
+    } else if consume(Token::LParen, tokens) {
+        let tmp = Expr::call(node, arg_list(tokens));
+        consume(Token::RParen, tokens);
+        tmp
     } else {
         node
     }
@@ -488,15 +493,7 @@ fn primary(tokens: &mut Vec<Token>) -> Expr {
     if is_next_atom(tokens) {
         consume_atom(tokens)
     } else {
-        if is_next_fn(tokens) {
-            let tmp1 = consume_ident(tokens);
-            consume(Token::LParen, tokens);
-            let tmp2 = Expr::call(tmp1, arg_list(tokens));
-            consume(Token::RParen, tokens);
-            tmp2
-        } else {
-            Expr::ident(consume_ident(tokens))
-        }
+        Expr::ident(consume_ident(tokens))
     }
 }
 

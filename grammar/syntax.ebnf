@@ -67,11 +67,14 @@ unary           = ( "++" | "--" | "+" | "-" | "*" | "&" | "!" | "~" ) unary
                 | postfix ;
 
 //後置式(postfix)
-postfix          = primary [ "++" | "--" ] ;
+postfix = primary { 
+              "[" expr "]"              // 配列アクセス
+            | "(" [ arg_list ] ")"      // 関数呼び出し
+            | "++" | "--"               // 後置インクリメント／デクリメント
+          } ;
 
 // プライマリ式(関数呼び出し・識別子・数値など)
-primary         = ident "(" [arg_list] ")"    // 関数呼び出し
-                | ident                       // 変数
+primary         = ident                       // 変数
                 | num                         // 整数リテラル
                 | char_lit                    // 文字
                 | "(" expr ")" ;              // 括弧つき式
