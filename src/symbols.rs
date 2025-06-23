@@ -114,6 +114,7 @@ pub enum Expr {
     Unary(Unary),
     Postfix(Postfix),
     Call(Call),
+    Subscript(Subscript), // 添え字アクセス（配列やポインタ）
     Assign(Assign),
 }
 
@@ -246,6 +247,12 @@ pub enum Initializer {
 pub struct Call {
     pub func: Box<Expr>,
     pub args: Vec<Box<Expr>>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Subscript {
+    pub name: Box<Expr>,
+    pub index: Box<Expr>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -451,6 +458,12 @@ impl Expr {
         Expr::Call(Call {
             func: Box::new(func),
             args,
+        })
+    }
+    pub fn subscript(name: Expr, index: Expr) -> Self {
+        Expr::Subscript(Subscript {
+            name: Box::new(name),
+            index: Box::new(index),
         })
     }
 }

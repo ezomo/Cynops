@@ -476,6 +476,10 @@ fn postfix(tokens: &mut Vec<Token>) -> Expr {
         let tmp = Expr::call(node, arg_list(tokens));
         consume(Token::RParen, tokens);
         tmp
+    } else if consume(Token::LBracket, tokens) {
+        let tmp = Expr::subscript(node, expr(tokens));
+        consume(Token::RBracket, tokens);
+        tmp
     } else {
         node
     }

@@ -818,6 +818,26 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 extend_prefix(&new_prefix, false),
             );
         }
+        Expr::Subscript(array_access) => {
+            print_branch("ArrayAccess", "", indent, is_last, &prefix);
+            let next_prefix = extend_prefix(&prefix, !is_last);
+
+            print_branch("Array", "", indent + 1, false, &next_prefix);
+            visualize_expr(
+                &array_access.name,
+                indent + 2,
+                true,
+                extend_prefix(&next_prefix, true),
+            );
+
+            print_branch("Index", "", indent + 1, true, &next_prefix);
+            visualize_expr(
+                &array_access.index,
+                indent + 2,
+                true,
+                extend_prefix(&next_prefix, false),
+            );
+        }
     }
 }
 
