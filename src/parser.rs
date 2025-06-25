@@ -216,6 +216,7 @@ fn initializer_list(tokens: &mut Vec<Token>) -> Vec<Initializer> {
 }
 
 fn declarator(tokens: &mut Vec<Token>) -> Declarator {
+    println!("_dec_{:?}", tokens);
     let mut poiner_level = 0;
     while consume(Token::Asterisk, tokens) {
         poiner_level += 1;
@@ -229,14 +230,20 @@ fn declarator(tokens: &mut Vec<Token>) -> Declarator {
 }
 
 fn direct_declarator(tokens: &mut Vec<Token>) -> DirectDeclarator {
+    println!("_dir_{:?}", tokens);
+
     let mut base = if consume(Token::LParen, tokens) {
+        println!("here2==");
         let inner = declarator(tokens);
-        consume(Token::RBrace, tokens);
+        consume(Token::RParen, tokens);
+        println!("here2==c__{:?}", tokens);
+
         DirectDeclarator::paren(inner)
     } else if is_next_ident(tokens) {
+        println!("here==");
         DirectDeclarator::ident(consume_ident(tokens))
     } else {
-        panic!("invalid start");
+        panic!("{:?}", tokens);
     };
 
     // ★ ここで左再帰をループに展開
@@ -251,6 +258,7 @@ fn direct_declarator(tokens: &mut Vec<Token>) -> DirectDeclarator {
             base = DirectDeclarator::array(base, size)
         } else if consume(Token::LParen, tokens) {
             let params = if !consume(Token::RParen, tokens) {
+                println!("there_1__{:?}", tokens);
                 Some(param_list(tokens))
             } else {
                 None
@@ -513,6 +521,8 @@ fn arg_list(tokens: &mut Vec<Token>) -> Vec<Box<Expr>> {
 }
 
 fn param_list(tokens: &mut Vec<Token>) -> ParamList {
+    println!("_param_list_{:?}", tokens);
+
     if consume(Token::void(), tokens) {
         ParamList::Void
     } else if !is_next_type(tokens) {
@@ -530,7 +540,14 @@ fn param_list(tokens: &mut Vec<Token>) -> ParamList {
 }
 
 fn param(tokens: &mut Vec<Token>) -> Param {
-    Param::new(consume_type(tokens), declarator(tokens))
+    println!("_param_{:?}", tokens);
+    Param::new(consume_type(tokens), {
+        if is_next_declarator(tokens) {
+            Some(declarator(tokens))
+        } else {
+            None
+        }
+    })
 }
 
 fn consume(op: Token, tokens: &mut Vec<Token>) -> bool {
@@ -606,6 +623,15 @@ fn is_next_label(tokens: &[Token]) -> bool {
         return false;
     }
     return is_next_ident(tokens) && matches!(tokens[1], Token::Colon);
+}
+
+fn is_next_declarator(tokens: &[Token]) -> bool {
+    if tokens.is_empty() {
+        return false;
+    }
+    let next = tokens.first().unwrap();
+
+    return next == &Token::Asterisk || next == &Token::LParen || matches!(next, Token::Ident(_));
 }
 
 fn consume_atom(tokens: &mut Vec<Token>) -> Expr {
