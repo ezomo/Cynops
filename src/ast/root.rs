@@ -7,6 +7,11 @@ use super::decl::FunctionDef;
 pub struct Program {
     pub items: Vec<TopLevel>,
 }
+impl Program {
+    pub fn new() -> Self {
+        Self { items: vec![] }
+    }
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct FunctionProto {
@@ -19,13 +24,6 @@ pub enum TopLevel {
     FunctionProto(FunctionProto),
     Stmt(Stmt),
 }
-
-impl Program {
-    pub fn new() -> Self {
-        Self { items: vec![] }
-    }
-}
-
 impl TopLevel {
     pub fn function_def(function_sig: FunctionSig, stmt: Block) -> Self {
         TopLevel::FunctionDef(FunctionDef {

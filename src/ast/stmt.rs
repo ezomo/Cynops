@@ -4,6 +4,11 @@ use super::{DeclStmt, Expr, Ident};
 pub struct Block {
     pub statements: Vec<Box<Stmt>>,
 }
+impl Block {
+    pub fn new(statements: Vec<Box<Stmt>>) -> Box<Self> {
+        Box::new(Self { statements })
+    }
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct If {
@@ -34,6 +39,16 @@ pub struct Switch {
     pub cond: Box<Expr>,
     pub cases: Vec<SwitchCase>,
 }
+impl SwitchCase {
+    pub fn case(expr: Expr, stmts: Vec<Box<Stmt>>) -> Self {
+        SwitchCase::Case(Case { expr, stmts })
+    }
+
+    pub fn default(stmts: Vec<Box<Stmt>>) -> Self {
+        SwitchCase::Default(DefaultCase { stmts })
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct While {
     pub cond: Box<Expr>,
@@ -91,7 +106,6 @@ pub enum Stmt {
     Break,
     Continue,
 }
-
 impl Stmt {
     pub fn expr(expr: Expr) -> Box<Self> {
         Box::new(Stmt::ExprStmt(expr))
@@ -168,21 +182,5 @@ impl Stmt {
     }
     pub fn r#continue() -> Box<Self> {
         Box::new(Stmt::Continue)
-    }
-}
-
-impl Block {
-    pub fn new(statements: Vec<Box<Stmt>>) -> Box<Self> {
-        Box::new(Self { statements })
-    }
-}
-
-impl SwitchCase {
-    pub fn case(expr: Expr, stmts: Vec<Box<Stmt>>) -> Self {
-        SwitchCase::Case(Case { expr, stmts })
-    }
-
-    pub fn default(stmts: Vec<Box<Stmt>>) -> Self {
-        SwitchCase::Default(DefaultCase { stmts })
     }
 }

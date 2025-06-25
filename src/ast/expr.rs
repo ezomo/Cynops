@@ -1,23 +1,9 @@
 use super::{AssignOp, BinaryOp, Ident, PostfixOp, UnaryOp};
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Expr {
-    Num(usize),
-    Char(char),
-    Ident(Ident),
-    Binary(Binary),
-    Ternary(Ternary), // 三項演算子（条件 ? 真の値 : 偽の値）
-    Unary(Unary),
-    Postfix(Postfix),
-    Call(Call),
-    Subscript(Subscript), // 添え字アクセス（配列やポインタ）
-    Assign(Assign),
-}
-
-#[derive(Debug, PartialEq, Clone)]
 pub struct Postfix {
-    pub op: PostfixOp,
     pub expr: Box<Expr>,
+    pub op: PostfixOp,
 }
 #[derive(Debug, PartialEq, Clone)]
 pub struct Unary {
@@ -58,6 +44,19 @@ pub struct Subscript {
     pub index: Box<Expr>,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum Expr {
+    Assign(Assign),
+    Binary(Binary),
+    Call(Call),
+    Char(char),
+    Ident(Ident),
+    Num(usize),
+    Postfix(Postfix),
+    Subscript(Subscript),
+    Ternary(Ternary),
+    Unary(Unary),
+}
 impl Expr {
     pub fn num(n: usize) -> Self {
         Expr::Num(n)
@@ -109,44 +108,5 @@ impl Expr {
             name: Box::new(name),
             index: Box::new(index),
         })
-    }
-}
-
-impl UnaryOp {
-    pub fn minus() -> Self {
-        UnaryOp::Minus // -x
-    }
-
-    pub fn bang() -> Self {
-        UnaryOp::Bang // !x
-    }
-
-    pub fn tilde() -> Self {
-        UnaryOp::Tilde // ~x
-    }
-
-    pub fn ampersand() -> Self {
-        UnaryOp::Ampersand // &x
-    }
-
-    pub fn asterisk() -> Self {
-        UnaryOp::Asterisk // *x
-    }
-
-    pub fn plus_plus() -> Self {
-        UnaryOp::PlusPlus // ++x
-    }
-    pub fn minus_minus() -> Self {
-        UnaryOp::MinusMinus // --x
-    }
-}
-
-impl PostfixOp {
-    pub fn plus_plus() -> Self {
-        PostfixOp::PlusPlus // x++
-    }
-
-    pub fn minus_minus() -> Self {
-        PostfixOp::MinusMinus // x--
     }
 }

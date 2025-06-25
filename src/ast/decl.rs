@@ -1,16 +1,28 @@
-use super::Block;
-use super::types::{FunctionSig, Type};
-use super::{Expr, Ident};
+use super::{
+    Block, Expr, Ident,
+    types::{FunctionSig, Type},
+};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct DeclStmt {
     pub ty: Type,
     pub declarators: Vec<InitDeclarator>,
 }
+impl DeclStmt {
+    pub fn new(ty: Type, declarators: Vec<InitDeclarator>) -> Self {
+        DeclStmt { ty, declarators }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct InitDeclarator {
     pub declarator: Declarator,
     pub init: Option<Initializer>,
+}
+impl InitDeclarator {
+    pub fn new(declarator: Declarator, init: Option<Initializer>) -> Self {
+        InitDeclarator { declarator, init }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -23,6 +35,18 @@ pub struct Pointer {
 pub enum Declarator {
     Pointer(Pointer),
     Direct(DirectDeclarator),
+}
+impl Declarator {
+    pub fn pointer(level: usize, inner: DirectDeclarator) -> Self {
+        Declarator::Pointer(Pointer {
+            level,
+            inner: Box::new(inner),
+        })
+    }
+
+    pub fn direct(direct: DirectDeclarator) -> Self {
+        Declarator::Direct(direct)
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -38,55 +62,6 @@ pub enum DirectDeclarator {
         params: Option<ParamList>,
     },
 }
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Param {
-    pub ty: Type,
-    pub name: Declarator,
-}
-#[derive(Debug, PartialEq, Clone)]
-pub enum ParamList {
-    Void,               // f(void)
-    Params(Vec<Param>), // f(int x, char y)
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum Initializer {
-    Expr(Box<Expr>),
-    List(Vec<Initializer>), // 複合初期化子: {1, 2}
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct FunctionDef {
-    pub sig: FunctionSig,
-    pub body: Block,
-}
-
-impl DeclStmt {
-    pub fn new(ty: Type, declarators: Vec<InitDeclarator>) -> Self {
-        DeclStmt { ty, declarators }
-    }
-}
-
-impl InitDeclarator {
-    pub fn new(declarator: Declarator, init: Option<Initializer>) -> Self {
-        InitDeclarator { declarator, init }
-    }
-}
-
-impl Declarator {
-    pub fn pointer(level: usize, inner: DirectDeclarator) -> Self {
-        Declarator::Pointer(Pointer {
-            level,
-            inner: Box::new(inner),
-        })
-    }
-
-    pub fn direct(direct: DirectDeclarator) -> Self {
-        Declarator::Direct(direct)
-    }
-}
-
 impl DirectDeclarator {
     /// 識別子からDirectDeclaratorを作る
     pub fn ident(name: Ident) -> Self {
@@ -115,6 +90,28 @@ impl DirectDeclarator {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct Param {
+    pub ty: Type,
+    pub name: Declarator,
+}
+impl Param {
+    pub fn new(ty: Type, name: Declarator) -> Self {
+        Self { ty, name }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum ParamList {
+    Void,               // f(void)
+    Params(Vec<Param>), // f(int x, char y)
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Initializer {
+    Expr(Box<Expr>),
+    List(Vec<Initializer>), // 複合初期化子: {1, 2}
+}
 impl Initializer {
     /// 単一式による初期化子を作る
     pub fn expr(expr: Expr) -> Self {
@@ -127,8 +124,8 @@ impl Initializer {
     }
 }
 
-impl Param {
-    pub fn new(ty: Type, name: Declarator) -> Self {
-        Self { ty, name }
-    }
+#[derive(Debug, PartialEq, Clone)]
+pub struct FunctionDef {
+    pub sig: FunctionSig,
+    pub body: Block,
 }

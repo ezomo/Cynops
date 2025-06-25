@@ -34,85 +34,6 @@ pub enum BinaryOp {
     Comparison(Comparison),
     Logical(Logical),
 }
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum AssignOp {
-    Equal,               // '='
-    PlusEqual,           // '+='
-    MinusEqual,          // '-='
-    AsteriskEqual,       // '*='
-    SlashEqual,          // '/='
-    PercentEqual,        // '%='
-    CaretEqual,          // '^='
-    PipeEqual,           // '|='
-    LessLessEqual,       // '<<='
-    GreaterGreaterEqual, // '>>='
-    AmpersandEqual,      // '&='
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum UnaryOp {
-    Minus,      // -x
-    Bang,       // !x
-    Tilde,      // ~x
-    Ampersand,  // &x
-    Asterisk,   // *x
-    PlusPlus,   // ++x
-    MinusMinus, // --x
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum PostfixOp {
-    PlusPlus,   // x++
-    MinusMinus, // x--
-}
-
-impl AssignOp {
-    pub fn equal() -> Self {
-        AssignOp::Equal
-    }
-
-    pub fn plus_equal() -> Self {
-        AssignOp::PlusEqual
-    }
-
-    pub fn minus_equal() -> Self {
-        AssignOp::MinusEqual
-    }
-
-    pub fn asterisk_equal() -> Self {
-        AssignOp::AsteriskEqual
-    }
-
-    pub fn slash_equal() -> Self {
-        AssignOp::SlashEqual
-    }
-
-    pub fn percent_equal() -> Self {
-        AssignOp::PercentEqual
-    }
-
-    pub fn caret_equal() -> Self {
-        AssignOp::CaretEqual
-    }
-
-    pub fn pipe_equal() -> Self {
-        AssignOp::PipeEqual
-    }
-
-    pub fn less_less_equal() -> Self {
-        AssignOp::LessLessEqual
-    }
-
-    pub fn greater_greater_equal() -> Self {
-        AssignOp::GreaterGreaterEqual
-    }
-
-    pub fn ampersand_equal() -> Self {
-        AssignOp::AmpersandEqual
-    }
-}
-
 impl BinaryOp {
     pub fn plus() -> Self {
         BinaryOp::Arithmetic(Arithmetic::Plus)
@@ -177,5 +98,119 @@ impl BinaryOp {
     }
     pub fn pipe_pipe() -> Self {
         BinaryOp::Logical(Logical::PipePipe)
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum AssignOp {
+    Equal,               // '='
+    PlusEqual,           // '+='
+    MinusEqual,          // '-='
+    AsteriskEqual,       // '*='
+    SlashEqual,          // '/='
+    PercentEqual,        // '%='
+    CaretEqual,          // '^='
+    PipeEqual,           // '|='
+    LessLessEqual,       // '<<='
+    GreaterGreaterEqual, // '>>='
+    AmpersandEqual,      // '&='
+}
+impl AssignOp {
+    pub fn equal() -> Self {
+        AssignOp::Equal
+    }
+
+    pub fn plus_equal() -> Self {
+        AssignOp::PlusEqual
+    }
+
+    pub fn minus_equal() -> Self {
+        AssignOp::MinusEqual
+    }
+
+    pub fn asterisk_equal() -> Self {
+        AssignOp::AsteriskEqual
+    }
+
+    pub fn slash_equal() -> Self {
+        AssignOp::SlashEqual
+    }
+
+    pub fn percent_equal() -> Self {
+        AssignOp::PercentEqual
+    }
+
+    pub fn caret_equal() -> Self {
+        AssignOp::CaretEqual
+    }
+
+    pub fn pipe_equal() -> Self {
+        AssignOp::PipeEqual
+    }
+
+    pub fn less_less_equal() -> Self {
+        AssignOp::LessLessEqual
+    }
+
+    pub fn greater_greater_equal() -> Self {
+        AssignOp::GreaterGreaterEqual
+    }
+
+    pub fn ampersand_equal() -> Self {
+        AssignOp::AmpersandEqual
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum UnaryOp {
+    Minus,      // -x
+    Bang,       // !x
+    Tilde,      // ~x
+    Ampersand,  // &x
+    Asterisk,   // *x
+    PlusPlus,   // ++x
+    MinusMinus, // --x
+}
+impl UnaryOp {
+    pub fn minus() -> Self {
+        UnaryOp::Minus // -x
+    }
+
+    pub fn bang() -> Self {
+        UnaryOp::Bang // !x
+    }
+
+    pub fn tilde() -> Self {
+        UnaryOp::Tilde // ~x
+    }
+
+    pub fn ampersand() -> Self {
+        UnaryOp::Ampersand // &x
+    }
+
+    pub fn asterisk() -> Self {
+        UnaryOp::Asterisk // *x
+    }
+
+    pub fn plus_plus() -> Self {
+        UnaryOp::PlusPlus // ++x
+    }
+    pub fn minus_minus() -> Self {
+        UnaryOp::MinusMinus // --x
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum PostfixOp {
+    PlusPlus,   // x++
+    MinusMinus, // x--
+}
+impl PostfixOp {
+    pub fn plus_plus() -> Self {
+        PostfixOp::PlusPlus // x++
+    }
+
+    pub fn minus_minus() -> Self {
+        PostfixOp::MinusMinus // x--
     }
 }
