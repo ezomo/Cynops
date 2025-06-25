@@ -1,4 +1,4 @@
-use crate::symbols::*;
+use crate::ast::*;
 use crate::token::{Keyword, Token};
 
 pub fn program(tokens: &mut Vec<Token>) -> Program {

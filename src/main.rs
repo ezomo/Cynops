@@ -1,9 +1,9 @@
 use std::{env, fs, process};
+mod ast;
 mod ast_visualizer;
 mod lexer;
 mod parser;
 mod preprocessor;
-mod symbols;
 mod test_cases;
 mod token;
 

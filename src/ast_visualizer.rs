@@ -1,4 +1,4 @@
-use crate::symbols::*;
+use crate::ast::*;
 
 pub fn visualize_program(program: &Program) {
     println!("Program");
