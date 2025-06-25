@@ -148,7 +148,14 @@ fn visualize_function_def(func: &FunctionDef, indent: usize, is_last: bool, pref
                     let is_last_param = i == param_count - 1;
                     print_branch(
                         "Param",
-                        &format!("{:?} {}", param.ty, extract_function_name(&param.name)),
+                        &format!(
+                            "{:?} {}",
+                            param.ty,
+                            match &param.name {
+                                Some(decl) => extract_function_name(decl),
+                                None => "<no name>".to_string(),
+                            }
+                        ),
                         indent + 2,
                         is_last_param,
                         &extend_prefix(&extend_prefix(&prefix, !is_last), !has_body),
@@ -561,7 +568,14 @@ fn visualize_param_list(param_list: &ParamList, indent: usize, is_last: bool, pr
                     let is_last_param = i == params.len() - 1 && is_last;
                     print_branch(
                         "Parameter",
-                        &format!("{:?} {}", param.ty, extract_function_name(&param.name)),
+                        &format!(
+                            "{:?} {}",
+                            param.ty,
+                            match &param.name {
+                                Some(decl) => extract_function_name(decl),
+                                None => "<no name>".to_string(),
+                            }
+                        ),
                         indent,
                         is_last_param,
                         &prefix,

@@ -114,7 +114,7 @@ mod tests {
     #[test]
     fn test_single_parser_case() {
         // 単一のテストケース用
-        let mut input = String::from("int main() { return 0; }");
+        let mut input = String::from("int *filter(int (*judge)(int));");
 
         match run_parser_test(&mut input) {
             Ok(_) => println!("単一テストケース: PASS"),

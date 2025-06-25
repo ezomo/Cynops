@@ -82,7 +82,7 @@ primary         = ident                       // 変数
 // 関数の引数・引数リスト
 arg_list        = expr { "," expr } ;
 param_list      = param { "," param } ;
-param           = type declarator;
+param           = type [declarator];
 
 
 // 終端記号

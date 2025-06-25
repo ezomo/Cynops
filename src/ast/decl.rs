@@ -93,11 +93,11 @@ impl DirectDeclarator {
 #[derive(Debug, PartialEq, Clone)]
 pub struct Param {
     pub ty: Type,
-    pub name: Declarator,
+    pub name: Option<Declarator>,
 }
 impl Param {
-    pub fn new(ty: Type, name: Declarator) -> Self {
-        Self { ty, name }
+    pub fn new(ty: Type, name: Option<Declarator>) -> Self {
+        Self { ty, name: name }
     }
 }
 
