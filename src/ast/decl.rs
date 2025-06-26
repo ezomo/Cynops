@@ -1,17 +1,28 @@
 use super::{
     Block, Expr, Ident,
-    types::{FunctionSig, Type},
+    types::{FunctionSig, Struct, Type},
 };
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct DeclStmt {
+pub enum DeclStmt {
+    Typed(Typed),
+    Struct(Struct),
+}
+
+impl DeclStmt {
+    pub fn typed(ty: Type, declarators: Vec<InitDeclarator>) -> Self {
+        DeclStmt::Typed(Typed { ty, declarators })
+    }
+
+    pub fn struct_decl(s: Struct) -> Self {
+        DeclStmt::Struct(s)
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Typed {
     pub ty: Type,
     pub declarators: Vec<InitDeclarator>,
-}
-impl DeclStmt {
-    pub fn new(ty: Type, declarators: Vec<InitDeclarator>) -> Self {
-        DeclStmt { ty, declarators }
-    }
 }
 
 #[derive(Debug, PartialEq, Clone)]

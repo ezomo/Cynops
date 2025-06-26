@@ -118,7 +118,7 @@ fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
         Stmt::r#continue()
     } else if consume(Token::LBrace, tokens) {
         Stmt::block(*block(tokens))
-    } else if is_next_type(tokens) {
+    } else if is_next_decl_stmt(tokens) {
         Stmt::decl_stmt(decl_stmt(tokens))
     } else if consume(Token::r#switch(), tokens) {
         consume(Token::LParen, tokens);
@@ -177,14 +177,18 @@ fn case_clause(tokens: &mut Vec<Token>) -> SwitchCase {
 }
 
 fn decl_stmt(tokens: &mut Vec<Token>) -> DeclStmt {
-    DeclStmt::new(consume_type(tokens), {
-        let mut init_declarators = vec![init_declarator(tokens)];
-        while consume(Token::Comma, tokens) {
-            init_declarators.push(init_declarator(tokens));
-        }
-        consume(Token::Semicolon, tokens);
-        init_declarators
-    })
+    if consume(Token::r#struct(), tokens) {
+        DeclStmt::Struct(struct_def(tokens))
+    } else {
+        DeclStmt::typed(consume_type(tokens), {
+            let mut init_declarators = vec![init_declarator(tokens)];
+            while consume(Token::Comma, tokens) {
+                init_declarators.push(init_declarator(tokens));
+            }
+            consume(Token::Semicolon, tokens);
+            init_declarators
+        })
+    }
 }
 
 fn init_declarator(tokens: &mut Vec<Token>) -> InitDeclarator {
@@ -264,6 +268,30 @@ fn direct_declarator(tokens: &mut Vec<Token>) -> DirectDeclarator {
     }
 
     base
+}
+
+fn struct_def(tokens: &mut Vec<Token>) -> Struct {
+    Struct::new(consume_ident(tokens), {
+        consume(Token::LBrace, tokens);
+        let mut ms = vec![struct_member(tokens)];
+        while !consume(Token::RBrace, tokens) {
+            ms.push(struct_member(tokens));
+        }
+
+        consume(Token::Semicolon, tokens);
+        ms
+    })
+}
+
+fn struct_member(tokens: &mut Vec<Token>) -> StructMember {
+    StructMember::new(consume_type(tokens), {
+        let mut decs = vec![declarator(tokens)];
+        while consume(Token::Comma, tokens) {
+            decs.push(declarator(tokens));
+        }
+        consume(Token::Semicolon, tokens);
+        decs
+    })
 }
 
 fn block(tokens: &mut Vec<Token>) -> Box<Block> {
@@ -622,6 +650,14 @@ fn is_next_declarator(tokens: &[Token]) -> bool {
     let next = tokens.first().unwrap();
 
     return next == &Token::Asterisk || next == &Token::LParen || matches!(next, Token::Ident(_));
+}
+
+fn is_next_decl_stmt(tokens: &[Token]) -> bool {
+    if tokens.is_empty() {
+        return false;
+    }
+
+    is_next_type(tokens) || tokens.first().unwrap() == &Token::Keyword(Keyword::Struct)
 }
 
 fn consume_atom(tokens: &mut Vec<Token>) -> Expr {

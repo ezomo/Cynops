@@ -30,7 +30,7 @@ case_clause     = "case" expr ":" { stmt }                  // case 節
                 | "default" ":" { stmt } ;                  // default 節
 
 // 宣言文
-decl_stmt         = type init_declarator { "," init_declarator } ";" ;
+decl_stmt         = struct_def | type init_declarator { "," init_declarator } ";" ;
 init_declarator   = declarator [ "=" initializer  ] ;
 initializer       = expr | "{" initializer_list "}" ;
 initializer_list  = initializer { "," initializer } ;
@@ -40,8 +40,12 @@ direct_declarator = ident
                   | direct_declarator "[" [expr] "]"        // 配列
                   | direct_declarator "(" [param_list] ")" ;// 関数
 
+// 構造体
+struct_def        = "struct" ident "{" { struct_member } "}" ";" ;
+struct_member     = type declarator { "," declarator } ";" ;
+
 // 型
-type              = "int" | "char" | "void" ;
+type              = "int" | "char" | "void" | "struct" ident ;
 
 // 式(expression)
 expr            = assign ;

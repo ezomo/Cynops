@@ -31,3 +31,26 @@ impl Ident {
         Self { name: name.into() }
     }
 }
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Struct {
+    pub name: Ident,
+    pub members: Vec<StructMember>,
+}
+impl Struct {
+    pub fn new(name: Ident, members: Vec<StructMember>) -> Self {
+        Self { name, members }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct StructMember {
+    pub ty: Type,
+    pub declarators: Vec<Declarator>,
+}
+
+impl StructMember {
+    pub fn new(ty: Type, declarators: Vec<Declarator>) -> Self {
+        Self { ty, declarators }
+    }
+}

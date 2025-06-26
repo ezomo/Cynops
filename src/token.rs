@@ -84,10 +84,11 @@ pub enum Keyword {
     Case,     // 'case'
     Default,  // 'default'
     Goto,     // 'goto'
+    Struct,   // 'struct'
 }
 
 impl Token {
-    pub const SYMBOLS: [(&str, Self); 59] = [
+    pub const SYMBOLS: [(&str, Self); 60] = [
         ("?", Self::Question),
         (":", Self::Colon),
         ("+", Self::Plus),
@@ -147,6 +148,7 @@ impl Token {
         ("case", Self::Keyword(Keyword::Case)),
         ("default", Self::Keyword(Keyword::Default)),
         ("goto", Self::Keyword(Keyword::Goto)),
+        ("struct", Self::Keyword(Keyword::Struct)),
     ];
 
     pub fn classify(input: &str) -> Option<Self> {
@@ -211,5 +213,8 @@ impl Token {
     }
     pub fn r#goto() -> Self {
         Token::Keyword(Keyword::Goto)
+    }
+    pub fn r#struct() -> Self {
+        Token::Keyword(Keyword::Struct)
     }
 }
