@@ -1,3 +1,5 @@
+use crate::ast::Union;
+
 use super::{
     Block, Expr, Ident,
     types::{FunctionSig, Struct, Type},
@@ -7,6 +9,7 @@ use super::{
 pub enum DeclStmt {
     Typed(Typed),
     Struct(Struct),
+    Union(Union),
 }
 
 impl DeclStmt {
@@ -16,6 +19,10 @@ impl DeclStmt {
 
     pub fn struct_decl(s: Struct) -> Self {
         DeclStmt::Struct(s)
+    }
+
+    pub fn union_decl(u: Union) -> Self {
+        DeclStmt::Union(u)
     }
 }
 

@@ -264,6 +264,44 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                     }
                 }
             }
+            DeclStmt::Union(struct_decl) => {
+                print_branch(
+                    "StructDeclStmt",
+                    &format!("{:?}", struct_decl.name),
+                    indent,
+                    is_last,
+                    &prefix,
+                );
+
+                let next_prefix = extend_prefix(&prefix, !is_last);
+                print_branch("Members", "", indent + 1, true, &next_prefix);
+
+                for (i, member) in struct_decl.members.iter().enumerate() {
+                    let is_last_member = i == struct_decl.members.len() - 1;
+                    print_branch(
+                        "Member",
+                        &format!("{:?}", member.ty),
+                        indent + 2,
+                        is_last_member,
+                        &extend_prefix(&next_prefix, false),
+                    );
+
+                    // Visualize each declarator within the member
+                    let member_prefix =
+                        extend_prefix(&extend_prefix(&next_prefix, false), !is_last_member);
+                    print_branch("Declarators", "", indent + 3, true, &member_prefix);
+
+                    for (j, declarator) in member.declarators.iter().enumerate() {
+                        let is_last_declarator = j == member.declarators.len() - 1;
+                        visualize_declarator(
+                            declarator,
+                            indent + 4,
+                            is_last_declarator,
+                            extend_prefix(&member_prefix, false),
+                        );
+                    }
+                }
+            }
         },
         Stmt::ExprStmt(expr) => {
             print_branch("ExprStmt", "", indent, is_last, &prefix);

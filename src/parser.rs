@@ -179,6 +179,8 @@ fn case_clause(tokens: &mut Vec<Token>) -> SwitchCase {
 fn decl_stmt(tokens: &mut Vec<Token>) -> DeclStmt {
     if consume(Token::r#struct(), tokens) {
         DeclStmt::struct_decl(struct_def(tokens))
+    } else if consume(Token::r#union(), tokens) {
+        DeclStmt::union_decl(union_def(tokens))
     } else {
         DeclStmt::typed(consume_type(tokens), {
             let mut init_declarators = vec![init_declarator(tokens)];
@@ -273,9 +275,9 @@ fn direct_declarator(tokens: &mut Vec<Token>) -> DirectDeclarator {
 fn struct_def(tokens: &mut Vec<Token>) -> Struct {
     Struct::new(consume_ident(tokens), {
         consume(Token::LBrace, tokens);
-        let mut ms = vec![struct_member(tokens)];
+        let mut ms = vec![decl_member(tokens)];
         while !consume(Token::RBrace, tokens) {
-            ms.push(struct_member(tokens));
+            ms.push(decl_member(tokens));
         }
 
         consume(Token::Semicolon, tokens);
@@ -283,8 +285,21 @@ fn struct_def(tokens: &mut Vec<Token>) -> Struct {
     })
 }
 
-fn struct_member(tokens: &mut Vec<Token>) -> StructMember {
-    StructMember::new(consume_type(tokens), {
+fn union_def(tokens: &mut Vec<Token>) -> Union {
+    Union::new(consume_ident(tokens), {
+        consume(Token::LBrace, tokens);
+        let mut ms = vec![decl_member(tokens)];
+        while !consume(Token::RBrace, tokens) {
+            ms.push(decl_member(tokens));
+        }
+
+        consume(Token::Semicolon, tokens);
+        ms
+    })
+}
+
+fn decl_member(tokens: &mut Vec<Token>) -> MemberDecl {
+    MemberDecl::new(consume_type(tokens), {
         let mut decs = vec![declarator(tokens)];
         while consume(Token::Comma, tokens) {
             decs.push(declarator(tokens));
@@ -687,7 +702,9 @@ fn is_next_decl_stmt(tokens: &[Token]) -> bool {
         return false;
     }
 
-    is_next_type(tokens) || tokens.first().unwrap() == &Token::Keyword(Keyword::Struct)
+    is_next_type(tokens)
+        || tokens.first().unwrap() == &Token::r#struct()
+        || tokens.first().unwrap() == &Token::union()
 }
 
 fn is_next_postfix_suffix(tokens: &[Token]) -> bool {
