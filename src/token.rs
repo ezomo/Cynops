@@ -167,13 +167,6 @@ impl Token {
 }
 
 impl Token {
-    pub fn r#int() -> Self {
-        Token::Keyword(Keyword::Int)
-    }
-    pub fn r#char() -> Self {
-        Token::Keyword(Keyword::Char)
-    }
-
     pub fn r#void() -> Self {
         Token::Keyword(Keyword::Void)
     }

@@ -8,17 +8,32 @@ pub struct Postfix {
     pub op: PostfixOp,
 }
 #[derive(Debug, PartialEq, Clone)]
-pub struct PostfixD {
-    pub base: Expr,                    // primary に相当する基の式
-    pub suffixes: Vec<PostfixDSuffix>, // 後置操作の連続
+pub struct PostfixChain {
+    pub base: Expr,                   // primary に相当する基の式
+    pub suffixes: Vec<PostfixSuffix>, // 後置操作の連続
+}
+
+impl PostfixChain {
+    pub fn new(base: Expr, suffixes: Vec<PostfixSuffix>) -> Self {
+        PostfixChain { base, suffixes }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum PostfixDSuffix {
+pub enum PostfixSuffix {
     ArrayAcsess(Expr),                   // [ expr ]
     ArgList(Vec<Box<Expr>>),             // ( arg_list )
     PostfixOp(PostfixOp),                // ++, --
     MemberAccess(MemberAccessOp, Ident), // . ident または -> ident
+}
+impl PostfixSuffix {
+    pub fn plus_plus() -> Self {
+        PostfixSuffix::PostfixOp(PostfixOp::plus_plus())
+    }
+
+    pub fn minus_minus() -> Self {
+        PostfixSuffix::PostfixOp(PostfixOp::minus_minus())
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
