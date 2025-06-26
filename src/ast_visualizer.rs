@@ -302,6 +302,33 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                     }
                 }
             }
+            DeclStmt::Enum(enum_decl) => {
+                print_branch(
+                    "EnumDeclStmt",
+                    &format!("{:?}", enum_decl.name),
+                    indent,
+                    is_last,
+                    &prefix,
+                );
+
+                let next_prefix = extend_prefix(&prefix, !is_last);
+                print_branch("Variants", "", indent + 1, true, &next_prefix);
+
+                for (i, variant) in enum_decl.variants.iter().enumerate() {
+                    let is_last_variant = i == enum_decl.variants.len() - 1;
+                    let variant_info = match &variant.value {
+                        Some(value) => format!("{} = {}", variant.name.name, value),
+                        None => variant.name.name.clone(),
+                    };
+                    print_branch(
+                        "Variant",
+                        &variant_info,
+                        indent + 2,
+                        is_last_variant,
+                        &extend_prefix(&next_prefix, false),
+                    );
+                }
+            }
         },
         Stmt::ExprStmt(expr) => {
             print_branch("ExprStmt", "", indent, is_last, &prefix);

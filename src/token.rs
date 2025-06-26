@@ -90,10 +90,11 @@ pub enum Keyword {
     Goto,     // 'goto'
     Struct,   // 'struct'
     Union,    // 'union'
+    Enum,     // 'Enum'
 }
 
 impl Token {
-    pub const SYMBOLS: [(&str, Self); 62] = [
+    pub const SYMBOLS: [(&str, Self); 63] = [
         ("?", Self::Question),
         (":", Self::Colon),
         ("+", Self::Plus),
@@ -156,6 +157,7 @@ impl Token {
         ("goto", Self::Keyword(Keyword::Goto)),
         ("struct", Self::Keyword(Keyword::Struct)),
         ("union", Self::Keyword(Keyword::Union)),
+        ("enum", Self::Keyword(Keyword::Enum)),
     ];
 
     pub fn classify(input: &str) -> Option<Self> {
@@ -169,6 +171,14 @@ impl Token {
 }
 
 impl Token {
+    pub fn r#int() -> Self {
+        Token::Keyword(Keyword::Int)
+    }
+
+    pub fn r#char() -> Self {
+        Token::Keyword(Keyword::Char)
+    }
+
     pub fn r#void() -> Self {
         Token::Keyword(Keyword::Void)
     }
@@ -220,5 +230,9 @@ impl Token {
 
     pub fn r#union() -> Self {
         Token::Keyword(Keyword::Union)
+    }
+
+    pub fn r#enum() -> Self {
+        Token::Keyword(Keyword::Enum)
     }
 }

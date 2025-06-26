@@ -1,8 +1,6 @@
-use crate::ast::Union;
-
 use super::{
     Block, Expr, Ident,
-    types::{FunctionSig, Struct, Type},
+    types::{FunctionSig, Type},
 };
 
 #[derive(Debug, PartialEq, Clone)]
@@ -10,6 +8,7 @@ pub enum DeclStmt {
     Typed(Typed),
     Struct(Struct),
     Union(Union),
+    Enum(Enum),
 }
 
 impl DeclStmt {
@@ -23,6 +22,10 @@ impl DeclStmt {
 
     pub fn union_decl(u: Union) -> Self {
         DeclStmt::Union(u)
+    }
+
+    pub fn enum_decl(e: Enum) -> Self {
+        DeclStmt::Enum(e)
     }
 }
 
@@ -146,4 +149,61 @@ impl Initializer {
 pub struct FunctionDef {
     pub sig: FunctionSig,
     pub body: Block,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Struct {
+    pub name: Ident,
+    pub members: Vec<MemberDecl>,
+}
+impl Struct {
+    pub fn new(name: Ident, members: Vec<MemberDecl>) -> Self {
+        Self { name, members }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Union {
+    pub name: Ident,
+    pub members: Vec<MemberDecl>,
+}
+impl Union {
+    pub fn new(name: Ident, members: Vec<MemberDecl>) -> Self {
+        Self { name, members }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct MemberDecl {
+    pub ty: Type,
+    pub declarators: Vec<Declarator>,
+}
+
+impl MemberDecl {
+    pub fn new(ty: Type, declarators: Vec<Declarator>) -> Self {
+        Self { ty, declarators }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Enum {
+    pub name: Ident,
+    pub variants: Vec<EnumMember>,
+}
+
+impl Enum {
+    pub fn new(name: Ident, variants: Vec<EnumMember>) -> Self {
+        Self { name, variants }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EnumMember {
+    pub name: Ident,
+    pub value: Option<usize>, // = 指定があるとき
+}
+impl EnumMember {
+    pub fn new(name: Ident, value: Option<usize>) -> Self {
+        Self { name, value }
+    }
 }

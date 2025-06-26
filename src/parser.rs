@@ -177,10 +177,15 @@ fn case_clause(tokens: &mut Vec<Token>) -> SwitchCase {
 }
 
 fn decl_stmt(tokens: &mut Vec<Token>) -> DeclStmt {
-    if consume(Token::r#struct(), tokens) {
+    if is_next_composite_type_def(tokens, Token::r#struct()) {
+        consume(Token::r#struct(), tokens);
         DeclStmt::struct_decl(struct_def(tokens))
-    } else if consume(Token::r#union(), tokens) {
+    } else if is_next_composite_type_def(tokens, Token::r#union()) {
+        consume(Token::r#union(), tokens);
         DeclStmt::union_decl(union_def(tokens))
+    } else if is_next_composite_type_def(tokens, Token::r#enum()) {
+        consume(Token::r#enum(), tokens);
+        DeclStmt::enum_decl(enum_def(tokens))
     } else {
         DeclStmt::typed(consume_type(tokens), {
             let mut init_declarators = vec![init_declarator(tokens)];
@@ -307,6 +312,44 @@ fn decl_member(tokens: &mut Vec<Token>) -> MemberDecl {
         consume(Token::Semicolon, tokens);
         decs
     })
+}
+
+fn enum_def(tokens: &mut Vec<Token>) -> Enum {
+    Enum::new(consume_ident(tokens), {
+        consume(Token::LBrace, tokens);
+        let tmp = enum_member(tokens);
+        consume(Token::RBrace, tokens);
+        consume(Token::Semicolon, tokens);
+        tmp
+    })
+}
+
+fn enum_member(tokens: &mut Vec<Token>) -> Vec<EnumMember> {
+    let mut members = Vec::new();
+
+    loop {
+        let name = consume_ident(tokens);
+
+        let value = if consume(Token::Equal, tokens) {
+            if let Token::Num(n) = tokens.first().unwrap() {
+                let n = *n;
+                tokens.remove(0);
+                Some(n)
+            } else {
+                panic!("Expected number after '=' in enum member");
+            }
+        } else {
+            None
+        };
+
+        members.push(EnumMember::new(name, value));
+
+        if !consume(Token::Comma, tokens) {
+            break;
+        }
+    }
+
+    members
 }
 
 fn block(tokens: &mut Vec<Token>) -> Box<Block> {
@@ -669,7 +712,9 @@ fn is_next_type(tokens: &[Token]) -> bool {
         Token::Keyword(Keyword::Int)
             | Token::Keyword(Keyword::Char)
             | Token::Keyword(Keyword::Void)
-    );
+    ) || next == &Token::r#struct()
+        || next == &Token::r#union()
+        || next == &Token::r#enum();
 }
 
 fn is_next_switch_stmt(tokens: &[Token]) -> bool {
@@ -704,7 +749,8 @@ fn is_next_decl_stmt(tokens: &[Token]) -> bool {
 
     is_next_type(tokens)
         || tokens.first().unwrap() == &Token::r#struct()
-        || tokens.first().unwrap() == &Token::union()
+        || tokens.first().unwrap() == &Token::r#union()
+        || tokens.first().unwrap() == &Token::r#enum()
 }
 
 fn is_next_postfix_suffix(tokens: &[Token]) -> bool {
@@ -720,6 +766,14 @@ fn is_next_postfix_suffix(tokens: &[Token]) -> bool {
         | Token::MinusGreater => true,
         _ => false,
     }
+}
+
+fn is_next_composite_type_def(tokens: &[Token], op: Token) -> bool {
+    if tokens.len() < 3 {
+        return false;
+    }
+    // e.g. struct Foo { ... }
+    tokens[0] == op && is_next_ident(&tokens[1..]) && tokens[2] == Token::LBrace
 }
 
 fn consume_atom(tokens: &mut Vec<Token>) -> Expr {
@@ -755,15 +809,18 @@ fn consume_type(tokens: &mut Vec<Token>) -> Type {
         panic!("Expected type, but no tokens available");
     }
 
-    if let Some(Token::Keyword(kw)) = tokens.first() {
-        let ty = match kw {
-            Keyword::Int => Type::Int,
-            Keyword::Char => Type::Char,
-            Keyword::Void => Type::Void,
-            _ => panic!("Expected type, found {:?}", kw),
-        };
-        tokens.remove(0); // consume the keyword
-        ty
+    if consume(Token::int(), tokens) {
+        return Type::Int;
+    } else if consume(Token::char(), tokens) {
+        return Type::Char;
+    } else if consume(Token::void(), tokens) {
+        return Type::Void;
+    } else if consume(Token::r#struct(), tokens) {
+        return Type::Struct(consume_ident(tokens));
+    } else if consume(Token::r#union(), tokens) {
+        return Type::Union(consume_ident(tokens));
+    } else if consume(Token::r#enum(), tokens) {
+        return Type::Enum(consume_ident(tokens));
     } else {
         panic!("Expected type, found {:?}", tokens.first());
     }

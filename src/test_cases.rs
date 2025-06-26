@@ -114,7 +114,7 @@ mod tests {
     #[test]
     fn test_single_parser_case() {
         // 単一のテストケース用
-        let mut input = String::from("c->d = 3;");
+        let mut input = String::from("enum Mode { OFF, ON = 2, UNKNOWN };");
 
         match run_parser_test(&mut input) {
             Ok(_) => println!("単一テストケース: PASS"),
