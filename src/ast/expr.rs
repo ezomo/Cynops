@@ -8,6 +8,20 @@ pub struct Postfix {
     pub op: PostfixOp,
 }
 #[derive(Debug, PartialEq, Clone)]
+pub struct PostfixD {
+    pub base: Expr,                    // primary に相当する基の式
+    pub suffixes: Vec<PostfixDSuffix>, // 後置操作の連続
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum PostfixDSuffix {
+    ArrayAcsess(Expr),                   // [ expr ]
+    ArgList(Vec<Box<Expr>>),             // ( arg_list )
+    PostfixOp(PostfixOp),                // ++, --
+    MemberAccess(MemberAccessOp, Ident), // . ident または -> ident
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct Unary {
     pub op: UnaryOp,
     pub expr: Box<Expr>,
@@ -49,7 +63,7 @@ pub struct Subscript {
 #[derive(Debug, PartialEq, Clone)]
 pub struct MemberAccess {
     pub base: Box<Expr>,      // 左側 (構造体 or ポインタ)
-    pub member: Box<Expr>,    // アクセスされるメンバ名
+    pub member: Ident,        // アクセスされるメンバ名
     pub kind: MemberAccessOp, // . or ->
 }
 
@@ -120,10 +134,10 @@ impl Expr {
         })
     }
 
-    pub fn member_access(base: Expr, member: Expr, kind: MemberAccessOp) -> Self {
+    pub fn member_access(base: Expr, member: Ident, kind: MemberAccessOp) -> Self {
         Expr::MemberAccess(MemberAccess {
             base: Box::new(base),
-            member: Box::new(member),
+            member: member,
             kind,
         })
     }

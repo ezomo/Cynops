@@ -911,8 +911,9 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
             );
 
             print_branch("Member", "", indent + 1, true, &next_prefix);
+            let member_expr = Expr::Ident(member_access.member.clone());
             visualize_expr(
-                &member_access.member,
+                &member_expr,
                 indent + 2,
                 true,
                 extend_prefix(&next_prefix, false),

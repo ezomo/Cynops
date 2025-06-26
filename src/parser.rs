@@ -1,5 +1,7 @@
-use crate::ast::*;
+use std::str::Matches;
+
 use crate::token::{Keyword, Token};
+use crate::{ast::*, lexer, parser};
 
 pub fn program(tokens: &mut Vec<Token>) -> Program {
     let mut code = Program::new();
@@ -496,26 +498,63 @@ fn unary(tokens: &mut Vec<Token>) -> Box<Expr> {
 }
 
 fn postfix(tokens: &mut Vec<Token>) -> Expr {
-    let node = primary(tokens);
-    if consume(Token::PlusPlus, tokens) {
-        Expr::postfix(PostfixOp::plus_plus(), node)
-    } else if consume(Token::MinusMinus, tokens) {
-        Expr::postfix(PostfixOp::minus_minus(), node)
-    } else if consume(Token::MinusGreater, tokens) {
-        Expr::member_access(node, postfix(tokens), MemberAccessOp::minus_greater())
-    } else if consume(Token::Dot, tokens) {
-        Expr::member_access(node, postfix(tokens), MemberAccessOp::dot())
-    } else if consume(Token::LParen, tokens) {
-        let tmp = Expr::call(node, arg_list(tokens));
-        consume(Token::RParen, tokens);
-        tmp
-    } else if consume(Token::LBracket, tokens) {
-        let tmp = Expr::subscript(node, expr(tokens));
-        consume(Token::RBracket, tokens);
-        tmp
-    } else {
-        node
-    }
+    let psd = postfixd(tokens);
+    let mut base = psd.base;
+    let suffixes = psd.suffixes;
+
+    suffixes.iter().for_each(|suffixe| match suffixe {
+        PostfixDSuffix::ArrayAcsess(index) => base = Expr::subscript(base.clone(), index.clone()),
+        PostfixDSuffix::ArgList(args) => base = Expr::call(base.clone(), args.clone()),
+        PostfixDSuffix::PostfixOp(op) => base = Expr::postfix(op.clone().clone(), base.clone()),
+        PostfixDSuffix::MemberAccess(op, indet) => {
+            base = Expr::member_access(base.clone(), indet.clone(), op.clone())
+        }
+    });
+
+    base
+}
+
+fn postfixd(tokens: &mut Vec<Token>) -> PostfixD {
+    let node = PostfixD {
+        base: primary(tokens),
+        suffixes: {
+            let mut n = vec![];
+
+            while is_next_postfix_suffix(tokens) {
+                if consume(Token::PlusPlus, tokens) {
+                    n.push(PostfixDSuffix::PostfixOp(PostfixOp::plus_plus()));
+                } else if consume(Token::MinusMinus, tokens) {
+                    n.push(PostfixDSuffix::PostfixOp(PostfixOp::minus_minus()));
+                } else if consume(Token::MinusGreater, tokens) {
+                    n.push(PostfixDSuffix::MemberAccess(
+                        MemberAccessOp::MinusGreater,
+                        consume_ident(tokens),
+                    ));
+                } else if consume(Token::Dot, tokens) {
+                    n.push(PostfixDSuffix::MemberAccess(
+                        MemberAccessOp::Dot,
+                        consume_ident(tokens),
+                    ));
+                } else if consume(Token::LParen, tokens) {
+                    n.push(PostfixDSuffix::ArgList(arg_list(tokens)));
+                    consume(Token::RParen, tokens);
+                } else if consume(Token::LBracket, tokens) {
+                    n.push(PostfixDSuffix::ArrayAcsess(expr(tokens)));
+                    consume(Token::RBracket, tokens);
+                }
+            }
+            n
+        },
+    };
+
+    node
+}
+
+#[test]
+fn test() {
+    let mut token = lexer::tokenize(&"a->b[3].c");
+    let program = postfixd(&mut token);
+    println!("{:#?}", program)
 }
 
 fn primary(tokens: &mut Vec<Token>) -> Expr {
@@ -662,6 +701,21 @@ fn is_next_decl_stmt(tokens: &[Token]) -> bool {
     }
 
     is_next_type(tokens) || tokens.first().unwrap() == &Token::Keyword(Keyword::Struct)
+}
+
+fn is_next_postfix_suffix(tokens: &[Token]) -> bool {
+    if tokens.is_empty() {
+        return false;
+    }
+    match tokens[0] {
+        Token::LBracket
+        | Token::LParen
+        | Token::PlusPlus
+        | Token::MinusMinus
+        | Token::Dot
+        | Token::MinusGreater => true,
+        _ => false,
+    }
 }
 
 fn consume_atom(tokens: &mut Vec<Token>) -> Expr {

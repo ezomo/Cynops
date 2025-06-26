@@ -70,13 +70,18 @@ mul             = unary { ("*" | "/" | "%") unary } ;
 unary           = ( "++" | "--" | "+" | "-" | "*" | "&" | "!" | "~" ) unary
                 | postfix ;
 
+
+
 //後置式(postfix)
-postfix = primary
-        { "[" expr "]"
-        | "(" [ arg_list ] ")"
-        | "++" | "--"
-        | "." ident
-        | "->" ident } ;
+postfix = primary { postfix_suffix } ;
+
+postfix_suffix =
+        "[" expr "]"
+      | "(" [ arg_list ] ")"
+      | "++"
+      | "--"
+      | "." ident
+      | "->" ident ;;
 
 // プライマリ式(関数呼び出し・識別子・数値など)
 primary         = ident                       // 変数
