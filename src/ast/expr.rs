@@ -1,3 +1,5 @@
+use crate::ast::MemberAccessOp;
+
 use super::{AssignOp, BinaryOp, Ident, PostfixOp, UnaryOp};
 
 #[derive(Debug, PartialEq, Clone)]
@@ -45,6 +47,13 @@ pub struct Subscript {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct MemberAccess {
+    pub base: Box<Expr>,      // 左側 (構造体 or ポインタ)
+    pub member: Box<Expr>,    // アクセスされるメンバ名
+    pub kind: MemberAccessOp, // . or ->
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Assign(Assign),
     Binary(Binary),
@@ -54,6 +63,7 @@ pub enum Expr {
     Num(usize),
     Postfix(Postfix),
     Subscript(Subscript),
+    MemberAccess(MemberAccess),
     Ternary(Ternary),
     Unary(Unary),
 }
@@ -107,6 +117,14 @@ impl Expr {
         Expr::Subscript(Subscript {
             name: Box::new(name),
             index: Box::new(index),
+        })
+    }
+
+    pub fn member_access(base: Expr, member: Expr, kind: MemberAccessOp) -> Self {
+        Expr::MemberAccess(MemberAccess {
+            base: Box::new(base),
+            member: Box::new(member),
+            kind,
         })
     }
 }

@@ -892,6 +892,32 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 extend_prefix(&next_prefix, false),
             );
         }
+        Expr::MemberAccess(member_access) => {
+            print_branch(
+                "MemberAccess",
+                &format!("{:?}", member_access.kind),
+                indent,
+                is_last,
+                &prefix,
+            );
+            let next_prefix = extend_prefix(&prefix, !is_last);
+
+            print_branch("Base", "", indent + 1, false, &next_prefix);
+            visualize_expr(
+                &member_access.base,
+                indent + 2,
+                true,
+                extend_prefix(&next_prefix, true),
+            );
+
+            print_branch("Member", "", indent + 1, true, &next_prefix);
+            visualize_expr(
+                &member_access.member,
+                indent + 2,
+                true,
+                extend_prefix(&next_prefix, false),
+            );
+        }
     }
 }
 

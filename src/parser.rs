@@ -147,7 +147,7 @@ fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
     } else {
         let tmp = expr(tokens);
         if !consume(Token::Semicolon, tokens) {
-            panic!("error");
+            panic!("{:?}", tokens);
         }
         Stmt::expr(tmp)
     }
@@ -501,6 +501,10 @@ fn postfix(tokens: &mut Vec<Token>) -> Expr {
         Expr::postfix(PostfixOp::plus_plus(), node)
     } else if consume(Token::MinusMinus, tokens) {
         Expr::postfix(PostfixOp::minus_minus(), node)
+    } else if consume(Token::MinusGreater, tokens) {
+        Expr::member_access(node, postfix(tokens), MemberAccessOp::minus_greater())
+    } else if consume(Token::Dot, tokens) {
+        Expr::member_access(node, postfix(tokens), MemberAccessOp::dot())
     } else if consume(Token::LParen, tokens) {
         let tmp = Expr::call(node, arg_list(tokens));
         consume(Token::RParen, tokens);

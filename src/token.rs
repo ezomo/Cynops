@@ -63,6 +63,10 @@ pub enum Token {
     Semicolon, // ';'
     Comma,     // ','
 
+    //struct
+    MinusGreater, //->
+    Dot,          //.
+
     // Keywords
     Keyword(Keyword), // e.g., int, return
 }
@@ -88,7 +92,7 @@ pub enum Keyword {
 }
 
 impl Token {
-    pub const SYMBOLS: [(&str, Self); 60] = [
+    pub const SYMBOLS: [(&str, Self); 61] = [
         ("?", Self::Question),
         (":", Self::Colon),
         ("+", Self::Plus),
@@ -104,7 +108,6 @@ impl Token {
         (">>", Self::GreaterGreater),
         ("&&", Self::AmpersandAmpersand),
         ("||", Self::PipePipe),
-        ("*", Self::Asterisk), // Note: '*' is also used for multiplication
         ("!", Self::Bang),
         ("~", Self::Tilde),
         ("&", Self::Ampersand),
@@ -133,6 +136,8 @@ impl Token {
         (">=", Self::GreaterEqual),
         (";", Self::Semicolon),
         (",", Self::Comma),
+        (".", Self::Dot),
+        ("->", Self::MinusGreater),
         ("int", Self::Keyword(Keyword::Int)),
         ("char", Self::Keyword(Keyword::Char)),
         ("void", Self::Keyword(Keyword::Void)),

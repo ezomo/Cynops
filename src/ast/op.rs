@@ -214,3 +214,19 @@ impl PostfixOp {
         PostfixOp::MinusMinus // x--
     }
 }
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum MemberAccessOp {
+    Dot,
+    MinusGreater,
+}
+
+impl MemberAccessOp {
+    pub fn minus_greater() -> Self {
+        Self::MinusGreater // ->
+    }
+
+    pub fn dot() -> Self {
+        Self::Dot // .
+    }
+}
