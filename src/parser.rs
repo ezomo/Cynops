@@ -186,6 +186,8 @@ fn decl_stmt(tokens: &mut Vec<Token>) -> DeclStmt {
     } else if is_next_composite_type_def(tokens, Token::r#enum()) {
         consume(Token::r#enum(), tokens);
         DeclStmt::enum_decl(enum_def(tokens))
+    } else if consume(Token::typedef(), tokens) {
+        DeclStmt::typedef_decl(typedef_stmt(tokens))
     } else {
         DeclStmt::typed(consume_type(tokens), {
             let mut init_declarators = vec![init_declarator(tokens)];
@@ -195,6 +197,33 @@ fn decl_stmt(tokens: &mut Vec<Token>) -> DeclStmt {
             consume(Token::Semicolon, tokens);
             init_declarators
         })
+    }
+}
+
+fn typedef_stmt(tokens: &mut Vec<Token>) -> Typedef {
+    Typedef::new(typedef_type(tokens), {
+        let mut ds = vec![declarator(tokens)];
+
+        while consume(Token::Comma, tokens) {
+            ds.push(declarator(tokens));
+        }
+        consume(Token::Semicolon, tokens);
+        ds
+    })
+}
+
+fn typedef_type(tokens: &mut Vec<Token>) -> TypedefType {
+    if is_next_composite_type_def(tokens, Token::r#struct()) {
+        consume(Token::r#struct(), tokens);
+        TypedefType::struct_decl(struct_def(tokens))
+    } else if is_next_composite_type_def(tokens, Token::r#union()) {
+        consume(Token::r#union(), tokens);
+        TypedefType::union_decl(union_def(tokens))
+    } else if is_next_composite_type_def(tokens, Token::r#enum()) {
+        consume(Token::r#enum(), tokens);
+        TypedefType::enum_decl(enum_def(tokens))
+    } else {
+        TypedefType::r#type(consume_type(tokens))
     }
 }
 
@@ -751,6 +780,7 @@ fn is_next_decl_stmt(tokens: &[Token]) -> bool {
         || tokens.first().unwrap() == &Token::r#struct()
         || tokens.first().unwrap() == &Token::r#union()
         || tokens.first().unwrap() == &Token::r#enum()
+        || tokens.first().unwrap() == &Token::typedef()
 }
 
 fn is_next_postfix_suffix(tokens: &[Token]) -> bool {

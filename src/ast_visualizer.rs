@@ -229,7 +229,7 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
             DeclStmt::Struct(struct_decl) => {
                 print_branch(
                     "StructDeclStmt",
-                    &format!("{:?}", struct_decl.name),
+                    &format!("{}", struct_decl.name.name),
                     indent,
                     is_last,
                     &prefix,
@@ -264,10 +264,10 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                     }
                 }
             }
-            DeclStmt::Union(struct_decl) => {
+            DeclStmt::Union(union_decl) => {
                 print_branch(
-                    "StructDeclStmt",
-                    &format!("{:?}", struct_decl.name),
+                    "UnionDeclStmt",
+                    &format!("{}", union_decl.name.name),
                     indent,
                     is_last,
                     &prefix,
@@ -276,8 +276,8 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 let next_prefix = extend_prefix(&prefix, !is_last);
                 print_branch("Members", "", indent + 1, true, &next_prefix);
 
-                for (i, member) in struct_decl.members.iter().enumerate() {
-                    let is_last_member = i == struct_decl.members.len() - 1;
+                for (i, member) in union_decl.members.iter().enumerate() {
+                    let is_last_member = i == union_decl.members.len() - 1;
                     print_branch(
                         "Member",
                         &format!("{:?}", member.ty),
@@ -305,7 +305,7 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
             DeclStmt::Enum(enum_decl) => {
                 print_branch(
                     "EnumDeclStmt",
-                    &format!("{:?}", enum_decl.name),
+                    &format!("{}", enum_decl.name.name),
                     indent,
                     is_last,
                     &prefix,
@@ -326,6 +326,32 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                         indent + 2,
                         is_last_variant,
                         &extend_prefix(&next_prefix, false),
+                    );
+                }
+            }
+            DeclStmt::Typedef(typedef) => {
+                print_branch("TypedefDeclStmt", "", indent, is_last, &prefix);
+
+                let next_prefix = extend_prefix(&prefix, !is_last);
+
+                // Show the typedef type
+                print_branch("Type", "", indent + 1, false, &next_prefix);
+                visualize_typedef_type(
+                    &typedef.ty,
+                    indent + 2,
+                    true,
+                    extend_prefix(&next_prefix, true),
+                );
+
+                // Show the declarators
+                print_branch("Declarators", "", indent + 1, true, &next_prefix);
+                for (i, declarator) in typedef.declarators.iter().enumerate() {
+                    let is_last_declarator = i == typedef.declarators.len() - 1;
+                    visualize_declarator(
+                        declarator,
+                        indent + 2,
+                        is_last_declarator,
+                        extend_prefix(&next_prefix, false),
                     );
                 }
             }
@@ -550,6 +576,126 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 true,
                 extend_prefix(&prefix, !is_last),
             );
+        }
+    }
+}
+
+fn visualize_typedef_type(
+    typedef_type: &TypedefType,
+    indent: usize,
+    is_last: bool,
+    prefix: Vec<bool>,
+) {
+    match typedef_type {
+        TypedefType::Type(ty) => {
+            print_branch(
+                "PrimitiveType",
+                &format!("{:?}", ty),
+                indent,
+                is_last,
+                &prefix,
+            );
+        }
+        TypedefType::Struct(struct_decl) => {
+            print_branch(
+                "StructType",
+                &format!("{}", struct_decl.name.name),
+                indent,
+                is_last,
+                &prefix,
+            );
+
+            let next_prefix = extend_prefix(&prefix, !is_last);
+            print_branch("Members", "", indent + 1, true, &next_prefix);
+
+            for (i, member) in struct_decl.members.iter().enumerate() {
+                let is_last_member = i == struct_decl.members.len() - 1;
+                print_branch(
+                    "Member",
+                    &format!("{:?}", member.ty),
+                    indent + 2,
+                    is_last_member,
+                    &extend_prefix(&next_prefix, false),
+                );
+
+                let member_prefix =
+                    extend_prefix(&extend_prefix(&next_prefix, false), !is_last_member);
+                print_branch("Declarators", "", indent + 3, true, &member_prefix);
+
+                for (j, declarator) in member.declarators.iter().enumerate() {
+                    let is_last_declarator = j == member.declarators.len() - 1;
+                    visualize_declarator(
+                        declarator,
+                        indent + 4,
+                        is_last_declarator,
+                        extend_prefix(&member_prefix, false),
+                    );
+                }
+            }
+        }
+        TypedefType::Union(union_decl) => {
+            print_branch(
+                "UnionType",
+                &format!("{}", union_decl.name.name),
+                indent,
+                is_last,
+                &prefix,
+            );
+
+            let next_prefix = extend_prefix(&prefix, !is_last);
+            print_branch("Members", "", indent + 1, true, &next_prefix);
+
+            for (i, member) in union_decl.members.iter().enumerate() {
+                let is_last_member = i == union_decl.members.len() - 1;
+                print_branch(
+                    "Member",
+                    &format!("{:?}", member.ty),
+                    indent + 2,
+                    is_last_member,
+                    &extend_prefix(&next_prefix, false),
+                );
+
+                let member_prefix =
+                    extend_prefix(&extend_prefix(&next_prefix, false), !is_last_member);
+                print_branch("Declarators", "", indent + 3, true, &member_prefix);
+
+                for (j, declarator) in member.declarators.iter().enumerate() {
+                    let is_last_declarator = j == member.declarators.len() - 1;
+                    visualize_declarator(
+                        declarator,
+                        indent + 4,
+                        is_last_declarator,
+                        extend_prefix(&member_prefix, false),
+                    );
+                }
+            }
+        }
+        TypedefType::Enum(enum_decl) => {
+            print_branch(
+                "EnumType",
+                &format!("{}", enum_decl.name.name),
+                indent,
+                is_last,
+                &prefix,
+            );
+
+            let next_prefix = extend_prefix(&prefix, !is_last);
+            print_branch("Variants", "", indent + 1, true, &next_prefix);
+
+            for (i, variant) in enum_decl.variants.iter().enumerate() {
+                let is_last_variant = i == enum_decl.variants.len() - 1;
+                let variant_info = match &variant.value {
+                    Some(value) => format!("{} = {}", variant.name.name, value),
+                    None => variant.name.name.clone(),
+                };
+                print_branch(
+                    "Variant",
+                    &variant_info,
+                    indent + 2,
+                    is_last_variant,
+                    &extend_prefix(&next_prefix, false),
+                );
+            }
         }
     }
 }
