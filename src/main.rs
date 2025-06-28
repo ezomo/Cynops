@@ -16,8 +16,8 @@ fn main() {
     }
     let mut input = fs::read_to_string(&args[1]).unwrap();
     preprocessor::remove_comments(&mut input);
-    let mut token = lexer::tokenize(&input);
-    let program = parser::program(&mut token);
+    let token = lexer::tokenize(&input);
+    let program = parser::program(&mut parser::ParseSession::new(token));
 
     println!("\nAST Visualization:");
     ast_visualizer::visualize_program(&program);

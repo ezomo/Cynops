@@ -1,302 +1,322 @@
 use crate::ast::*;
 use crate::token::{Keyword, Token};
 
-pub fn program(tokens: &mut Vec<Token>) -> Program {
+use std::collections::HashMap;
+
+pub struct ParseSession {
+    pub typedef_stack: Vec<HashMap<Ident, Type>>,
+    pub tokens: Vec<Token>,
+}
+
+impl ParseSession {
+    pub fn new(tokens: Vec<Token>) -> Self {
+        Self {
+            typedef_stack: Vec::new(),
+            tokens,
+        }
+    }
+}
+
+pub fn program(parse_session: &mut ParseSession) -> Program {
     let mut code = Program::new();
-    while !tokens.is_empty() {
-        if is_next_type(tokens) && is_next_fn(&tokens[1..]) {
-            let sig = function_sig(tokens);
-            if consume(Token::LBrace, tokens) {
+    while !parse_session.tokens.is_empty() {
+        if is_next_type(&mut parse_session.tokens) && is_next_fn(&&mut parse_session.tokens[1..]) {
+            let sig = function_sig(parse_session);
+            if consume(Token::LBrace, &mut parse_session.tokens) {
                 // function definition
-                code.items.push(TopLevel::function_def(sig, *block(tokens)));
+                code.items
+                    .push(TopLevel::function_def(sig, *block(parse_session)));
             } else {
                 // function prototype
                 code.items.push(TopLevel::function_proto(sig));
-                consume(Token::Semicolon, tokens);
+                consume(Token::Semicolon, &mut parse_session.tokens);
             }
         } else {
-            code.items.push(TopLevel::stmt(*stmt(tokens)));
+            code.items.push(TopLevel::stmt(*stmt(parse_session)));
         }
     }
     code
 }
 
-fn function_sig(tokens: &mut Vec<Token>) -> FunctionSig {
-    FunctionSig::new(consume_type(tokens), declarator(tokens))
+fn function_sig(parse_session: &mut ParseSession) -> FunctionSig {
+    FunctionSig::new(
+        consume_type(&mut parse_session.tokens),
+        declarator(parse_session),
+    )
 }
 
-fn stmt(tokens: &mut Vec<Token>) -> Box<Stmt> {
-    if consume(Token::r#return(), tokens) {
-        let expr_opt = if consume(Token::Semicolon, tokens) {
+fn stmt(parse_session: &mut ParseSession) -> Box<Stmt> {
+    if consume(Token::r#return(), &mut parse_session.tokens) {
+        let expr_opt = if consume(Token::Semicolon, &mut parse_session.tokens) {
             None
         } else {
-            let tmp = expr(tokens);
-            consume(Token::Semicolon, tokens);
+            let tmp = expr(parse_session);
+            consume(Token::Semicolon, &mut parse_session.tokens);
             Some(tmp)
         };
         Stmt::r#return(expr_opt)
-    } else if consume(Token::r#if(), tokens) {
+    } else if consume(Token::r#if(), &mut parse_session.tokens) {
         Stmt::r#if(
             {
-                consume(Token::LParen, tokens);
-                let tmp = expr(tokens);
-                consume(Token::RParen, tokens);
+                consume(Token::LParen, &mut parse_session.tokens);
+                let tmp = expr(parse_session);
+                consume(Token::RParen, &mut parse_session.tokens);
                 tmp
             },
-            *stmt(tokens),
+            *stmt(parse_session),
             {
-                if consume(Token::r#else(), tokens) {
-                    Some(*stmt(tokens))
+                if consume(Token::r#else(), &mut parse_session.tokens) {
+                    Some(*stmt(parse_session))
                 } else {
                     None
                 }
             },
         )
-    } else if consume(Token::r#while(), tokens) {
+    } else if consume(Token::r#while(), &mut parse_session.tokens) {
         Stmt::r#while(
             {
-                consume(Token::LParen, tokens);
-                let tmp = expr(tokens);
-                consume(Token::RParen, tokens);
+                consume(Token::LParen, &mut parse_session.tokens);
+                let tmp = expr(parse_session);
+                consume(Token::RParen, &mut parse_session.tokens);
                 tmp
             },
-            *stmt(tokens),
+            *stmt(parse_session),
         )
-    } else if consume(Token::r#do(), tokens) {
-        let body = *stmt(tokens);
-        if !consume(Token::r#while(), tokens) {
+    } else if consume(Token::r#do(), &mut parse_session.tokens) {
+        let body = *stmt(parse_session);
+        if !consume(Token::r#while(), &mut parse_session.tokens) {
             panic!("expected 'while' after 'do' statement");
         }
-        consume(Token::LParen, tokens);
-        let condition = expr(tokens);
-        consume(Token::RParen, tokens);
-        if !consume(Token::Semicolon, tokens) {
+        consume(Token::LParen, &mut parse_session.tokens);
+        let condition = expr(parse_session);
+        consume(Token::RParen, &mut parse_session.tokens);
+        if !consume(Token::Semicolon, &mut parse_session.tokens) {
             panic!("expected semicolon after do-while statement");
         }
         Stmt::do_while(body, condition)
-    } else if consume(Token::r#for(), tokens) {
-        consume(Token::LParen, tokens);
+    } else if consume(Token::r#for(), &mut parse_session.tokens) {
+        consume(Token::LParen, &mut parse_session.tokens);
         Stmt::r#for(
             {
-                if consume(Token::Semicolon, tokens) {
+                if consume(Token::Semicolon, &mut parse_session.tokens) {
                     None
                 } else {
-                    let tmp = expr(tokens);
-                    consume(Token::Semicolon, tokens);
+                    let tmp = expr(parse_session);
+                    consume(Token::Semicolon, &mut parse_session.tokens);
                     Some(tmp)
                 }
             },
             {
-                if consume(Token::Semicolon, tokens) {
+                if consume(Token::Semicolon, &mut parse_session.tokens) {
                     Some(Expr::num(0))
                 } else {
-                    let tmp = expr(tokens);
-                    consume(Token::Semicolon, tokens);
+                    let tmp = expr(parse_session);
+                    consume(Token::Semicolon, &mut parse_session.tokens);
                     Some(tmp)
                 }
             },
             {
-                if consume(Token::RParen, tokens) {
+                if consume(Token::RParen, &mut parse_session.tokens) {
                     None
                 } else {
-                    let tmp = expr(tokens);
-                    consume(Token::RParen, tokens);
+                    let tmp = expr(parse_session);
+                    consume(Token::RParen, &mut parse_session.tokens);
                     Some(tmp)
                 }
             },
-            *stmt(tokens),
+            *stmt(parse_session),
         )
-    } else if consume(Token::r#break(), tokens) {
-        if !consume(Token::Semicolon, tokens) {
+    } else if consume(Token::r#break(), &mut parse_session.tokens) {
+        if !consume(Token::Semicolon, &mut parse_session.tokens) {
             panic!("expected semicolon after break statement");
         }
         Stmt::r#break()
-    } else if consume(Token::r#continue(), tokens) {
-        if !consume(Token::Semicolon, tokens) {
+    } else if consume(Token::r#continue(), &mut parse_session.tokens) {
+        if !consume(Token::Semicolon, &mut parse_session.tokens) {
             panic!("expected semicolon after continue statement");
         }
         Stmt::r#continue()
-    } else if consume(Token::LBrace, tokens) {
-        Stmt::block(*block(tokens))
-    } else if is_next_decl_stmt(tokens) {
-        Stmt::decl_stmt(decl_stmt(tokens))
-    } else if consume(Token::r#switch(), tokens) {
-        consume(Token::LParen, tokens);
-        let cond = expr(tokens);
-        consume(Token::RParen, tokens);
+    } else if consume(Token::LBrace, &mut parse_session.tokens) {
+        Stmt::block(*block(parse_session))
+    } else if is_next_decl_stmt(&parse_session.tokens) {
+        Stmt::decl_stmt(decl_stmt(parse_session))
+    } else if consume(Token::r#switch(), &mut parse_session.tokens) {
+        consume(Token::LParen, &mut parse_session.tokens);
+        let cond = expr(parse_session);
+        consume(Token::RParen, &mut parse_session.tokens);
 
-        consume(Token::LBrace, tokens);
+        consume(Token::LBrace, &mut parse_session.tokens);
         let mut cases = Vec::new();
-        while !consume(Token::RBrace, tokens) {
-            let switch_case = case_clause(tokens);
+        while !consume(Token::RBrace, &mut parse_session.tokens) {
+            let switch_case = case_clause(parse_session);
             cases.push(switch_case);
         }
         Stmt::r#switch(cond, cases)
-    } else if consume(Token::r#goto(), tokens) {
-        let label = consume_ident(tokens);
-        if !consume(Token::Semicolon, tokens) {
+    } else if consume(Token::r#goto(), &mut parse_session.tokens) {
+        let label = consume_ident(&mut parse_session.tokens);
+        if !consume(Token::Semicolon, &mut parse_session.tokens) {
             panic!("expected semicolon after goto statement");
         }
         Stmt::goto(label)
-    } else if is_next_label(tokens) {
-        let name = consume_ident(tokens);
-        if !consume(Token::Colon, tokens) {
+    } else if is_next_label(&mut parse_session.tokens) {
+        let name = consume_ident(&mut parse_session.tokens);
+        if !consume(Token::Colon, &mut parse_session.tokens) {
             panic!("expected colon after label statement");
         }
-        Stmt::label(name, *stmt(tokens))
+        Stmt::label(name, *stmt(parse_session))
     } else {
-        let tmp = expr(tokens);
-        if !consume(Token::Semicolon, tokens) {
-            panic!("{:?}", tokens);
+        let tmp = expr(parse_session);
+        if !consume(Token::Semicolon, &mut parse_session.tokens) {
+            panic!("{:?}", &mut parse_session.tokens);
         }
         Stmt::expr(tmp)
     }
 }
 
-fn case_clause(tokens: &mut Vec<Token>) -> SwitchCase {
-    let get_tokens = |tokens: &mut Vec<Token>| {
-        if !consume(Token::Colon, tokens) {
+fn case_clause(parse_session: &mut ParseSession) -> SwitchCase {
+    let get_parse_session = |parse_session: &mut ParseSession| {
+        if !consume(Token::Colon, &mut parse_session.tokens) {
             panic!("expected ':' after case expression");
         }
 
         let mut stmts = vec![];
-        while !is_next_switch_stmt(tokens) {
-            stmts.push(stmt(tokens));
+        while !is_next_switch_stmt(&parse_session.tokens) {
+            stmts.push(stmt(parse_session));
         }
 
         stmts
     };
 
-    if consume(Token::case(), tokens) {
-        SwitchCase::case(expr(tokens), get_tokens(tokens))
-    } else if consume(Token::default(), tokens) {
-        SwitchCase::default(get_tokens(tokens))
+    if consume(Token::case(), &mut parse_session.tokens) {
+        SwitchCase::case(expr(parse_session), get_parse_session(parse_session))
+    } else if consume(Token::default(), &mut parse_session.tokens) {
+        SwitchCase::default(get_parse_session(parse_session))
     } else {
         panic!("expected 'case' or 'default' in switch statement");
     }
 }
 
-fn decl_stmt(tokens: &mut Vec<Token>) -> DeclStmt {
-    if is_next_composite_type_def(tokens, Token::r#struct()) {
-        consume(Token::r#struct(), tokens);
-        DeclStmt::struct_decl(struct_def(tokens))
-    } else if is_next_composite_type_def(tokens, Token::r#union()) {
-        consume(Token::r#union(), tokens);
-        DeclStmt::union_decl(union_def(tokens))
-    } else if is_next_composite_type_def(tokens, Token::r#enum()) {
-        consume(Token::r#enum(), tokens);
-        DeclStmt::enum_decl(enum_def(tokens))
-    } else if consume(Token::typedef(), tokens) {
-        DeclStmt::typedef_decl(typedef_stmt(tokens))
+fn decl_stmt(parse_session: &mut ParseSession) -> DeclStmt {
+    if is_next_composite_type_def(&mut parse_session.tokens, Token::r#struct()) {
+        consume(Token::r#struct(), &mut parse_session.tokens);
+        DeclStmt::struct_decl(struct_def(parse_session))
+    } else if is_next_composite_type_def(&mut parse_session.tokens, Token::r#union()) {
+        consume(Token::r#union(), &mut parse_session.tokens);
+        DeclStmt::union_decl(union_def(parse_session))
+    } else if is_next_composite_type_def(&mut parse_session.tokens, Token::r#enum()) {
+        consume(Token::r#enum(), &mut parse_session.tokens);
+        DeclStmt::enum_decl(enum_def(parse_session))
+    } else if consume(Token::typedef(), &mut parse_session.tokens) {
+        DeclStmt::typedef_decl(typedef_stmt(parse_session))
     } else {
-        DeclStmt::typed(consume_type(tokens), {
-            let mut init_declarators = vec![init_declarator(tokens)];
-            while consume(Token::Comma, tokens) {
-                init_declarators.push(init_declarator(tokens));
+        DeclStmt::typed(consume_type(&mut parse_session.tokens), {
+            let mut init_declarators = vec![init_declarator(parse_session)];
+            while consume(Token::Comma, &mut parse_session.tokens) {
+                init_declarators.push(init_declarator(parse_session));
             }
-            consume(Token::Semicolon, tokens);
+            consume(Token::Semicolon, &mut parse_session.tokens);
             init_declarators
         })
     }
 }
 
-fn typedef_stmt(tokens: &mut Vec<Token>) -> Typedef {
-    Typedef::new(typedef_type(tokens), {
-        let mut ds = vec![declarator(tokens)];
+fn typedef_stmt(parse_session: &mut ParseSession) -> Typedef {
+    Typedef::new(typedef_type(parse_session), {
+        let mut ds = vec![declarator(parse_session)];
 
-        while consume(Token::Comma, tokens) {
-            ds.push(declarator(tokens));
+        while consume(Token::Comma, &mut parse_session.tokens) {
+            ds.push(declarator(parse_session));
         }
-        consume(Token::Semicolon, tokens);
+        consume(Token::Semicolon, &mut parse_session.tokens);
         ds
     })
 }
 
-fn typedef_type(tokens: &mut Vec<Token>) -> TypedefType {
-    if is_next_composite_type_def(tokens, Token::r#struct()) {
-        consume(Token::r#struct(), tokens);
-        TypedefType::struct_decl(struct_def(tokens))
-    } else if is_next_composite_type_def(tokens, Token::r#union()) {
-        consume(Token::r#union(), tokens);
-        TypedefType::union_decl(union_def(tokens))
-    } else if is_next_composite_type_def(tokens, Token::r#enum()) {
-        consume(Token::r#enum(), tokens);
-        TypedefType::enum_decl(enum_def(tokens))
+fn typedef_type(parse_session: &mut ParseSession) -> TypedefType {
+    if is_next_composite_type_def(&mut parse_session.tokens, Token::r#struct()) {
+        consume(Token::r#struct(), &mut parse_session.tokens);
+        TypedefType::struct_decl(struct_def(parse_session))
+    } else if is_next_composite_type_def(&mut parse_session.tokens, Token::r#union()) {
+        consume(Token::r#union(), &mut parse_session.tokens);
+        TypedefType::union_decl(union_def(parse_session))
+    } else if is_next_composite_type_def(&mut parse_session.tokens, Token::r#enum()) {
+        consume(Token::r#enum(), &mut parse_session.tokens);
+        TypedefType::enum_decl(enum_def(parse_session))
     } else {
-        TypedefType::r#type(consume_type(tokens))
+        TypedefType::r#type(consume_type(&mut parse_session.tokens))
     }
 }
 
-fn init_declarator(tokens: &mut Vec<Token>) -> InitDeclarator {
-    InitDeclarator::new(declarator(tokens), {
-        if consume(Token::Equal, tokens) {
-            Some(initializer(tokens))
+fn init_declarator(parse_session: &mut ParseSession) -> InitDeclarator {
+    InitDeclarator::new(declarator(parse_session), {
+        if consume(Token::Equal, &mut parse_session.tokens) {
+            Some(initializer(parse_session))
         } else {
             None
         }
     })
 }
 
-fn initializer(tokens: &mut Vec<Token>) -> Initializer {
-    if consume(Token::LBrace, tokens) {
-        let tmp = Initializer::list(initializer_list(tokens));
-        consume(Token::RBrace, tokens);
+fn initializer(parse_session: &mut ParseSession) -> Initializer {
+    if consume(Token::LBrace, &mut parse_session.tokens) {
+        let tmp = Initializer::list(initializer_list(parse_session));
+        consume(Token::RBrace, &mut parse_session.tokens);
         tmp
     } else {
-        Initializer::expr(expr(tokens))
+        Initializer::expr(expr(parse_session))
     }
 }
 
-fn initializer_list(tokens: &mut Vec<Token>) -> Vec<Initializer> {
-    let mut initializers = vec![initializer(tokens)];
-    while consume(Token::Comma, tokens) {
-        initializers.push(initializer(tokens));
+fn initializer_list(parse_session: &mut ParseSession) -> Vec<Initializer> {
+    let mut initializers = vec![initializer(parse_session)];
+    while consume(Token::Comma, &mut parse_session.tokens) {
+        initializers.push(initializer(parse_session));
     }
     initializers
 }
 
-fn declarator(tokens: &mut Vec<Token>) -> Declarator {
+fn declarator(parse_session: &mut ParseSession) -> Declarator {
     let mut poiner_level = 0;
-    while consume(Token::Asterisk, tokens) {
+    while consume(Token::Asterisk, &mut parse_session.tokens) {
         poiner_level += 1;
     }
 
     if poiner_level == 0 {
-        Declarator::direct(direct_declarator(tokens))
+        Declarator::direct(direct_declarator(parse_session))
     } else {
-        Declarator::pointer(poiner_level, direct_declarator(tokens))
+        Declarator::pointer(poiner_level, direct_declarator(parse_session))
     }
 }
 
-fn direct_declarator(tokens: &mut Vec<Token>) -> DirectDeclarator {
-    let mut base = if consume(Token::LParen, tokens) {
-        let inner = declarator(tokens);
-        consume(Token::RParen, tokens);
+fn direct_declarator(parse_session: &mut ParseSession) -> DirectDeclarator {
+    let mut base = if consume(Token::LParen, &mut parse_session.tokens) {
+        let inner = declarator(parse_session);
+        consume(Token::RParen, &mut parse_session.tokens);
 
         DirectDeclarator::paren(inner)
-    } else if is_next_ident(tokens) {
-        DirectDeclarator::ident(consume_ident(tokens))
+    } else if is_next_ident(&mut parse_session.tokens) {
+        DirectDeclarator::ident(consume_ident(&mut parse_session.tokens))
     } else {
-        panic!("{:?}", tokens);
+        panic!("{:?}", &mut parse_session.tokens);
     };
 
     // ★ ここで左再帰をループに展開
     loop {
-        if consume(Token::LBracket, tokens) {
-            let size = if !consume(Token::RBracket, tokens) {
-                Some(expr(tokens))
+        if consume(Token::LBracket, &mut parse_session.tokens) {
+            let size = if !consume(Token::RBracket, &mut parse_session.tokens) {
+                Some(expr(parse_session))
             } else {
                 None
             };
-            consume(Token::RBracket, tokens);
+            consume(Token::RBracket, &mut parse_session.tokens);
             base = DirectDeclarator::array(base, size)
-        } else if consume(Token::LParen, tokens) {
-            let params = if !consume(Token::RParen, tokens) {
-                Some(param_list(tokens))
+        } else if consume(Token::LParen, &mut parse_session.tokens) {
+            let params = if !consume(Token::RParen, &mut parse_session.tokens) {
+                Some(param_list(parse_session))
             } else {
                 None
             };
-            consume(Token::RParen, tokens);
+            consume(Token::RParen, &mut parse_session.tokens);
             base = DirectDeclarator::func(base, params)
         } else {
             break;
@@ -306,63 +326,63 @@ fn direct_declarator(tokens: &mut Vec<Token>) -> DirectDeclarator {
     base
 }
 
-fn struct_def(tokens: &mut Vec<Token>) -> Struct {
-    Struct::new(consume_ident(tokens), {
-        consume(Token::LBrace, tokens);
-        let mut ms = vec![decl_member(tokens)];
-        while !consume(Token::RBrace, tokens) {
-            ms.push(decl_member(tokens));
+fn struct_def(parse_session: &mut ParseSession) -> Struct {
+    Struct::new(consume_ident(&mut parse_session.tokens), {
+        consume(Token::LBrace, &mut parse_session.tokens);
+        let mut ms = vec![decl_member(parse_session)];
+        while !consume(Token::RBrace, &mut parse_session.tokens) {
+            ms.push(decl_member(parse_session));
         }
 
-        consume(Token::Semicolon, tokens);
+        consume(Token::Semicolon, &mut parse_session.tokens);
         ms
     })
 }
 
-fn union_def(tokens: &mut Vec<Token>) -> Union {
-    Union::new(consume_ident(tokens), {
-        consume(Token::LBrace, tokens);
-        let mut ms = vec![decl_member(tokens)];
-        while !consume(Token::RBrace, tokens) {
-            ms.push(decl_member(tokens));
+fn union_def(parse_session: &mut ParseSession) -> Union {
+    Union::new(consume_ident(&mut parse_session.tokens), {
+        consume(Token::LBrace, &mut parse_session.tokens);
+        let mut ms = vec![decl_member(parse_session)];
+        while !consume(Token::RBrace, &mut parse_session.tokens) {
+            ms.push(decl_member(parse_session));
         }
 
-        consume(Token::Semicolon, tokens);
+        consume(Token::Semicolon, &mut parse_session.tokens);
         ms
     })
 }
 
-fn decl_member(tokens: &mut Vec<Token>) -> MemberDecl {
-    MemberDecl::new(consume_type(tokens), {
-        let mut decs = vec![declarator(tokens)];
-        while consume(Token::Comma, tokens) {
-            decs.push(declarator(tokens));
+fn decl_member(parse_session: &mut ParseSession) -> MemberDecl {
+    MemberDecl::new(consume_type(&mut parse_session.tokens), {
+        let mut decs = vec![declarator(parse_session)];
+        while consume(Token::Comma, &mut parse_session.tokens) {
+            decs.push(declarator(parse_session));
         }
-        consume(Token::Semicolon, tokens);
+        consume(Token::Semicolon, &mut parse_session.tokens);
         decs
     })
 }
 
-fn enum_def(tokens: &mut Vec<Token>) -> Enum {
-    Enum::new(consume_ident(tokens), {
-        consume(Token::LBrace, tokens);
-        let tmp = enum_member(tokens);
-        consume(Token::RBrace, tokens);
-        consume(Token::Semicolon, tokens);
+fn enum_def(parse_session: &mut ParseSession) -> Enum {
+    Enum::new(consume_ident(&mut parse_session.tokens), {
+        consume(Token::LBrace, &mut parse_session.tokens);
+        let tmp = enum_member(parse_session);
+        consume(Token::RBrace, &mut parse_session.tokens);
+        consume(Token::Semicolon, &mut parse_session.tokens);
         tmp
     })
 }
 
-fn enum_member(tokens: &mut Vec<Token>) -> Vec<EnumMember> {
+fn enum_member(parse_session: &mut ParseSession) -> Vec<EnumMember> {
     let mut members = Vec::new();
 
     loop {
-        let name = consume_ident(tokens);
+        let name = consume_ident(&mut parse_session.tokens);
 
-        let value = if consume(Token::Equal, tokens) {
-            if let Token::Num(n) = tokens.first().unwrap() {
+        let value = if consume(Token::Equal, &mut parse_session.tokens) {
+            if let Token::Num(n) = &mut parse_session.tokens.first().unwrap() {
                 let n = *n;
-                tokens.remove(0);
+                let _ = &parse_session.tokens.remove(0);
                 Some(n)
             } else {
                 panic!("Expected number after '=' in enum member");
@@ -373,7 +393,7 @@ fn enum_member(tokens: &mut Vec<Token>) -> Vec<EnumMember> {
 
         members.push(EnumMember::new(name, value));
 
-        if !consume(Token::Comma, tokens) {
+        if !consume(Token::Comma, &mut parse_session.tokens) {
             break;
         }
     }
@@ -381,209 +401,217 @@ fn enum_member(tokens: &mut Vec<Token>) -> Vec<EnumMember> {
     members
 }
 
-fn block(tokens: &mut Vec<Token>) -> Box<Block> {
+fn block(parse_session: &mut ParseSession) -> Box<Block> {
     let mut code = vec![];
 
-    while !consume(Token::RBrace, tokens) {
-        code.push(stmt(tokens));
+    while !consume(Token::RBrace, &mut parse_session.tokens) {
+        code.push(stmt(parse_session));
     }
 
     Block::new(code)
 }
 
-fn expr(tokens: &mut Vec<Token>) -> Expr {
-    *assign(tokens)
+fn expr(parse_session: &mut ParseSession) -> Expr {
+    *assign(parse_session)
 }
 
-fn assign(tokens: &mut Vec<Token>) -> Box<Expr> {
-    let mut node = conditional(tokens);
-    if consume(Token::Equal, tokens) {
-        node = Expr::assign(AssignOp::equal(), node, assign(tokens));
-    } else if consume(Token::PlusEqual, tokens) {
-        node = Expr::assign(AssignOp::plus_equal(), node, assign(tokens));
-    } else if consume(Token::MinusEqual, tokens) {
-        node = Expr::assign(AssignOp::minus_equal(), node, assign(tokens));
-    } else if consume(Token::AsteriskEqual, tokens) {
-        node = Expr::assign(AssignOp::asterisk_equal(), node, assign(tokens));
-    } else if consume(Token::SlashEqual, tokens) {
-        node = Expr::assign(AssignOp::slash_equal(), node, assign(tokens));
-    } else if consume(Token::PercentEqual, tokens) {
-        node = Expr::assign(AssignOp::percent_equal(), node, assign(tokens));
-    } else if consume(Token::CaretEqual, tokens) {
-        node = Expr::assign(AssignOp::caret_equal(), node, assign(tokens));
-    } else if consume(Token::PipeEqual, tokens) {
-        node = Expr::assign(AssignOp::pipe_equal(), node, assign(tokens));
-    } else if consume(Token::LessLessEqual, tokens) {
-        node = Expr::assign(AssignOp::less_less_equal(), node, assign(tokens));
-    } else if consume(Token::GreaterGreaterEqual, tokens) {
-        node = Expr::assign(AssignOp::greater_greater_equal(), node, assign(tokens));
-    } else if consume(Token::AmpersandEqual, tokens) {
-        node = Expr::assign(AssignOp::ampersand_equal(), node, assign(tokens));
+fn assign(parse_session: &mut ParseSession) -> Box<Expr> {
+    let mut node = conditional(parse_session);
+    if consume(Token::Equal, &mut parse_session.tokens) {
+        node = Expr::assign(AssignOp::equal(), node, assign(parse_session));
+    } else if consume(Token::PlusEqual, &mut parse_session.tokens) {
+        node = Expr::assign(AssignOp::plus_equal(), node, assign(parse_session));
+    } else if consume(Token::MinusEqual, &mut parse_session.tokens) {
+        node = Expr::assign(AssignOp::minus_equal(), node, assign(parse_session));
+    } else if consume(Token::AsteriskEqual, &mut parse_session.tokens) {
+        node = Expr::assign(AssignOp::asterisk_equal(), node, assign(parse_session));
+    } else if consume(Token::SlashEqual, &mut parse_session.tokens) {
+        node = Expr::assign(AssignOp::slash_equal(), node, assign(parse_session));
+    } else if consume(Token::PercentEqual, &mut parse_session.tokens) {
+        node = Expr::assign(AssignOp::percent_equal(), node, assign(parse_session));
+    } else if consume(Token::CaretEqual, &mut parse_session.tokens) {
+        node = Expr::assign(AssignOp::caret_equal(), node, assign(parse_session));
+    } else if consume(Token::PipeEqual, &mut parse_session.tokens) {
+        node = Expr::assign(AssignOp::pipe_equal(), node, assign(parse_session));
+    } else if consume(Token::LessLessEqual, &mut parse_session.tokens) {
+        node = Expr::assign(AssignOp::less_less_equal(), node, assign(parse_session));
+    } else if consume(Token::GreaterGreaterEqual, &mut parse_session.tokens) {
+        node = Expr::assign(
+            AssignOp::greater_greater_equal(),
+            node,
+            assign(parse_session),
+        );
+    } else if consume(Token::AmpersandEqual, &mut parse_session.tokens) {
+        node = Expr::assign(AssignOp::ampersand_equal(), node, assign(parse_session));
     }
     node
 }
 
-fn conditional(tokens: &mut Vec<Token>) -> Box<Expr> {
-    let mut node = logical_or(tokens);
-    if consume(Token::Question, tokens) {
-        let then_branch = expr(tokens);
-        consume(Token::Colon, tokens);
-        let else_branch = expr(tokens);
+fn conditional(parse_session: &mut ParseSession) -> Box<Expr> {
+    let mut node = logical_or(parse_session);
+    if consume(Token::Question, &mut parse_session.tokens) {
+        let then_branch = expr(parse_session);
+        consume(Token::Colon, &mut parse_session.tokens);
+        let else_branch = expr(parse_session);
         node = Expr::ternary(node, then_branch, else_branch);
     }
     node
 }
 
-fn logical_or(tokens: &mut Vec<Token>) -> Box<Expr> {
-    let mut node = logical_and(tokens);
+fn logical_or(parse_session: &mut ParseSession) -> Box<Expr> {
+    let mut node = logical_and(parse_session);
     loop {
-        if consume(Token::PipePipe, tokens) {
-            node = Expr::binary(BinaryOp::pipe_pipe(), node, logical_and(tokens));
+        if consume(Token::PipePipe, &mut parse_session.tokens) {
+            node = Expr::binary(BinaryOp::pipe_pipe(), node, logical_and(parse_session));
         } else {
             return node;
         }
     }
 }
 
-fn logical_and(tokens: &mut Vec<Token>) -> Box<Expr> {
-    let mut node = equality(tokens);
+fn logical_and(parse_session: &mut ParseSession) -> Box<Expr> {
+    let mut node = equality(parse_session);
     loop {
-        if consume(Token::AmpersandAmpersand, tokens) {
-            node = Expr::binary(BinaryOp::ampersand_ampersand(), node, equality(tokens));
+        if consume(Token::AmpersandAmpersand, &mut parse_session.tokens) {
+            node = Expr::binary(
+                BinaryOp::ampersand_ampersand(),
+                node,
+                equality(parse_session),
+            );
         } else {
             return node;
         }
     }
 }
 
-fn equality(tokens: &mut Vec<Token>) -> Box<Expr> {
-    let mut node = relational(tokens);
+fn equality(parse_session: &mut ParseSession) -> Box<Expr> {
+    let mut node = relational(parse_session);
     loop {
-        if consume(Token::EqualEqual, tokens) {
-            node = Expr::binary(BinaryOp::equal_equal(), node, relational(tokens));
-        } else if consume(Token::NotEqual, tokens) {
-            node = Expr::binary(BinaryOp::not_equal(), node, relational(tokens));
+        if consume(Token::EqualEqual, &mut parse_session.tokens) {
+            node = Expr::binary(BinaryOp::equal_equal(), node, relational(parse_session));
+        } else if consume(Token::NotEqual, &mut parse_session.tokens) {
+            node = Expr::binary(BinaryOp::not_equal(), node, relational(parse_session));
         } else {
             return node;
         }
     }
 }
 
-fn relational(tokens: &mut Vec<Token>) -> Box<Expr> {
-    let mut node = bitwise_or(tokens);
+fn relational(parse_session: &mut ParseSession) -> Box<Expr> {
+    let mut node = bitwise_or(parse_session);
     loop {
-        if consume(Token::Less, tokens) {
-            node = Expr::binary(BinaryOp::less(), node, bitwise_or(tokens));
-        } else if consume(Token::LessEqual, tokens) {
-            node = Expr::binary(BinaryOp::less_equal(), node, bitwise_or(tokens));
-        } else if consume(Token::Greater, tokens) {
-            node = Expr::binary(BinaryOp::greater(), node, bitwise_or(tokens));
-        } else if consume(Token::GreaterEqual, tokens) {
-            node = Expr::binary(BinaryOp::greater_equal(), node, bitwise_or(tokens));
+        if consume(Token::Less, &mut parse_session.tokens) {
+            node = Expr::binary(BinaryOp::less(), node, bitwise_or(parse_session));
+        } else if consume(Token::LessEqual, &mut parse_session.tokens) {
+            node = Expr::binary(BinaryOp::less_equal(), node, bitwise_or(parse_session));
+        } else if consume(Token::Greater, &mut parse_session.tokens) {
+            node = Expr::binary(BinaryOp::greater(), node, bitwise_or(parse_session));
+        } else if consume(Token::GreaterEqual, &mut parse_session.tokens) {
+            node = Expr::binary(BinaryOp::greater_equal(), node, bitwise_or(parse_session));
         } else {
             return node;
         }
     }
 }
 
-fn bitwise_or(tokens: &mut Vec<Token>) -> Box<Expr> {
-    let mut node = bitwise_xor(tokens);
+fn bitwise_or(parse_session: &mut ParseSession) -> Box<Expr> {
+    let mut node = bitwise_xor(parse_session);
     loop {
-        if consume(Token::Pipe, tokens) {
-            node = Expr::binary(BinaryOp::pipe(), node, bitwise_xor(tokens));
+        if consume(Token::Pipe, &mut parse_session.tokens) {
+            node = Expr::binary(BinaryOp::pipe(), node, bitwise_xor(parse_session));
         } else {
             return node;
         }
     }
 }
 
-fn bitwise_xor(tokens: &mut Vec<Token>) -> Box<Expr> {
-    let mut node = bitwise_and(tokens);
+fn bitwise_xor(parse_session: &mut ParseSession) -> Box<Expr> {
+    let mut node = bitwise_and(parse_session);
     loop {
-        if consume(Token::Caret, tokens) {
-            node = Expr::binary(BinaryOp::caret(), node, bitwise_and(tokens));
+        if consume(Token::Caret, &mut parse_session.tokens) {
+            node = Expr::binary(BinaryOp::caret(), node, bitwise_and(parse_session));
         } else {
             return node;
         }
     }
 }
 
-fn bitwise_and(tokens: &mut Vec<Token>) -> Box<Expr> {
-    let mut node = shift(tokens);
+fn bitwise_and(parse_session: &mut ParseSession) -> Box<Expr> {
+    let mut node = shift(parse_session);
     loop {
-        if consume(Token::Ampersand, tokens) {
-            node = Expr::binary(BinaryOp::ampersand(), node, shift(tokens));
+        if consume(Token::Ampersand, &mut parse_session.tokens) {
+            node = Expr::binary(BinaryOp::ampersand(), node, shift(parse_session));
         } else {
             return node;
         }
     }
 }
 
-fn shift(tokens: &mut Vec<Token>) -> Box<Expr> {
-    let mut node = add(tokens);
+fn shift(parse_session: &mut ParseSession) -> Box<Expr> {
+    let mut node = add(parse_session);
     loop {
-        if consume(Token::LessLess, tokens) {
-            node = Expr::binary(BinaryOp::less_less(), node, add(tokens));
-        } else if consume(Token::GreaterGreater, tokens) {
-            node = Expr::binary(BinaryOp::greater_greater(), node, add(tokens));
+        if consume(Token::LessLess, &mut parse_session.tokens) {
+            node = Expr::binary(BinaryOp::less_less(), node, add(parse_session));
+        } else if consume(Token::GreaterGreater, &mut parse_session.tokens) {
+            node = Expr::binary(BinaryOp::greater_greater(), node, add(parse_session));
         } else {
             return node;
         }
     }
 }
 
-fn add(tokens: &mut Vec<Token>) -> Box<Expr> {
-    let mut node = mul(tokens);
+fn add(parse_session: &mut ParseSession) -> Box<Expr> {
+    let mut node = mul(parse_session);
     loop {
-        if consume(Token::Plus, tokens) {
-            node = Expr::binary(BinaryOp::plus(), node, mul(tokens));
-        } else if consume(Token::Minus, tokens) {
-            node = Expr::binary(BinaryOp::minus(), node, mul(tokens));
+        if consume(Token::Plus, &mut parse_session.tokens) {
+            node = Expr::binary(BinaryOp::plus(), node, mul(parse_session));
+        } else if consume(Token::Minus, &mut parse_session.tokens) {
+            node = Expr::binary(BinaryOp::minus(), node, mul(parse_session));
         } else {
             return node;
         }
     }
 }
 
-fn mul(tokens: &mut Vec<Token>) -> Box<Expr> {
-    let mut node = unary(tokens);
+fn mul(parse_session: &mut ParseSession) -> Box<Expr> {
+    let mut node = unary(parse_session);
     loop {
-        if consume(Token::Asterisk, tokens) {
-            node = Expr::binary(BinaryOp::asterisk(), node, unary(tokens));
-        } else if consume(Token::Slash, tokens) {
-            node = Expr::binary(BinaryOp::slash(), node, unary(tokens));
-        } else if consume(Token::Percent, tokens) {
-            node = Expr::binary(BinaryOp::percent(), node, unary(tokens));
+        if consume(Token::Asterisk, &mut parse_session.tokens) {
+            node = Expr::binary(BinaryOp::asterisk(), node, unary(parse_session));
+        } else if consume(Token::Slash, &mut parse_session.tokens) {
+            node = Expr::binary(BinaryOp::slash(), node, unary(parse_session));
+        } else if consume(Token::Percent, &mut parse_session.tokens) {
+            node = Expr::binary(BinaryOp::percent(), node, unary(parse_session));
         } else {
             return node;
         }
     }
 }
 
-fn unary(tokens: &mut Vec<Token>) -> Box<Expr> {
-    if consume(Token::Plus, tokens) {
-        unary(tokens)
-    } else if consume(Token::Minus, tokens) {
-        Expr::unary(UnaryOp::minus(), unary(tokens))
-    } else if consume(Token::Bang, tokens) {
-        Expr::unary(UnaryOp::bang(), unary(tokens))
-    } else if consume(Token::Tilde, tokens) {
-        Expr::unary(UnaryOp::tilde(), unary(tokens))
-    } else if consume(Token::Ampersand, tokens) {
-        Expr::unary(UnaryOp::ampersand(), unary(tokens))
-    } else if consume(Token::Asterisk, tokens) {
-        Expr::unary(UnaryOp::asterisk(), unary(tokens))
-    } else if consume(Token::PlusPlus, tokens) {
-        Expr::unary(UnaryOp::plus_plus(), unary(tokens))
-    } else if consume(Token::MinusMinus, tokens) {
-        Expr::unary(UnaryOp::minus_minus(), unary(tokens))
+fn unary(parse_session: &mut ParseSession) -> Box<Expr> {
+    if consume(Token::Plus, &mut parse_session.tokens) {
+        unary(parse_session)
+    } else if consume(Token::Minus, &mut parse_session.tokens) {
+        Expr::unary(UnaryOp::minus(), unary(parse_session))
+    } else if consume(Token::Bang, &mut parse_session.tokens) {
+        Expr::unary(UnaryOp::bang(), unary(parse_session))
+    } else if consume(Token::Tilde, &mut parse_session.tokens) {
+        Expr::unary(UnaryOp::tilde(), unary(parse_session))
+    } else if consume(Token::Ampersand, &mut parse_session.tokens) {
+        Expr::unary(UnaryOp::ampersand(), unary(parse_session))
+    } else if consume(Token::Asterisk, &mut parse_session.tokens) {
+        Expr::unary(UnaryOp::asterisk(), unary(parse_session))
+    } else if consume(Token::PlusPlus, &mut parse_session.tokens) {
+        Expr::unary(UnaryOp::plus_plus(), unary(parse_session))
+    } else if consume(Token::MinusMinus, &mut parse_session.tokens) {
+        Expr::unary(UnaryOp::minus_minus(), unary(parse_session))
     } else {
-        Box::new(postfix(tokens))
+        Box::new(postfix(parse_session))
     }
 }
 
-fn postfix(tokens: &mut Vec<Token>) -> Expr {
-    let psd = postfix_chain(tokens);
+fn postfix(parse_session: &mut ParseSession) -> Expr {
+    let psd = postfix_chain(parse_session);
     let mut base = psd.base;
     let suffixes = psd.suffixes;
 
@@ -599,30 +627,30 @@ fn postfix(tokens: &mut Vec<Token>) -> Expr {
     base
 }
 
-fn postfix_chain(tokens: &mut Vec<Token>) -> PostfixChain {
-    let node = PostfixChain::new(primary(tokens), {
+fn postfix_chain(parse_session: &mut ParseSession) -> PostfixChain {
+    let node = PostfixChain::new(primary(parse_session), {
         let mut pos_vec = vec![];
-        while is_next_postfix_suffix(tokens) {
-            if consume(Token::PlusPlus, tokens) {
+        while is_next_postfix_suffix(&mut parse_session.tokens) {
+            if consume(Token::PlusPlus, &mut parse_session.tokens) {
                 pos_vec.push(PostfixSuffix::plus_plus());
-            } else if consume(Token::MinusMinus, tokens) {
+            } else if consume(Token::MinusMinus, &mut parse_session.tokens) {
                 pos_vec.push(PostfixSuffix::minus_minus());
-            } else if consume(Token::MinusGreater, tokens) {
+            } else if consume(Token::MinusGreater, &mut parse_session.tokens) {
                 pos_vec.push(PostfixSuffix::MemberAccess(
                     MemberAccessOp::minus_greater(),
-                    consume_ident(tokens),
+                    consume_ident(&mut parse_session.tokens),
                 ));
-            } else if consume(Token::Dot, tokens) {
+            } else if consume(Token::Dot, &mut parse_session.tokens) {
                 pos_vec.push(PostfixSuffix::MemberAccess(
                     MemberAccessOp::dot(),
-                    consume_ident(tokens),
+                    consume_ident(&mut parse_session.tokens),
                 ));
-            } else if consume(Token::LParen, tokens) {
-                pos_vec.push(PostfixSuffix::ArgList(arg_list(tokens)));
-                consume(Token::RParen, tokens);
-            } else if consume(Token::LBracket, tokens) {
-                pos_vec.push(PostfixSuffix::ArrayAcsess(expr(tokens)));
-                consume(Token::RBracket, tokens);
+            } else if consume(Token::LParen, &mut parse_session.tokens) {
+                pos_vec.push(PostfixSuffix::ArgList(arg_list(parse_session)));
+                consume(Token::RParen, &mut parse_session.tokens);
+            } else if consume(Token::LBracket, &mut parse_session.tokens) {
+                pos_vec.push(PostfixSuffix::ArrayAcsess(expr(parse_session)));
+                consume(Token::RBracket, &mut parse_session.tokens);
             }
         }
         pos_vec
@@ -631,54 +659,54 @@ fn postfix_chain(tokens: &mut Vec<Token>) -> PostfixChain {
     node
 }
 
-fn primary(tokens: &mut Vec<Token>) -> Expr {
+fn primary(parse_session: &mut ParseSession) -> Expr {
     // 次のトークンが"("なら、"(" expr ")"のはず
-    if consume(Token::LParen, tokens) {
-        let node = expr(tokens);
-        let _ = consume(Token::RParen, tokens);
+    if consume(Token::LParen, &mut parse_session.tokens) {
+        let node = expr(parse_session);
+        let _ = consume(Token::RParen, &mut parse_session.tokens);
         return node;
     }
     // そうでなければ数値か変数か関数のはず
 
-    if is_next_atom(tokens) {
-        consume_atom(tokens)
+    if is_next_atom(&mut parse_session.tokens) {
+        consume_atom(&mut parse_session.tokens)
     } else {
-        Expr::ident(consume_ident(tokens))
+        Expr::ident(consume_ident(&mut parse_session.tokens))
     }
 }
 
-fn arg_list(tokens: &mut Vec<Token>) -> Vec<Box<Expr>> {
+fn arg_list(parse_session: &mut ParseSession) -> Vec<Box<Expr>> {
     let mut args = Vec::new();
-    if !tokens.is_empty() && *tokens.first().unwrap() != Token::RParen {
-        args.push(Box::new(expr(tokens)));
-        while consume(Token::Comma, tokens) {
-            args.push(Box::new(expr(tokens)));
+    if !parse_session.tokens.is_empty() && parse_session.tokens.first().unwrap() != &Token::RParen {
+        args.push(Box::new(expr(parse_session)));
+        while consume(Token::Comma, &mut parse_session.tokens) {
+            args.push(Box::new(expr(parse_session)));
         }
     }
     args
 }
 
-fn param_list(tokens: &mut Vec<Token>) -> ParamList {
-    if consume(Token::void(), tokens) {
+fn param_list(parse_session: &mut ParseSession) -> ParamList {
+    if consume(Token::void(), &mut parse_session.tokens) {
         ParamList::Void
-    } else if !is_next_type(tokens) {
+    } else if !is_next_type(&mut parse_session.tokens) {
         // これは恐らくmain()のような書き方をしている
         //だだしいのはmain(void)だけと一応通過させる後に禁止するかも
         ParamList::Void
     } else {
-        let mut params = vec![param(tokens)];
+        let mut params = vec![param(parse_session)];
 
-        while consume(Token::Comma, tokens) {
-            params.push(param(tokens));
+        while consume(Token::Comma, &mut parse_session.tokens) {
+            params.push(param(parse_session));
         }
         ParamList::Params(params)
     }
 }
 
-fn param(tokens: &mut Vec<Token>) -> Param {
-    Param::new(consume_type(tokens), {
-        if is_next_declarator(tokens) {
-            Some(declarator(tokens))
+fn param(parse_session: &mut ParseSession) -> Param {
+    Param::new(consume_type(&mut parse_session.tokens), {
+        if is_next_declarator(&parse_session.tokens) {
+            Some(declarator(parse_session))
         } else {
             None
         }

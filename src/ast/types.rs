@@ -8,6 +8,7 @@ pub enum Type {
     Struct(Ident), // struct Foo
     Union(Ident),  // union Bar
     Enum(Ident),   // enum Baz
+    Typedef(Ident),
 }
 
 #[derive(Debug, PartialEq, Clone)]
