@@ -158,22 +158,22 @@ pub struct FunctionDef {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Struct {
-    pub name: Ident,
+    pub name: Option<Ident>,
     pub members: Vec<MemberDecl>,
 }
 impl Struct {
-    pub fn new(name: Ident, members: Vec<MemberDecl>) -> Self {
+    pub fn new(name: Option<Ident>, members: Vec<MemberDecl>) -> Self {
         Self { name, members }
     }
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Union {
-    pub name: Ident,
+    pub name: Option<Ident>,
     pub members: Vec<MemberDecl>,
 }
 impl Union {
-    pub fn new(name: Ident, members: Vec<MemberDecl>) -> Self {
+    pub fn new(name: Option<Ident>, members: Vec<MemberDecl>) -> Self {
         Self { name, members }
     }
 }
@@ -191,11 +191,11 @@ impl MemberDecl {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Enum {
-    pub name: Ident,
+    pub name: Option<Ident>,
     pub variants: Vec<EnumMember>,
 }
 impl Enum {
-    pub fn new(name: Ident, variants: Vec<EnumMember>) -> Self {
+    pub fn new(name: Option<Ident>, variants: Vec<EnumMember>) -> Self {
         Self { name, variants }
     }
 }

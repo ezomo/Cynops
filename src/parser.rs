@@ -327,29 +327,47 @@ fn direct_declarator(parse_session: &mut ParseSession) -> DirectDeclarator {
 }
 
 fn struct_def(parse_session: &mut ParseSession) -> Struct {
-    Struct::new(consume_ident(&mut parse_session.tokens), {
-        consume(Token::LBrace, &mut parse_session.tokens);
-        let mut ms = vec![decl_member(parse_session)];
-        while !consume(Token::RBrace, &mut parse_session.tokens) {
-            ms.push(decl_member(parse_session));
-        }
+    Struct::new(
+        {
+            if is_next_ident(&parse_session.tokens) {
+                Some(consume_ident(&mut parse_session.tokens))
+            } else {
+                None
+            }
+        },
+        {
+            consume(Token::LBrace, &mut parse_session.tokens);
+            let mut ms = vec![decl_member(parse_session)];
+            while !consume(Token::RBrace, &mut parse_session.tokens) {
+                ms.push(decl_member(parse_session));
+            }
 
-        consume(Token::Semicolon, &mut parse_session.tokens);
-        ms
-    })
+            consume(Token::Semicolon, &mut parse_session.tokens);
+            ms
+        },
+    )
 }
 
 fn union_def(parse_session: &mut ParseSession) -> Union {
-    Union::new(consume_ident(&mut parse_session.tokens), {
-        consume(Token::LBrace, &mut parse_session.tokens);
-        let mut ms = vec![decl_member(parse_session)];
-        while !consume(Token::RBrace, &mut parse_session.tokens) {
-            ms.push(decl_member(parse_session));
-        }
+    Union::new(
+        {
+            if is_next_ident(&parse_session.tokens) {
+                Some(consume_ident(&mut parse_session.tokens))
+            } else {
+                None
+            }
+        },
+        {
+            consume(Token::LBrace, &mut parse_session.tokens);
+            let mut ms = vec![decl_member(parse_session)];
+            while !consume(Token::RBrace, &mut parse_session.tokens) {
+                ms.push(decl_member(parse_session));
+            }
 
-        consume(Token::Semicolon, &mut parse_session.tokens);
-        ms
-    })
+            consume(Token::Semicolon, &mut parse_session.tokens);
+            ms
+        },
+    )
 }
 
 fn decl_member(parse_session: &mut ParseSession) -> MemberDecl {
@@ -364,13 +382,22 @@ fn decl_member(parse_session: &mut ParseSession) -> MemberDecl {
 }
 
 fn enum_def(parse_session: &mut ParseSession) -> Enum {
-    Enum::new(consume_ident(&mut parse_session.tokens), {
-        consume(Token::LBrace, &mut parse_session.tokens);
-        let tmp = enum_member(parse_session);
-        consume(Token::RBrace, &mut parse_session.tokens);
-        consume(Token::Semicolon, &mut parse_session.tokens);
-        tmp
-    })
+    Enum::new(
+        {
+            if is_next_ident(&parse_session.tokens) {
+                Some(consume_ident(&mut parse_session.tokens))
+            } else {
+                None
+            }
+        },
+        {
+            consume(Token::LBrace, &mut parse_session.tokens);
+            let tmp = enum_member(parse_session);
+            consume(Token::RBrace, &mut parse_session.tokens);
+            consume(Token::Semicolon, &mut parse_session.tokens);
+            tmp
+        },
+    )
 }
 
 fn enum_member(parse_session: &mut ParseSession) -> Vec<EnumMember> {
@@ -831,7 +858,7 @@ fn is_next_composite_type_def(tokens: &[Token], op: Token) -> bool {
         return false;
     }
     // e.g. struct Foo { ... }
-    tokens[0] == op && is_next_ident(&tokens[1..]) && tokens[2] == Token::LBrace
+    tokens[0] == op && (tokens[1] == Token::LBrace || tokens[2] == Token::LBrace)
 }
 
 fn consume_atom(tokens: &mut Vec<Token>) -> Expr {

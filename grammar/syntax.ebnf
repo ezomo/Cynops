@@ -50,16 +50,16 @@ typedef_type      = type | struct_def | union_def | enum_def ;
 
 // 構造体 / 共用体定義
 struct_def        = "struct" [ident] "{" { decl_member  } "}" ";" ;
-union_def         = "union"  ident "{" { decl_member  } "}" ";" ;
+union_def         = "union"  [ident] "{" { decl_member  } "}" ";" ;
 
 decl_member       = type declarator { "," declarator } ";" ;
 
 // enum 定義
-enum_def          = "enum" ident "{" { enum_member } "}" ";" ;
+enum_def          = "enum" [ident] "{" { enum_member } "}" ";" ;
 enum_member       = ident [ "=" num ] { "," ident [ "=" num ] } ;
 
 // 型
-type = "int" | "char" | "void" | "struct" ident | "union" ident | "enum" ident ;;
+type = "int" | "char" | "void" | "struct" ident | "union" ident | "enum" ident ;
 
 // 式(expression)
 expr            = assign ;

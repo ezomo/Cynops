@@ -229,7 +229,14 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
             DeclStmt::Struct(struct_decl) => {
                 print_branch(
                     "StructDeclStmt",
-                    &format!("{}", struct_decl.name.name),
+                    &format!(
+                        "{}",
+                        struct_decl
+                            .name
+                            .as_ref()
+                            .map(|n| n.name.as_str())
+                            .unwrap_or("undefined")
+                    ),
                     indent,
                     is_last,
                     &prefix,
@@ -259,7 +266,7 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                             declarator,
                             indent + 4,
                             is_last_declarator,
-                            extend_prefix(&member_prefix, false),
+                            extend_prefix(&member_prefix, false).to_vec(),
                         );
                     }
                 }
@@ -267,7 +274,14 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
             DeclStmt::Union(union_decl) => {
                 print_branch(
                     "UnionDeclStmt",
-                    &format!("{}", union_decl.name.name),
+                    &format!(
+                        "{}",
+                        union_decl
+                            .name
+                            .as_ref()
+                            .map(|n| n.name.as_str())
+                            .unwrap_or("undefined")
+                    ),
                     indent,
                     is_last,
                     &prefix,
@@ -305,7 +319,14 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
             DeclStmt::Enum(enum_decl) => {
                 print_branch(
                     "EnumDeclStmt",
-                    &format!("{}", enum_decl.name.name),
+                    &format!(
+                        "{}",
+                        enum_decl
+                            .name
+                            .as_ref()
+                            .map(|n| n.name.as_str())
+                            .unwrap_or("undefined")
+                    ),
                     indent,
                     is_last,
                     &prefix,
@@ -599,7 +620,18 @@ fn visualize_typedef_type(
         TypedefType::Struct(struct_decl) => {
             print_branch(
                 "StructType",
-                &format!("{}", struct_decl.name.name),
+                &format!(
+                    "{}",
+                    if struct_decl
+                        .name
+                        .as_ref()
+                        .map_or(true, |n| n.name.is_empty())
+                    {
+                        "undefined"
+                    } else {
+                        struct_decl.name.as_ref().map(|n| n.name.as_str()).unwrap()
+                    }
+                ),
                 indent,
                 is_last,
                 &prefix,
@@ -636,7 +668,14 @@ fn visualize_typedef_type(
         TypedefType::Union(union_decl) => {
             print_branch(
                 "UnionType",
-                &format!("{}", union_decl.name.name),
+                &format!(
+                    "{}",
+                    union_decl
+                        .name
+                        .as_ref()
+                        .map(|n| n.name.as_str())
+                        .unwrap_or("undefined")
+                ),
                 indent,
                 is_last,
                 &prefix,
@@ -673,7 +712,14 @@ fn visualize_typedef_type(
         TypedefType::Enum(enum_decl) => {
             print_branch(
                 "EnumType",
-                &format!("{}", enum_decl.name.name),
+                &format!(
+                    "{}",
+                    enum_decl
+                        .name
+                        .as_ref()
+                        .map(|n| n.name.as_str())
+                        .unwrap_or("undefined")
+                ),
                 indent,
                 is_last,
                 &prefix,
