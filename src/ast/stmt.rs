@@ -1,6 +1,6 @@
 use super::{DeclStmt, Expr, Ident};
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Block {
     pub statements: Vec<Box<Stmt>>,
 }
@@ -10,31 +10,31 @@ impl Block {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct If {
     pub cond: Box<Expr>,        // 条件は式
     pub then_branch: Box<Stmt>, // ブロックや文
     pub else_branch: Option<Box<Stmt>>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Case {
     pub expr: Expr,
     pub stmts: Vec<Box<Stmt>>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct DefaultCase {
     pub stmts: Vec<Box<Stmt>>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum SwitchCase {
     Case(Case),
     Default(DefaultCase),
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Switch {
     pub cond: Box<Expr>,
     pub cases: Vec<SwitchCase>,
@@ -49,19 +49,19 @@ impl SwitchCase {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct While {
     pub cond: Box<Expr>,
     pub body: Box<Stmt>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct DoWhile {
     pub body: Box<Stmt>,
     pub cond: Box<Expr>, // 条件は式
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct For {
     pub init: Option<Box<Expr>>, // 式（文じゃない）← int i = 0; はNG
     pub cond: Option<Box<Expr>>, // 式
@@ -69,23 +69,23 @@ pub struct For {
     pub body: Box<Stmt>,         // 本体（文）
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Return {
     pub value: Option<Box<Expr>>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Label {
     pub name: Ident,
     pub stmt: Box<Stmt>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Goto {
     pub label: Ident,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum Control {
     If(If),
     While(While),
@@ -94,7 +94,7 @@ pub enum Control {
     Switch(Switch),
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum Stmt {
     ExprStmt(Expr), // 式文（関数呼び出し、代入など）
     DeclStmt(DeclStmt),

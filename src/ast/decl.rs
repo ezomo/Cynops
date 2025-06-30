@@ -3,7 +3,7 @@ use super::{
     types::{FunctionSig, Type},
 };
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum DeclStmt {
     Typed(Typed),
     Struct(Struct),
@@ -34,13 +34,13 @@ impl DeclStmt {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Typed {
     pub ty: Type,
     pub declarators: Vec<InitDeclarator>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct InitDeclarator {
     pub declarator: Declarator,
     pub init: Option<Initializer>,
@@ -51,13 +51,13 @@ impl InitDeclarator {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Pointer {
     pub level: usize,
     pub inner: Box<DirectDeclarator>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Declarator {
     Pointer(Pointer),
     Direct(DirectDeclarator),
@@ -75,18 +75,24 @@ impl Declarator {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+
+pub struct Array {
+    pub base: Box<DirectDeclarator>,
+    pub size: Option<Expr>,
+}
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+pub struct Func {
+    pub base: Box<DirectDeclarator>,
+    pub params: Option<ParamList>,
+}
+
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum DirectDeclarator {
     Ident(Ident),
     Paren(Box<Declarator>), // 例: (*f)
-    Array {
-        base: Box<DirectDeclarator>,
-        size: Option<Expr>,
-    },
-    Func {
-        base: Box<DirectDeclarator>,
-        params: Option<ParamList>,
-    },
+    Array(Array),
+    Func(Func),
 }
 impl DirectDeclarator {
     /// 識別子からDirectDeclaratorを作る
@@ -101,22 +107,22 @@ impl DirectDeclarator {
 
     /// 配列型DirectDeclaratorを作る
     pub fn array(base: DirectDeclarator, size: Option<Expr>) -> Self {
-        DirectDeclarator::Array {
+        DirectDeclarator::Array(Array {
             base: Box::new(base),
             size,
-        }
+        })
     }
 
     /// 関数型DirectDeclaratorを作る
     pub fn func(base: DirectDeclarator, params: Option<ParamList>) -> Self {
-        DirectDeclarator::Func {
+        DirectDeclarator::Func(Func {
             base: Box::new(base),
             params,
-        }
+        })
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Param {
     pub ty: Type,
     pub name: Option<Declarator>,
@@ -127,13 +133,13 @@ impl Param {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum ParamList {
     Void,               // f(void)
     Params(Vec<Param>), // f(int x, char y)
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum Initializer {
     Expr(Box<Expr>),
     List(Vec<Initializer>), // 複合初期化子: {1, 2}
@@ -150,13 +156,13 @@ impl Initializer {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct FunctionDef {
     pub sig: FunctionSig,
     pub body: Block,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Struct {
     pub name: Option<Ident>,
     pub members: Vec<MemberDecl>,
@@ -167,7 +173,7 @@ impl Struct {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Union {
     pub name: Option<Ident>,
     pub members: Vec<MemberDecl>,
@@ -178,7 +184,7 @@ impl Union {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct MemberDecl {
     pub ty: Type,
     pub declarators: Vec<Declarator>,
@@ -189,7 +195,7 @@ impl MemberDecl {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Enum {
     pub name: Option<Ident>,
     pub variants: Vec<EnumMember>,
@@ -200,7 +206,7 @@ impl Enum {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct EnumMember {
     pub name: Ident,
     pub value: Option<usize>, // = 指定があるとき
@@ -211,7 +217,7 @@ impl EnumMember {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Typedef {
     pub ty: TypedefType,              // struct/union/enum/primitive など
     pub declarators: Vec<Declarator>, // Point, MyInt などの名前
@@ -222,7 +228,7 @@ impl Typedef {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum TypedefType {
     Type(Type),
     Struct(Struct),

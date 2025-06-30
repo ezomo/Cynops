@@ -30,8 +30,8 @@ fn extract_direct_declarator_name(direct: &DirectDeclarator) -> String {
     match direct {
         DirectDeclarator::Ident(ident) => ident.name.clone(),
         DirectDeclarator::Paren(decl) => extract_function_name(decl),
-        DirectDeclarator::Array { base, .. } => extract_direct_declarator_name(base),
-        DirectDeclarator::Func { base, .. } => extract_direct_declarator_name(base),
+        DirectDeclarator::Array(base) => extract_direct_declarator_name(&base.base),
+        DirectDeclarator::Func(base) => extract_direct_declarator_name(&base.base),
     }
 }
 
@@ -45,9 +45,9 @@ fn extract_function_params(declarator: &Declarator) -> Option<&ParamList> {
 
 fn extract_direct_declarator_params(direct: &DirectDeclarator) -> Option<&ParamList> {
     match direct {
-        DirectDeclarator::Func { params, .. } => params.as_ref(),
+        DirectDeclarator::Func(params) => params.params.as_ref(),
         DirectDeclarator::Paren(decl) => extract_function_params(decl),
-        DirectDeclarator::Array { base, .. } => extract_direct_declarator_params(base),
+        DirectDeclarator::Array(base) => extract_direct_declarator_params(&base.base),
         _ => None,
     }
 }
@@ -815,7 +815,9 @@ fn visualize_direct_declarator(
             print_branch("Parenthesized", "", indent, is_last, &prefix);
             visualize_declarator(decl, indent + 1, true, extend_prefix(&prefix, !is_last));
         }
-        DirectDeclarator::Array { base, size } => {
+        DirectDeclarator::Array(array) => {
+            let base = &array.base;
+            let size = &array.size;
             print_branch("Array", "", indent, is_last, &prefix);
             let next_prefix = extend_prefix(&prefix, !is_last);
 
@@ -832,7 +834,9 @@ fn visualize_direct_declarator(
                 visualize_expr(size, indent + 2, true, extend_prefix(&next_prefix, false));
             }
         }
-        DirectDeclarator::Func { base, params } => {
+        DirectDeclarator::Func(func) => {
+            let base = &func.base;
+            let params = &func.params;
             print_branch("Function", "", indent, is_last, &prefix);
             let next_prefix = extend_prefix(&prefix, !is_last);
 

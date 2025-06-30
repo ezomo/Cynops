@@ -4,7 +4,7 @@ use crate::token::{Keyword, Token};
 use std::collections::HashMap;
 
 pub struct ParseSession {
-    pub typedef_stack: Vec<HashMap<Ident, Type>>,
+    pub typedef_stack: Vec<HashMap<Ident, (TypedefType, Declarator)>>,
     pub tokens: Vec<Token>,
 }
 
@@ -15,12 +15,53 @@ impl ParseSession {
             tokens,
         }
     }
+
+    pub fn enter_block(&mut self) {
+        self.typedef_stack.push(HashMap::new());
+    }
+
+    pub fn add_type(&mut self, declarator: Declarator, typedeftype: TypedefType) {
+        self.typedef_stack
+            .last_mut()
+            .unwrap()
+            .insert(a(declarator.clone()), (typedeftype, declarator));
+    }
+
+    pub fn exit_block(&mut self) {
+        self.typedef_stack.pop();
+    }
+
+    pub fn is_type(&self, ident: &Ident) -> bool {
+        for scope in self.typedef_stack.iter().rev() {
+            if scope.contains_key(ident) {
+                return true;
+            }
+        }
+        false
+    }
+}
+
+fn a(declarator: Declarator) -> Ident {
+    match declarator {
+        Declarator::Pointer(p) => d(*p.inner),
+        Declarator::Direct(di) => d(di),
+    }
+}
+
+fn d(directdeclarator: DirectDeclarator) -> Ident {
+    match directdeclarator {
+        DirectDeclarator::Array(a) => d(*a.base),
+        DirectDeclarator::Func(f) => d(*f.base),
+        DirectDeclarator::Paren(p) => a(*p),
+        DirectDeclarator::Ident(i) => i,
+    }
 }
 
 pub fn program(parse_session: &mut ParseSession) -> Program {
+    parse_session.enter_block();
     let mut code = Program::new();
     while !parse_session.tokens.is_empty() {
-        if is_next_type(&mut parse_session.tokens) && is_next_fn(&&mut parse_session.tokens[1..]) {
+        if is_next_type(&parse_session) && is_next_fn(&&mut parse_session.tokens[1..]) {
             let sig = function_sig(parse_session);
             if consume(Token::LBrace, &mut parse_session.tokens) {
                 // function definition
@@ -35,6 +76,7 @@ pub fn program(parse_session: &mut ParseSession) -> Program {
             code.items.push(TopLevel::stmt(*stmt(parse_session)));
         }
     }
+    parse_session.exit_block();
     code
 }
 
@@ -138,7 +180,7 @@ fn stmt(parse_session: &mut ParseSession) -> Box<Stmt> {
         Stmt::r#continue()
     } else if consume(Token::LBrace, &mut parse_session.tokens) {
         Stmt::block(*block(parse_session))
-    } else if is_next_decl_stmt(&parse_session.tokens) {
+    } else if is_next_decl_stmt(parse_session) {
         Stmt::decl_stmt(decl_stmt(parse_session))
     } else if consume(Token::r#switch(), &mut parse_session.tokens) {
         consume(Token::LParen, &mut parse_session.tokens);
@@ -221,15 +263,24 @@ fn decl_stmt(parse_session: &mut ParseSession) -> DeclStmt {
 }
 
 fn typedef_stmt(parse_session: &mut ParseSession) -> Typedef {
-    Typedef::new(typedef_type(parse_session), {
-        let mut ds = vec![declarator(parse_session)];
+    let ty = typedef_type(parse_session);
 
+    let pretreatment = |parse_session: &mut ParseSession, ds: &mut Vec<_>| {
+        let d = declarator(parse_session);
+        parse_session.add_type(d.clone(), ty.clone());
+        ds.push(d);
+    };
+
+    let declarators = {
+        let mut ds = vec![];
+        pretreatment(parse_session, &mut ds);
         while consume(Token::Comma, &mut parse_session.tokens) {
-            ds.push(declarator(parse_session));
+            pretreatment(parse_session, &mut ds);
         }
         consume(Token::Semicolon, &mut parse_session.tokens);
         ds
-    })
+    };
+    Typedef::new(ty, declarators)
 }
 
 fn typedef_type(parse_session: &mut ParseSession) -> TypedefType {
@@ -429,11 +480,13 @@ fn enum_member(parse_session: &mut ParseSession) -> Vec<EnumMember> {
 }
 
 fn block(parse_session: &mut ParseSession) -> Box<Block> {
+    parse_session.enter_block();
     let mut code = vec![];
 
     while !consume(Token::RBrace, &mut parse_session.tokens) {
         code.push(stmt(parse_session));
     }
+    parse_session.exit_block();
 
     Block::new(code)
 }
@@ -716,7 +769,7 @@ fn arg_list(parse_session: &mut ParseSession) -> Vec<Box<Expr>> {
 fn param_list(parse_session: &mut ParseSession) -> ParamList {
     if consume(Token::void(), &mut parse_session.tokens) {
         ParamList::Void
-    } else if !is_next_type(&mut parse_session.tokens) {
+    } else if !is_next_type(parse_session) {
         // これは恐らくmain()のような書き方をしている
         //だだしいのはmain(void)だけと一応通過させる後に禁止するかも
         ParamList::Void
@@ -785,7 +838,8 @@ fn is_next_fn(tokens: &[Token]) -> bool {
     return matches!(second, Token::LParen);
 }
 
-fn is_next_type(tokens: &[Token]) -> bool {
+fn is_next_type(parse_session: &ParseSession) -> bool {
+    let tokens = &parse_session.tokens;
     if tokens.is_empty() {
         return false;
     }
@@ -798,7 +852,14 @@ fn is_next_type(tokens: &[Token]) -> bool {
             | Token::Keyword(Keyword::Void)
     ) || next == &Token::r#struct()
         || next == &Token::r#union()
-        || next == &Token::r#enum();
+        || next == &Token::r#enum()
+        || {
+            if is_next_ident(tokens) {
+                parse_session.is_type(&get_ident(tokens))
+            } else {
+                false
+            }
+        };
 }
 
 fn is_next_switch_stmt(tokens: &[Token]) -> bool {
@@ -826,12 +887,13 @@ fn is_next_declarator(tokens: &[Token]) -> bool {
     return next == &Token::Asterisk || next == &Token::LParen || matches!(next, Token::Ident(_));
 }
 
-fn is_next_decl_stmt(tokens: &[Token]) -> bool {
+fn is_next_decl_stmt(parse_session: &ParseSession) -> bool {
+    let tokens = &parse_session.tokens;
     if tokens.is_empty() {
         return false;
     }
 
-    is_next_type(tokens)
+    is_next_type(parse_session)
         || tokens.first().unwrap() == &Token::r#struct()
         || tokens.first().unwrap() == &Token::r#union()
         || tokens.first().unwrap() == &Token::r#enum()
@@ -880,13 +942,9 @@ fn consume_atom(tokens: &mut Vec<Token>) -> Expr {
 }
 
 fn consume_ident(tokens: &mut Vec<Token>) -> Ident {
-    if let Some(Token::Ident(name)) = tokens.first() {
-        let name = name.clone();
-        tokens.remove(0);
-        Ident::new(name)
-    } else {
-        panic!("Expected identifier, found {:?}", tokens);
-    }
+    let ident = get_ident(tokens);
+    tokens.remove(0);
+    ident
 }
 
 fn consume_type(tokens: &mut Vec<Token>) -> Type {
@@ -906,7 +964,18 @@ fn consume_type(tokens: &mut Vec<Token>) -> Type {
         return Type::Union(consume_ident(tokens));
     } else if consume(Token::r#enum(), tokens) {
         return Type::Enum(consume_ident(tokens));
+    } else if is_next_ident(tokens) {
+        return Type::Typedef(consume_ident(tokens));
     } else {
         panic!("Expected type, found {:?}", tokens.first());
+    }
+}
+
+fn get_ident(tokens: &[Token]) -> Ident {
+    if let Some(Token::Ident(name)) = tokens.first() {
+        let name = name.clone();
+        Ident::new(name)
+    } else {
+        panic!("Expected identifier, found {:?}", tokens);
     }
 }

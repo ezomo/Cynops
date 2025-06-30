@@ -1,6 +1,6 @@
 use super::Declarator;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum Type {
     Void,
     Int,
@@ -11,7 +11,7 @@ pub enum Type {
     Typedef(Ident),
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct FunctionSig {
     pub ret_type: Type,
     pub declarator: Declarator,
@@ -25,7 +25,8 @@ impl FunctionSig {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+
 pub struct Ident {
     pub name: String,
 }

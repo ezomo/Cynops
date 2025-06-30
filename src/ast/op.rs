@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum Arithmetic {
     Plus,           // '+'
     Minus,          // '-'
@@ -12,7 +12,7 @@ pub enum Arithmetic {
     Ampersand,      // '&'
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum Comparison {
     EqualEqual,   // '=='
     NotEqual,     // '!='
@@ -22,13 +22,13 @@ pub enum Comparison {
     GreaterEqual, // '>='
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum Logical {
     AmpersandAmpersand, // '&&'
     PipePipe,           // '||'
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum BinaryOp {
     Arithmetic(Arithmetic),
     Comparison(Comparison),
@@ -101,7 +101,7 @@ impl BinaryOp {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum AssignOp {
     Equal,               // '='
     PlusEqual,           // '+='
@@ -161,7 +161,7 @@ impl AssignOp {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum UnaryOp {
     Minus,      // -x
     Bang,       // !x
@@ -200,7 +200,7 @@ impl UnaryOp {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum PostfixOp {
     PlusPlus,   // x++
     MinusMinus, // x--
@@ -215,7 +215,7 @@ impl PostfixOp {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum MemberAccessOp {
     Dot,
     MinusGreater,

@@ -2,12 +2,12 @@ use crate::ast::MemberAccessOp;
 
 use super::{AssignOp, BinaryOp, Ident, PostfixOp, UnaryOp};
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Postfix {
     pub expr: Box<Expr>,
     pub op: PostfixOp,
 }
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct PostfixChain {
     pub base: Expr,                   // primary に相当する基の式
     pub suffixes: Vec<PostfixSuffix>, // 後置操作の連続
@@ -19,7 +19,7 @@ impl PostfixChain {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum PostfixSuffix {
     ArrayAcsess(Expr),                   // [ expr ]
     ArgList(Vec<Box<Expr>>),             // ( arg_list )
@@ -36,53 +36,54 @@ impl PostfixSuffix {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Unary {
     pub op: UnaryOp,
     pub expr: Box<Expr>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Binary {
     pub op: BinaryOp,
     pub lhs: Box<Expr>,
     pub rhs: Box<Expr>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Ternary {
     pub cond: Box<Expr>,
     pub then_branch: Box<Expr>,
     pub else_branch: Box<Expr>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+
 pub struct Assign {
     pub op: AssignOp,
     pub lhs: Box<Expr>,
     pub rhs: Box<Expr>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Call {
     pub func: Box<Expr>,
     pub args: Vec<Box<Expr>>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Subscript {
     pub name: Box<Expr>,
     pub index: Box<Expr>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct MemberAccess {
     pub base: Box<Expr>,      // 左側 (構造体 or ポインタ)
     pub member: Ident,        // アクセスされるメンバ名
     pub kind: MemberAccessOp, // . or ->
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Expr {
     Assign(Assign),
     Binary(Binary),

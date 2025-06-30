@@ -70,7 +70,7 @@ fn run_parser_test(input: &mut String) -> Result<(), String> {
 
 fn run_parser_test_with_options(input: &mut String, show_ast: bool) -> Result<(), String> {
     preprocessor::remove_comments(input);
-    let mut tokens = lexer::tokenize(input);
+    let tokens = lexer::tokenize(input);
     let mut parse_session = parser::ParseSession::new(tokens);
     let program = parser::program(&mut parse_session);
 
