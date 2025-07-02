@@ -54,7 +54,7 @@ impl InitDeclarator {
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Pointer {
     pub level: usize,
-    pub inner: Box<DirectDeclarator>,
+    pub inner: Box<Option<DirectDeclarator>>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -63,7 +63,7 @@ pub enum Declarator {
     Direct(DirectDeclarator),
 }
 impl Declarator {
-    pub fn pointer(level: usize, inner: DirectDeclarator) -> Self {
+    pub fn pointer(level: usize, inner: Option<DirectDeclarator>) -> Self {
         Declarator::Pointer(Pointer {
             level,
             inner: Box::new(inner),

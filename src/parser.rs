@@ -43,7 +43,7 @@ impl ParseSession {
 
 fn a(declarator: Declarator) -> Ident {
     match declarator {
-        Declarator::Pointer(p) => d(*p.inner),
+        Declarator::Pointer(p) => d(p.inner.unwrap()),
         Declarator::Direct(di) => d(di),
     }
 }
@@ -333,25 +333,27 @@ fn declarator(parse_session: &mut ParseSession) -> Declarator {
     }
 
     if poiner_level == 0 {
-        Declarator::direct(direct_declarator(parse_session))
+        Declarator::direct(direct_declarator(parse_session).unwrap())
     } else {
         Declarator::pointer(poiner_level, direct_declarator(parse_session))
     }
 }
 
-fn direct_declarator(parse_session: &mut ParseSession) -> DirectDeclarator {
+fn direct_declarator(parse_session: &mut ParseSession) -> Option<DirectDeclarator> {
     let mut base = if consume(Token::LParen, &mut parse_session.tokens) {
         let inner = declarator(parse_session);
         consume(Token::RParen, &mut parse_session.tokens);
 
-        DirectDeclarator::paren(inner)
+        Some(DirectDeclarator::paren(inner))
     } else if is_next_ident(&mut parse_session.tokens) {
-        DirectDeclarator::ident(consume_ident(&mut parse_session.tokens))
+        Some(DirectDeclarator::ident(consume_ident(
+            &mut parse_session.tokens,
+        )))
     } else {
-        panic!("{:?}", &mut parse_session.tokens);
+        None
     };
 
-    // ★ ここで左再帰をループに展開
+    //ここで左再帰をループに展開
     loop {
         if consume(Token::LBracket, &mut parse_session.tokens) {
             let size = if !consume(Token::RBracket, &mut parse_session.tokens) {
@@ -360,7 +362,7 @@ fn direct_declarator(parse_session: &mut ParseSession) -> DirectDeclarator {
                 None
             };
             consume(Token::RBracket, &mut parse_session.tokens);
-            base = DirectDeclarator::array(base, size)
+            base = Some(DirectDeclarator::array(base.unwrap(), size))
         } else if consume(Token::LParen, &mut parse_session.tokens) {
             let params = if !consume(Token::RParen, &mut parse_session.tokens) {
                 Some(param_list(parse_session))
@@ -368,7 +370,7 @@ fn direct_declarator(parse_session: &mut ParseSession) -> DirectDeclarator {
                 None
             };
             consume(Token::RParen, &mut parse_session.tokens);
-            base = DirectDeclarator::func(base, params)
+            base = Some(DirectDeclarator::func(base.unwrap(), params))
         } else {
             break;
         }
@@ -388,7 +390,8 @@ fn struct_def(parse_session: &mut ParseSession) -> Struct {
         },
         {
             consume(Token::LBrace, &mut parse_session.tokens);
-            let mut ms = vec![decl_member(parse_session)];
+
+            let mut ms = vec![];
             while !consume(Token::RBrace, &mut parse_session.tokens) {
                 ms.push(decl_member(parse_session));
             }
@@ -410,7 +413,7 @@ fn union_def(parse_session: &mut ParseSession) -> Union {
         },
         {
             consume(Token::LBrace, &mut parse_session.tokens);
-            let mut ms = vec![decl_member(parse_session)];
+            let mut ms = vec![];
             while !consume(Token::RBrace, &mut parse_session.tokens) {
                 ms.push(decl_member(parse_session));
             }

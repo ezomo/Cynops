@@ -1,7 +1,7 @@
 use std::fs;
 
 // 実際のモジュール（プロジェクトに合わせて調整）
-use crate::ast_visualizer;
+// use crate::ast_visualizer;
 use crate::lexer;
 use crate::parser;
 use crate::preprocessor;
@@ -75,7 +75,7 @@ fn run_parser_test_with_options(input: &mut String, show_ast: bool) -> Result<()
     let program = parser::program(&mut parse_session);
 
     if show_ast {
-        ast_visualizer::visualize_program(&program);
+        // ast_visualizer::visualize_program(&program);
     }
 
     Ok(())

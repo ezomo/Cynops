@@ -22,7 +22,10 @@ pub fn visualize_program(program: &Program) {
 fn extract_function_name(declarator: &Declarator) -> String {
     match declarator {
         Declarator::Direct(direct) => extract_direct_declarator_name(direct),
-        Declarator::Pointer(pointer) => extract_direct_declarator_name(&pointer.inner),
+        Declarator::Pointer(pointer) => match pointer.inner.as_ref() {
+            Some(inner) => extract_direct_declarator_name(inner),
+            None => "<unnamed>".to_string(),
+        },
     }
 }
 
@@ -39,7 +42,13 @@ fn extract_direct_declarator_name(direct: &DirectDeclarator) -> String {
 fn extract_function_params(declarator: &Declarator) -> Option<&ParamList> {
     match declarator {
         Declarator::Direct(direct) => extract_direct_declarator_params(direct),
-        Declarator::Pointer(pointer) => extract_direct_declarator_params(&pointer.inner),
+        Declarator::Pointer(pointer) => {
+            if let Some(inner) = pointer.inner.as_ref() {
+                extract_function_params(inner)
+            } else {
+                None
+            }
+        }
     }
 }
 
@@ -788,12 +797,22 @@ fn visualize_declarator(declarator: &Declarator, indent: usize, is_last: bool, p
                 is_last,
                 &prefix,
             );
-            visualize_direct_declarator(
-                &pointer.inner,
-                indent + 1,
-                true,
-                extend_prefix(&prefix, !is_last),
-            );
+            if let Some(inner) = pointer.inner.as_ref() {
+                visualize_direct_declarator(
+                    inner,
+                    indent + 1,
+                    true,
+                    extend_prefix(&prefix, !is_last),
+                );
+            } else {
+                print_branch(
+                    "DirectDeclarator",
+                    "(none)",
+                    indent + 1,
+                    true,
+                    &extend_prefix(&prefix, !is_last),
+                );
+            }
         }
         Declarator::Direct(direct) => {
             visualize_direct_declarator(direct, indent, is_last, prefix);

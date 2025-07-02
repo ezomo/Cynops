@@ -38,7 +38,7 @@ decl_stmt         = typedef_stmt
 init_declarator   = declarator [ "=" initializer  ] ;
 initializer       = expr | "{" initializer_list "}" ;
 initializer_list  = initializer { "," initializer } ;
-declarator        = { "*" } direct_declarator ;
+declarator        = { "*" } [direct_declarator] ;
 direct_declarator = ident
                   | "(" declarator ")"                      // 関数ポインタなど
                   | direct_declarator "[" [expr] "]"        // 配列
