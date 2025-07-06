@@ -22,10 +22,13 @@ pub fn visualize_program(program: &Program) {
 fn extract_function_name(declarator: &Declarator) -> String {
     match declarator {
         Declarator::Direct(direct) => extract_direct_declarator_name(direct),
-        Declarator::Pointer(pointer) => match pointer.inner.as_ref() {
-            Some(inner) => extract_direct_declarator_name(inner),
-            None => "<unnamed>".to_string(),
-        },
+        Declarator::Pointer(pointer) => {
+            if let Some(inner) = pointer.inner.as_ref() {
+                extract_direct_declarator_name(inner)
+            } else {
+                "<unnamed>".to_string()
+            }
+        }
     }
 }
 
@@ -44,7 +47,7 @@ fn extract_function_params(declarator: &Declarator) -> Option<&ParamList> {
         Declarator::Direct(direct) => extract_direct_declarator_params(direct),
         Declarator::Pointer(pointer) => {
             if let Some(inner) = pointer.inner.as_ref() {
-                extract_function_params(inner)
+                extract_direct_declarator_params(inner)
             } else {
                 None
             }
@@ -807,7 +810,7 @@ fn visualize_declarator(declarator: &Declarator, indent: usize, is_last: bool, p
             } else {
                 print_branch(
                     "DirectDeclarator",
-                    "(none)",
+                    "<none>",
                     indent + 1,
                     true,
                     &extend_prefix(&prefix, !is_last),
@@ -835,39 +838,35 @@ fn visualize_direct_declarator(
             visualize_declarator(decl, indent + 1, true, extend_prefix(&prefix, !is_last));
         }
         DirectDeclarator::Array(array) => {
-            let base = &array.base;
-            let size = &array.size;
             print_branch("Array", "", indent, is_last, &prefix);
             let next_prefix = extend_prefix(&prefix, !is_last);
 
-            print_branch("Base", "", indent + 1, size.is_none(), &next_prefix);
+            print_branch("Base", "", indent + 1, array.size.is_none(), &next_prefix);
             visualize_direct_declarator(
-                base,
+                &array.base,
                 indent + 2,
                 true,
-                extend_prefix(&next_prefix, size.is_some()),
+                extend_prefix(&next_prefix, array.size.is_some()),
             );
 
-            if let Some(size) = size {
+            if let Some(size) = &array.size {
                 print_branch("Size", "", indent + 1, true, &next_prefix);
                 visualize_expr(size, indent + 2, true, extend_prefix(&next_prefix, false));
             }
         }
         DirectDeclarator::Func(func) => {
-            let base = &func.base;
-            let params = &func.params;
             print_branch("Function", "", indent, is_last, &prefix);
             let next_prefix = extend_prefix(&prefix, !is_last);
 
-            print_branch("Base", "", indent + 1, params.is_none(), &next_prefix);
+            print_branch("Base", "", indent + 1, func.params.is_none(), &next_prefix);
             visualize_direct_declarator(
-                base,
+                &func.base,
                 indent + 2,
                 true,
-                extend_prefix(&next_prefix, params.is_some()),
+                extend_prefix(&next_prefix, func.params.is_some()),
             );
 
-            if let Some(params) = params {
+            if let Some(params) = &func.params {
                 print_branch("Parameters", "", indent + 1, true, &next_prefix);
                 visualize_param_list(params, indent + 2, true, extend_prefix(&next_prefix, false));
             }
@@ -1198,6 +1197,20 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 true,
                 extend_prefix(&next_prefix, false),
             );
+        }
+        Expr::Sizeof(sizeof) => {
+            print_branch("Sizeof", "", indent, is_last, &prefix);
+            let next_prefix = extend_prefix(&prefix, !is_last);
+
+            match sizeof {
+                Sizeof::Type(ty) => {
+                    print_branch("Type", &format!("{:?}", ty), indent + 1, true, &next_prefix);
+                }
+                Sizeof::Expr(expr) => {
+                    print_branch("Expression", "", indent + 1, true, &next_prefix);
+                    visualize_expr(expr, indent + 2, true, extend_prefix(&next_prefix, false));
+                }
+            }
         }
     }
 }

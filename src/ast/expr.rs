@@ -1,4 +1,4 @@
-use crate::ast::MemberAccessOp;
+use crate::ast::{MemberAccessOp, Type, expr};
 
 use super::{AssignOp, BinaryOp, Ident, PostfixOp, UnaryOp};
 
@@ -84,6 +84,21 @@ pub struct MemberAccess {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub enum Sizeof {
+    Type(Type),
+    Expr(Box<Expr>),
+}
+
+impl Sizeof {
+    pub fn r#type(ty: Type) -> Self {
+        Self::Type(ty)
+    }
+    pub fn r#expr(expr: Expr) -> Self {
+        Self::Expr(Box::new(expr))
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Expr {
     Assign(Assign),
     Binary(Binary),
@@ -96,6 +111,7 @@ pub enum Expr {
     MemberAccess(MemberAccess),
     Ternary(Ternary),
     Unary(Unary),
+    Sizeof(Sizeof),
 }
 impl Expr {
     pub fn num(n: usize) -> Self {
@@ -156,5 +172,9 @@ impl Expr {
             member: member,
             kind,
         })
+    }
+
+    pub fn sizeof(sizeof: Sizeof) -> Box<Self> {
+        Box::new(Expr::Sizeof(sizeof))
     }
 }

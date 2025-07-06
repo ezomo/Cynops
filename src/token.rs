@@ -92,10 +92,11 @@ pub enum Keyword {
     Union,    // 'union'
     Enum,     // 'enum'
     Typedef,  // 'typedef'
+    Sizeof,   // 'sizeof'
 }
 
 impl Token {
-    pub const SYMBOLS: [(&str, Self); 64] = [
+    pub const SYMBOLS: [(&str, Self); 65] = [
         ("?", Self::Question),
         (":", Self::Colon),
         ("+", Self::Plus),
@@ -160,6 +161,7 @@ impl Token {
         ("union", Self::Keyword(Keyword::Union)),
         ("enum", Self::Keyword(Keyword::Enum)),
         ("typedef", Self::Keyword(Keyword::Typedef)),
+        ("sizeof", Self::Keyword(Keyword::Sizeof)),
     ];
 
     pub fn classify(input: &str) -> Option<Self> {
@@ -240,5 +242,9 @@ impl Token {
 
     pub fn r#typedef() -> Self {
         Token::Keyword(Keyword::Typedef)
+    }
+
+    pub fn r#sizeof() -> Self {
+        Token::Keyword(Keyword::Sizeof)
     }
 }

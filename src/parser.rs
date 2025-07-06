@@ -2,6 +2,7 @@ use crate::ast::*;
 use crate::token::{Keyword, Token};
 
 use std::collections::HashMap;
+use std::ops::Index;
 
 pub struct ParseSession {
     pub typedef_stack: Vec<HashMap<Ident, (TypedefType, Declarator)>>,
@@ -21,10 +22,11 @@ impl ParseSession {
     }
 
     pub fn add_type(&mut self, declarator: Declarator, typedeftype: TypedefType) {
+        let key = self.extract_ident_from_declarator(declarator.clone());
         self.typedef_stack
             .last_mut()
             .unwrap()
-            .insert(a(declarator.clone()), (typedeftype, declarator));
+            .insert(key, (typedeftype, declarator));
     }
 
     pub fn exit_block(&mut self) {
@@ -39,21 +41,21 @@ impl ParseSession {
         }
         false
     }
-}
 
-fn a(declarator: Declarator) -> Ident {
-    match declarator {
-        Declarator::Pointer(p) => d(p.inner.unwrap()),
-        Declarator::Direct(di) => d(di),
+    fn extract_ident_from_declarator(&self, declarator: Declarator) -> Ident {
+        match declarator {
+            Declarator::Pointer(p) => self.extract_ident_from_direct_declarator(p.inner.unwrap()),
+            Declarator::Direct(di) => self.extract_ident_from_direct_declarator(di),
+        }
     }
-}
 
-fn d(directdeclarator: DirectDeclarator) -> Ident {
-    match directdeclarator {
-        DirectDeclarator::Array(a) => d(*a.base),
-        DirectDeclarator::Func(f) => d(*f.base),
-        DirectDeclarator::Paren(p) => a(*p),
-        DirectDeclarator::Ident(i) => i,
+    fn extract_ident_from_direct_declarator(&self, directdeclarator: DirectDeclarator) -> Ident {
+        match directdeclarator {
+            DirectDeclarator::Array(a) => self.extract_ident_from_direct_declarator(*a.base),
+            DirectDeclarator::Func(f) => self.extract_ident_from_direct_declarator(*f.base),
+            DirectDeclarator::Paren(p) => self.extract_ident_from_declarator(*p),
+            DirectDeclarator::Ident(i) => i,
+        }
     }
 }
 
@@ -688,6 +690,16 @@ fn unary(parse_session: &mut ParseSession) -> Box<Expr> {
         Expr::unary(UnaryOp::plus_plus(), unary(parse_session))
     } else if consume(Token::MinusMinus, &mut parse_session.tokens) {
         Expr::unary(UnaryOp::minus_minus(), unary(parse_session))
+    } else if consume(Token::sizeof(), &mut parse_session.tokens) {
+        if consume(Token::LParen, &mut parse_session.tokens) && is_next_type(parse_session) {
+            let tmp = Expr::sizeof(Sizeof::r#type(consume_type(&mut parse_session.tokens)));
+            consume(Token::RParen, &mut parse_session.tokens);
+            tmp
+        } else {
+            let tmp = Expr::sizeof(Sizeof::expr(expr(parse_session)));
+            consume(Token::RParen, &mut parse_session.tokens);
+            tmp
+        }
     } else {
         Box::new(postfix(parse_session))
     }
@@ -807,6 +819,18 @@ fn consume(op: Token, tokens: &mut Vec<Token>) -> bool {
 
     tokens.remove(0);
     return true;
+}
+
+fn is_next(parse_session: &ParseSession, op: Token, index: usize) -> bool {
+    if parse_session.tokens.len() <= index {
+        return false;
+    }
+
+    if parse_session.tokens[index] != op {
+        return false;
+    }
+
+    true
 }
 
 fn is_next_atom(tokens: &[Token]) -> bool {

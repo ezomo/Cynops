@@ -82,6 +82,8 @@ bitwise_shift   = add { ("<<" | ">>") add } ;
 add             = mul { ("+" | "-") mul } ;
 mul             = unary { ("*" | "/" | "%") unary } ;
 unary           = ( "++" | "--" | "+" | "-" | "*" | "&" | "!" | "~" ) unary
+                | "sizeof" expr           // sizeof 式（括弧なし）
+                | "sizeof" "(" type ")" 
                 | postfix ;
 
 
