@@ -1,4 +1,4 @@
-use crate::ast::{MemberAccessOp, Type, expr};
+use crate::ast::{MemberAccessOp, Type};
 
 use super::{AssignOp, BinaryOp, Ident, PostfixOp, UnaryOp};
 
@@ -104,6 +104,7 @@ pub enum Expr {
     Binary(Binary),
     Call(Call),
     Char(char),
+    String(String),
     Ident(Ident),
     Num(usize),
     Postfix(Postfix),
@@ -120,6 +121,10 @@ impl Expr {
 
     pub fn char_lit(c: char) -> Self {
         Expr::Char(c)
+    }
+
+    pub fn string(string: String) -> Self {
+        Expr::String(string)
     }
 
     pub fn ident(name: Ident) -> Self {

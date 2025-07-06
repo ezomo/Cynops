@@ -3,6 +3,7 @@ pub enum Token {
     Ident(String), // e.g., foo
     Num(usize),    // e.g., 123
     Char(char),    // e.g., 'a'
+    String(String),
 
     //other symbols
     Question, // '?'

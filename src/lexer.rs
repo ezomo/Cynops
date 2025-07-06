@@ -36,6 +36,7 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                 continue;
             }
 
+            // 文字リテラル
             if input.starts_with('\'') {
                 tokens.push(Token::Char(input.chars().nth(1).unwrap()));
                 if input.chars().nth(2).unwrap() != '\'' {
@@ -45,6 +46,35 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                 continue;
             }
 
+            if input.starts_with('"') {
+                let mut end = 1;
+                let mut escaped = false;
+
+                while end < input.len() {
+                    let c = input.chars().nth(end).unwrap();
+
+                    if escaped {
+                        escaped = false;
+                    } else if c == '\\' {
+                        escaped = true;
+                    } else if c == '"' {
+                        break;
+                    }
+
+                    end += 1;
+                }
+
+                if end >= input.len() || input.chars().nth(end).unwrap() != '"' {
+                    panic!("unterminated string literal");
+                }
+
+                let content: String = input[1..end].to_string();
+                tokens.push(Token::String(content));
+                input = &input[end + 1..];
+                continue;
+            }
+
+            // 識別子
             if first.is_alphabetic() {
                 let can_ident =
                     |c: &char| c.is_ascii_alphabetic() || c.is_ascii_digit() || *c == '_';
@@ -61,17 +91,7 @@ pub fn tokenize(input: &str) -> Vec<Token> {
 
     tokens
 }
-
 #[test]
 fn test_tokenize() {
-    println!(
-        "{:?}",
-        tokenize(
-            "
-        int a = 0;
-
-        a ++
-        "
-        )
-    );
+    println!("{:?}", tokenize("\"testets\""));
 }

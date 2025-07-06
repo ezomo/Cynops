@@ -103,7 +103,8 @@ postfix_suffix =
 primary         = ident                       // 変数
                 | num                         // 整数リテラル
                 | char_lit                    // 文字
-                | "(" expr ")" ;              // 括弧つき式
+                | "(" expr ")"                // 括弧つき式
+                | string_lit;
 
 // 関数の引数・引数リスト
 arg_list        = expr { "," expr } ;
@@ -115,3 +116,4 @@ param           = type [declarator];
 num         = /[0-9]+/ ;
 ident       = /[a-zA-Z_][a-zA-Z0-9_]*/ ;
 char_lit    = /'(\\.|[^\\'])'/ ;
+string_lit  = /"([^"\\]|\\.)*"/ ;

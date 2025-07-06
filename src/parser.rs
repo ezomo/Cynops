@@ -2,7 +2,6 @@ use crate::ast::*;
 use crate::token::{Keyword, Token};
 
 use std::collections::HashMap;
-use std::ops::Index;
 
 pub struct ParseSession {
     pub typedef_stack: Vec<HashMap<Ident, (TypedefType, Declarator)>>,
@@ -821,25 +820,13 @@ fn consume(op: Token, tokens: &mut Vec<Token>) -> bool {
     return true;
 }
 
-fn is_next(parse_session: &ParseSession, op: Token, index: usize) -> bool {
-    if parse_session.tokens.len() <= index {
-        return false;
-    }
-
-    if parse_session.tokens[index] != op {
-        return false;
-    }
-
-    true
-}
-
 fn is_next_atom(tokens: &[Token]) -> bool {
     if tokens.is_empty() {
         return false;
     }
     let next = tokens.first().unwrap();
 
-    return matches!(next, Token::Num(_) | Token::Char(_));
+    return matches!(next, Token::Num(_) | Token::Char(_) | Token::String(_));
 }
 
 fn is_next_ident(tokens: &[Token]) -> bool {
@@ -963,6 +950,10 @@ fn consume_atom(tokens: &mut Vec<Token>) -> Expr {
         let c = c.clone();
         tokens.remove(0);
         Expr::char_lit(c)
+    } else if let Some(Token::String(string)) = tokens.first() {
+        let string = string.clone();
+        tokens.remove(0);
+        Expr::string(string)
     } else {
         panic!()
     }

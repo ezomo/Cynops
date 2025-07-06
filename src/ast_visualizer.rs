@@ -997,6 +997,9 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
         Expr::Char(c) => {
             print_branch("Character", &format!("'{}'", c), indent, is_last, &prefix);
         }
+        Expr::String(c) => {
+            print_branch("Character", &format!("'{}'", c), indent, is_last, &prefix);
+        }
         Expr::Ident(name) => {
             print_branch("Identifier", &name.name, indent, is_last, &prefix);
         }
