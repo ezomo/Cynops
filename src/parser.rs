@@ -3,6 +3,7 @@ use crate::token::{Keyword, Token};
 
 use std::collections::HashMap;
 
+#[derive(Clone)]
 pub struct ParseSession {
     pub typedef_stack: Vec<HashMap<Ident, (TypedefType, Declarator)>>,
     pub tokens: Vec<Token>,
@@ -496,7 +497,14 @@ fn block(parse_session: &mut ParseSession) -> Box<Block> {
 }
 
 fn expr(parse_session: &mut ParseSession) -> Expr {
-    *assign(parse_session)
+    comma(parse_session)
+}
+fn comma(parse_session: &mut ParseSession) -> Expr {
+    let mut assigns = vec![*assign(parse_session)];
+    while consume(Token::Comma, &mut parse_session.tokens) {
+        assigns.push(*assign(parse_session));
+    }
+    Expr::comma(assigns)
 }
 
 fn assign(parse_session: &mut ParseSession) -> Box<Expr> {
@@ -699,7 +707,7 @@ fn unary(parse_session: &mut ParseSession) -> Box<Expr> {
             consume(Token::RParen, &mut parse_session.tokens);
             tmp
         }
-    } else if consume(Token::LParen, &mut parse_session.tokens) {
+    } else if is_next_cast(parse_session) {
         Expr::cast(
             {
                 let tmp = consume_type(&mut parse_session.tokens);
@@ -944,6 +952,23 @@ fn is_next_composite_type_def(tokens: &[Token], op: Token) -> bool {
     }
     // e.g. struct Foo { ... }
     tokens[0] == op && (tokens[1] == Token::LBrace || tokens[2] == Token::LBrace)
+}
+
+fn is_next_cast(parse_session: &ParseSession) -> bool {
+    let tokens = &parse_session.tokens;
+
+    if tokens.len() < 3 {
+        return false;
+    }
+
+    // ( int ) x のような構文を探す
+    if tokens[0] != Token::LParen {
+        return false;
+    }
+
+    let mut new = parse_session.clone();
+    new.tokens.remove(0);
+    is_next_type(&new)
 }
 
 fn consume_atom(tokens: &mut Vec<Token>) -> Expr {

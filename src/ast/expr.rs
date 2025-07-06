@@ -105,6 +105,11 @@ pub struct Cast {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub struct Comma {
+    pub assigns: Vec<Expr>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Expr {
     Assign(Assign),
     Binary(Binary),
@@ -120,6 +125,7 @@ pub enum Expr {
     Unary(Unary),
     Sizeof(Sizeof),
     Cast(Cast),
+    Comma(Comma),
 }
 impl Expr {
     pub fn num(n: usize) -> Self {
@@ -195,5 +201,9 @@ impl Expr {
             r#type: r#type,
             expr: Box::new(expr),
         }))
+    }
+
+    pub fn comma(assigns: Vec<Expr>) -> Self {
+        Expr::Comma(Comma { assigns })
     }
 }

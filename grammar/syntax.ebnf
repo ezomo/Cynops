@@ -62,7 +62,8 @@ enum_member       = ident [ "=" num ] { "," ident [ "=" num ] } ;
 type = "int" | "char" | "void" | "struct" ident | "union" ident | "enum" ident ;
 
 // 式(expression)
-expr            = assign ;
+expr            = comma ;
+comma           = assign { "," assign } ;
 assign          = conditional
                 [ assign_op assign ] ;
 assign_op       = "="

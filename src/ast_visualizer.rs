@@ -988,9 +988,17 @@ fn visualize_switch_case(case: &SwitchCase, indent: usize, is_last: bool, prefix
         }
     }
 }
-
 fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) {
     match expr {
+        Expr::Comma(c) => {
+            print_branch("Comma", "", indent, is_last, &prefix);
+            let new_prefix = extend_prefix(&prefix, !is_last);
+
+            for (i, expr) in c.assigns.iter().enumerate() {
+                let is_last_expr = i == c.assigns.len() - 1;
+                visualize_expr(expr, indent + 1, is_last_expr, new_prefix.clone());
+            }
+        }
         Expr::Num(n) => {
             print_branch("Number", &n.to_string(), indent, is_last, &prefix);
         }
@@ -998,7 +1006,7 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
             print_branch("Character", &format!("'{}'", c), indent, is_last, &prefix);
         }
         Expr::String(c) => {
-            print_branch("Character", &format!("'{}'", c), indent, is_last, &prefix);
+            print_branch("String", &format!("\"{}\"", c), indent, is_last, &prefix);
         }
         Expr::Ident(name) => {
             print_branch("Identifier", &name.name, indent, is_last, &prefix);
@@ -1223,7 +1231,7 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 "Type",
                 &format!("{:?}", cast.r#type),
                 indent + 1,
-                true,
+                false,
                 &next_prefix,
             );
             print_branch("Expression", "", indent + 1, true, &next_prefix);
@@ -1236,7 +1244,6 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
         }
     }
 }
-
 fn print_branch(label: &str, value: &str, _indent: usize, is_last: bool, prefix: &[bool]) {
     // Draw the tree structure
     for &p in prefix {
