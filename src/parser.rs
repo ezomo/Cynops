@@ -152,7 +152,7 @@ fn stmt(parse_session: &mut ParseSession) -> Box<Stmt> {
             },
             {
                 if consume(Token::Semicolon, &mut parse_session.tokens) {
-                    Some(Expr::num(0))
+                    Some(Expr::num_int(0))
                 } else {
                     let tmp = expr(parse_session);
                     consume(Token::Semicolon, &mut parse_session.tokens);
@@ -463,7 +463,7 @@ fn enum_member(parse_session: &mut ParseSession) -> Vec<EnumMember> {
         let name = consume_ident(&mut parse_session.tokens);
 
         let value = if consume(Token::Equal, &mut parse_session.tokens) {
-            if let Token::Num(n) = &mut parse_session.tokens.first().unwrap() {
+            if let Token::NumInt(n) = &mut parse_session.tokens.first().unwrap() {
                 let n = *n;
                 let _ = &parse_session.tokens.remove(0);
                 Some(n)
@@ -499,6 +499,7 @@ fn block(parse_session: &mut ParseSession) -> Box<Block> {
 fn expr(parse_session: &mut ParseSession) -> Expr {
     comma(parse_session)
 }
+
 fn comma(parse_session: &mut ParseSession) -> Expr {
     let mut assigns = vec![*assign(parse_session)];
     while consume(Token::Comma, &mut parse_session.tokens) {
@@ -843,7 +844,10 @@ fn is_next_atom(tokens: &[Token]) -> bool {
     }
     let next = tokens.first().unwrap();
 
-    return matches!(next, Token::Num(_) | Token::Char(_) | Token::String(_));
+    return matches!(
+        next,
+        Token::NumInt(_) | Token::Char(_) | Token::String(_) | Token::NumFloat(_)
+    );
 }
 
 fn is_next_ident(tokens: &[Token]) -> bool {
@@ -879,6 +883,7 @@ fn is_next_type(parse_session: &ParseSession) -> bool {
     return matches!(
         next,
         Token::Keyword(Keyword::Int)
+            | Token::Keyword(Keyword::Double)
             | Token::Keyword(Keyword::Char)
             | Token::Keyword(Keyword::Void)
     ) || next == &Token::r#struct()
@@ -976,10 +981,10 @@ fn consume_atom(tokens: &mut Vec<Token>) -> Expr {
         panic!("Expected atom, but no tokens available");
     }
 
-    if let Some(Token::Num(n)) = tokens.first() {
+    if let Some(Token::NumInt(n)) = tokens.first() {
         let n = n.clone();
         tokens.remove(0);
-        Expr::num(n)
+        Expr::num_int(n)
     } else if let Some(Token::Char(c)) = tokens.first() {
         let c = c.clone();
         tokens.remove(0);
@@ -988,6 +993,10 @@ fn consume_atom(tokens: &mut Vec<Token>) -> Expr {
         let string = string.clone();
         tokens.remove(0);
         Expr::string(string)
+    } else if let Some(Token::NumFloat(f)) = tokens.first() {
+        let f = f.clone();
+        tokens.remove(0);
+        Expr::num_float(f)
     } else {
         panic!()
     }
@@ -1006,6 +1015,8 @@ fn consume_type(tokens: &mut Vec<Token>) -> Type {
 
     if consume(Token::int(), tokens) {
         return Type::Int;
+    } else if consume(Token::double(), tokens) {
+        return Type::Double;
     } else if consume(Token::char(), tokens) {
         return Type::Char;
     } else if consume(Token::void(), tokens) {

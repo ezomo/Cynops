@@ -1,8 +1,10 @@
+use ordered_float::OrderedFloat;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
-    Ident(String), // e.g., foo
-    Num(usize),    // e.g., 123
-    Char(char),    // e.g., 'a'
+    Ident(String),               // e.g., foo
+    NumInt(usize),               // e.g., 123
+    NumFloat(OrderedFloat<f64>), // e.g., 123
+    Char(char),                  // e.g., 'a'
     String(String),
 
     //other symbols
@@ -76,6 +78,7 @@ pub enum Token {
 pub enum Keyword {
     Int,      // 'int'
     Char,     // 'char'
+    Double,   //'double'
     Return,   // 'return'
     If,       // 'if'
     Else,     // 'else'
@@ -97,7 +100,7 @@ pub enum Keyword {
 }
 
 impl Token {
-    pub const SYMBOLS: [(&str, Self); 65] = [
+    pub const SYMBOLS: [(&str, Self); 66] = [
         ("?", Self::Question),
         (":", Self::Colon),
         ("+", Self::Plus),
@@ -144,6 +147,7 @@ impl Token {
         (".", Self::Dot),
         ("->", Self::MinusGreater),
         ("int", Self::Keyword(Keyword::Int)),
+        ("double", Self::Keyword(Keyword::Double)),
         ("char", Self::Keyword(Keyword::Char)),
         ("void", Self::Keyword(Keyword::Void)),
         ("if", Self::Keyword(Keyword::If)),
@@ -178,6 +182,10 @@ impl Token {
 impl Token {
     pub fn r#int() -> Self {
         Token::Keyword(Keyword::Int)
+    }
+
+    pub fn r#double() -> Self {
+        Token::Keyword(Keyword::Double)
     }
 
     pub fn r#char() -> Self {

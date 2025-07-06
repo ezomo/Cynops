@@ -1,7 +1,6 @@
-use crate::ast::{MemberAccessOp, Type};
-
 use super::{AssignOp, BinaryOp, Ident, PostfixOp, UnaryOp};
-
+use crate::ast::{MemberAccessOp, Type};
+use ordered_float::OrderedFloat;
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Postfix {
     pub expr: Box<Expr>,
@@ -117,7 +116,8 @@ pub enum Expr {
     Char(char),
     String(String),
     Ident(Ident),
-    Num(usize),
+    NumInt(usize),
+    NumFloat(OrderedFloat<f64>),
     Postfix(Postfix),
     Subscript(Subscript),
     MemberAccess(MemberAccess),
@@ -128,8 +128,12 @@ pub enum Expr {
     Comma(Comma),
 }
 impl Expr {
-    pub fn num(n: usize) -> Self {
-        Expr::Num(n)
+    pub fn num_int(n: usize) -> Self {
+        Expr::NumInt(n)
+    }
+
+    pub fn num_float(n: OrderedFloat<f64>) -> Self {
+        Expr::NumFloat(n)
     }
 
     pub fn char_lit(c: char) -> Self {

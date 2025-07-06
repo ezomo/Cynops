@@ -4,6 +4,7 @@ use super::Declarator;
 pub enum Type {
     Void,
     Int,
+    Double,
     Char,
     Struct(Ident), // struct Foo
     Union(Ident),  // union Bar

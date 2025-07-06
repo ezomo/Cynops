@@ -16,9 +16,21 @@ pub fn tokenize(input: &str) -> Vec<Token> {
             // 数字
             if first.is_ascii_digit() {
                 let num_str: String = input.chars().take_while(|c| c.is_ascii_digit()).collect();
-                let num_len = num_str.len();
-                tokens.push(Token::Num(num_str.parse().unwrap()));
-                input = &input[num_len..];
+                input = &input[num_str.len()..];
+
+                if input.starts_with('.') {
+                    input = &input[1..];
+                    let num_str2: String =
+                        input.chars().take_while(|c| c.is_ascii_digit()).collect();
+                    input = &input[num_str2.len()..];
+
+                    tokens.push(Token::NumFloat(
+                        format!("{}.{}", num_str, num_str2).parse().unwrap(),
+                    ));
+                } else {
+                    tokens.push(Token::NumInt(num_str.parse().unwrap()));
+                }
+
                 continue;
             }
 
@@ -93,5 +105,5 @@ pub fn tokenize(input: &str) -> Vec<Token> {
 }
 #[test]
 fn test_tokenize() {
-    println!("{:?}", tokenize("\"testets\""));
+    println!("{:?}", tokenize("a=1"));
 }

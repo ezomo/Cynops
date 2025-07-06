@@ -999,7 +999,10 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 visualize_expr(expr, indent + 1, is_last_expr, new_prefix.clone());
             }
         }
-        Expr::Num(n) => {
+        Expr::NumInt(n) => {
+            print_branch("Number", &n.to_string(), indent, is_last, &prefix);
+        }
+        Expr::NumFloat(n) => {
             print_branch("Number", &n.to_string(), indent, is_last, &prefix);
         }
         Expr::Char(c) => {
