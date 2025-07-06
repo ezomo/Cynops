@@ -699,6 +699,15 @@ fn unary(parse_session: &mut ParseSession) -> Box<Expr> {
             consume(Token::RParen, &mut parse_session.tokens);
             tmp
         }
+    } else if consume(Token::LParen, &mut parse_session.tokens) {
+        Expr::cast(
+            {
+                let tmp = consume_type(&mut parse_session.tokens);
+                consume(Token::RParen, &mut parse_session.tokens);
+                tmp
+            },
+            expr(parse_session),
+        )
     } else {
         Box::new(postfix(parse_session))
     }

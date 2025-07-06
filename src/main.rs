@@ -1,6 +1,6 @@
 use std::{env, fs, process};
 mod ast;
-// mod ast_visualizer;
+mod ast_visualizer;
 mod lexer;
 mod parser;
 mod preprocessor;
@@ -19,9 +19,8 @@ fn main() {
     let token = lexer::tokenize(&input);
     let program = parser::program(&mut parser::ParseSession::new(token));
 
-    println!("{:#?}", program);
     println!("\nAST Visualization:");
-    // ast_visualizer::visualize_program(&program);
+    ast_visualizer::visualize_program(&program);
 }
 
 #[test]

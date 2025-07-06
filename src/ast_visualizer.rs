@@ -1215,6 +1215,25 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 }
             }
         }
+        Expr::Cast(cast) => {
+            print_branch("Cast", "", indent, is_last, &prefix);
+            let next_prefix = extend_prefix(&prefix, !is_last);
+
+            print_branch(
+                "Type",
+                &format!("{:?}", cast.r#type),
+                indent + 1,
+                true,
+                &next_prefix,
+            );
+            print_branch("Expression", "", indent + 1, true, &next_prefix);
+            visualize_expr(
+                &cast.expr,
+                indent + 2,
+                true,
+                extend_prefix(&next_prefix, false),
+            );
+        }
     }
 }
 

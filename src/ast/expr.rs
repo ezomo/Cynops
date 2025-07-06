@@ -99,6 +99,12 @@ impl Sizeof {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub struct Cast {
+    pub r#type: Type,
+    pub expr: Box<Expr>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Expr {
     Assign(Assign),
     Binary(Binary),
@@ -113,6 +119,7 @@ pub enum Expr {
     Ternary(Ternary),
     Unary(Unary),
     Sizeof(Sizeof),
+    Cast(Cast),
 }
 impl Expr {
     pub fn num(n: usize) -> Self {
@@ -181,5 +188,12 @@ impl Expr {
 
     pub fn sizeof(sizeof: Sizeof) -> Box<Self> {
         Box::new(Expr::Sizeof(sizeof))
+    }
+
+    pub fn cast(r#type: Type, expr: Expr) -> Box<Self> {
+        Box::new(Expr::Cast(Cast {
+            r#type: r#type,
+            expr: Box::new(expr),
+        }))
     }
 }
