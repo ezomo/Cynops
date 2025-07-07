@@ -505,7 +505,11 @@ fn comma(parse_session: &mut ParseSession) -> Expr {
     while consume(Token::Comma, &mut parse_session.tokens) {
         assigns.push(*assign(parse_session));
     }
-    Expr::comma(assigns)
+    if assigns.len() > 1 {
+        Expr::comma(assigns)
+    } else {
+        assigns.first().unwrap().clone()
+    }
 }
 
 fn assign(parse_session: &mut ParseSession) -> Box<Expr> {
@@ -790,9 +794,9 @@ fn primary(parse_session: &mut ParseSession) -> Expr {
 fn arg_list(parse_session: &mut ParseSession) -> Vec<Box<Expr>> {
     let mut args = Vec::new();
     if !parse_session.tokens.is_empty() && parse_session.tokens.first().unwrap() != &Token::RParen {
-        args.push(Box::new(expr(parse_session)));
+        args.push(Box::new(*assign(parse_session)));
         while consume(Token::Comma, &mut parse_session.tokens) {
-            args.push(Box::new(expr(parse_session)));
+            args.push(Box::new(*assign(parse_session)));
         }
     }
     args
