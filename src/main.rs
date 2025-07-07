@@ -1,6 +1,7 @@
 use std::{env, fs, process};
 mod ast;
 mod ast_visualizer;
+mod codegen;
 mod lexer;
 mod parser;
 mod preprocessor;
@@ -17,10 +18,10 @@ fn main() {
     let mut input = fs::read_to_string(&args[1]).unwrap();
     preprocessor::remove_comments(&mut input);
     let token = lexer::tokenize(&input);
-    let program = parser::program(&mut parser::ParseSession::new(token));
+    let program: ast::Program = parser::program(&mut parser::ParseSession::new(token));
 
-    println!("\nAST Visualization:");
-    ast_visualizer::visualize_program(&program);
+    let mut cgs = codegen::CodeGenStatus::new();
+    codegen::generate_program(program, &mut cgs);
 }
 
 #[test]
