@@ -38,7 +38,7 @@ decl_stmt         = typedef_stmt
 init_declarator   = declarator [ "=" initializer  ] ;
 initializer       = expr | "{" initializer_list "}" ;
 initializer_list  = initializer { "," initializer } ;
-declarator        = { "*" } [direct_declarator] ;
+declarator        = { "*" } direct_declarator ;
 direct_declarator = ident
                   | "(" declarator ")"                      // 関数ポインタなど
                   | direct_declarator "[" [expr] "]"        // 配列
@@ -93,8 +93,8 @@ add             = mul { ("+" | "-") mul } ;
 mul             = unary { ("*" | "/" | "%") unary } ;
 unary           = ( "++" | "--" | "+" | "-" | "*" | "&" | "!" | "~" ) unary
                 | "sizeof" expr           
-                | "sizeof" "(" type ")"
-                |"(" type ")" unary    
+                | "sizeof" "(" type_name ")"
+                |"(" type_name ")" unary    
                 | postfix ;
 
 
