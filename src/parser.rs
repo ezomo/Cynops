@@ -704,7 +704,7 @@ fn unary(parse_session: &mut ParseSession) -> Box<Expr> {
         Expr::unary(UnaryOp::minus_minus(), unary(parse_session))
     } else if consume(Token::sizeof(), &mut parse_session.tokens) {
         if consume(Token::LParen, &mut parse_session.tokens) && is_next_type(parse_session) {
-            let tmp = Expr::sizeof(Sizeof::r#type(consume_type(&mut parse_session.tokens)));
+            let tmp = Expr::sizeof(Sizeof::r#type(type_name(parse_session)));
             consume(Token::RParen, &mut parse_session.tokens);
             tmp
         } else {
@@ -715,7 +715,7 @@ fn unary(parse_session: &mut ParseSession) -> Box<Expr> {
     } else if is_next_cast(parse_session) {
         Expr::cast(
             {
-                let tmp = consume_type(&mut parse_session.tokens);
+                let tmp = type_name(parse_session);
                 consume(Token::RParen, &mut parse_session.tokens);
                 tmp
             },
@@ -1045,4 +1045,72 @@ fn get_ident(tokens: &[Token]) -> Ident {
     } else {
         panic!("Expected identifier, found {:?}", tokens);
     }
+}
+
+fn abstract_declarator(parse_session: &mut ParseSession) -> Option<AbstractDeclarator> {
+    let mut pointer_level = 0;
+
+    // consume "*" repeatedly
+    while consume(Token::Asterisk, &mut parse_session.tokens) {
+        pointer_level += 1;
+    }
+
+    let inner = direct_abstract_declarator(parse_session);
+
+    if pointer_level == 0 {
+        inner.map(AbstractDeclarator::Direct)
+    } else {
+        Some(AbstractDeclarator::Pointer {
+            level: pointer_level,
+            inner: Box::new(inner),
+        })
+    }
+}
+
+fn direct_abstract_declarator(
+    parse_session: &mut ParseSession,
+) -> Option<DirectAbstractDeclarator> {
+    let mut base = if consume(Token::LParen, &mut parse_session.tokens) {
+        let inner = abstract_declarator(parse_session)?;
+        consume(Token::RParen, &mut parse_session.tokens);
+        Some(DirectAbstractDeclarator::Paren(Box::new(inner)))
+    } else {
+        None
+    };
+
+    loop {
+        if consume(Token::LBracket, &mut parse_session.tokens) {
+            let size = if !consume(Token::RBracket, &mut parse_session.tokens) {
+                Some(expr(parse_session))
+            } else {
+                None
+            };
+            consume(Token::RBracket, &mut parse_session.tokens);
+            base = Some(DirectAbstractDeclarator::Array {
+                base: Box::new(base?),
+                size,
+            });
+        } else if consume(Token::LParen, &mut parse_session.tokens) {
+            let params = if !consume(Token::RParen, &mut parse_session.tokens) {
+                Some(param_list(parse_session))
+            } else {
+                None
+            };
+            consume(Token::RParen, &mut parse_session.tokens);
+            base = Some(DirectAbstractDeclarator::Func {
+                base: Box::new(base?),
+                params,
+            });
+        } else {
+            break;
+        }
+    }
+
+    base
+}
+
+fn type_name(parse_session: &mut ParseSession) -> TypeName {
+    let base = consume_type(&mut parse_session.tokens); // 例: "int"
+    let declarator = abstract_declarator(parse_session);
+    TypeName { base, declarator }
 }

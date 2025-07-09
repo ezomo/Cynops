@@ -61,6 +61,15 @@ enum_member       = ident [ "=" num ] { "," ident [ "=" num ] } ;
 // 型
 type = "int" | "double" | "char" | "void" | "struct" ident | "union" ident | "enum" ident ;
 
+type_name = type [abstract_declarator] ;
+
+abstract_declarator = "*" abstract_declarator
+                    | direct_abstract_declarator ;
+
+direct_abstract_declarator = "(" abstract_declarator ")"
+                           | direct_abstract_declarator "[" [expr] "]"
+                           | direct_abstract_declarator "(" [param_list] ")" ;
+
 // 式(expression)
 expr            = comma ;
 comma           = assign { "," assign } ;

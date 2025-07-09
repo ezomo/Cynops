@@ -249,3 +249,31 @@ impl TypedefType {
         TypedefType::Enum(e)
     }
 }
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub enum AbstractDeclarator {
+    Pointer {
+        level: usize,
+        inner: Box<Option<DirectAbstractDeclarator>>,
+    },
+    Direct(DirectAbstractDeclarator),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub enum DirectAbstractDeclarator {
+    Paren(Box<AbstractDeclarator>), // 例: (*)
+    Array {
+        base: Box<DirectAbstractDeclarator>,
+        size: Option<Expr>,
+    },
+    Func {
+        base: Box<DirectAbstractDeclarator>,
+        params: Option<ParamList>,
+    },
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub struct TypeName {
+    pub base: Type,
+    pub declarator: Option<AbstractDeclarator>,
+}
