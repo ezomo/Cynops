@@ -3,9 +3,10 @@ use std::collections::HashMap;
 // 元のAST定義からインポート（想定）
 use crate::{
     ast::{
-        Array as AstArray, DeclStmt, Declarator, DirectDeclarator, Enum, EnumMember,
-        Func as AstFunc, FunctionSig, Ident, InitDeclarator, MemberDecl, Param, ParamList, Program,
-        Stmt, Struct, TopLevel, Type as AstType, Typed, Typedef as AstTypedef, TypedefType, Union,
+        Array as AstArray, Block, Control, DeclStmt, Declarator, DirectDeclarator, Enum,
+        EnumMember, Func as AstFunc, FunctionSig, Ident, InitDeclarator, MemberDecl, Param,
+        ParamList, Program, Stmt, Struct, SwitchCase, TopLevel, Type as AstType, Typed,
+        Typedef as AstTypedef, TypedefType, Union,
     },
     const_eval::eval_const_expr,
 };
@@ -44,24 +45,116 @@ pub enum Type {
     Array(Array),
 }
 
-// 型抽出器
+// 型抽出器（スコープ対応版）
 pub struct TypeExtractor {
-    // typedef定義を保持
-    typedef_map: HashMap<String, Type>,
-    // struct/union/enum定義を保持
-    struct_map: HashMap<String, Vec<Type>>,
-    union_map: HashMap<String, Vec<Type>>,
-    enum_map: HashMap<String, Vec<Ident>>,
+    // typedef定義をスコープごとに管理
+    typedef_stack: Vec<HashMap<String, Type>>,
+    // struct/union/enum定義をスコープごとに管理
+    struct_stack: Vec<HashMap<String, Vec<Type>>>,
+    union_stack: Vec<HashMap<String, Vec<Type>>>,
+    enum_stack: Vec<HashMap<String, Vec<Ident>>>,
 }
 
 impl TypeExtractor {
     pub fn new() -> Self {
         Self {
-            typedef_map: HashMap::new(),
-            struct_map: HashMap::new(),
-            union_map: HashMap::new(),
-            enum_map: HashMap::new(),
+            typedef_stack: vec![HashMap::new()], // グローバルスコープで初期化
+            struct_stack: vec![HashMap::new()],
+            union_stack: vec![HashMap::new()],
+            enum_stack: vec![HashMap::new()],
         }
+    }
+
+    // 新しいスコープを開始
+    pub fn push_scope(&mut self) {
+        self.typedef_stack.push(HashMap::new());
+        self.struct_stack.push(HashMap::new());
+        self.union_stack.push(HashMap::new());
+        self.enum_stack.push(HashMap::new());
+    }
+
+    // 現在のスコープを終了
+    pub fn pop_scope(&mut self) {
+        if self.typedef_stack.len() > 1 {
+            self.typedef_stack.pop();
+        }
+        if self.struct_stack.len() > 1 {
+            self.struct_stack.pop();
+        }
+        if self.union_stack.len() > 1 {
+            self.union_stack.pop();
+        }
+        if self.enum_stack.len() > 1 {
+            self.enum_stack.pop();
+        }
+    }
+
+    // typedef名を現在のスコープに登録
+    fn register_typedef(&mut self, name: String, ty: Type) {
+        if let Some(current_scope) = self.typedef_stack.last_mut() {
+            current_scope.insert(name, ty);
+        }
+    }
+
+    // struct名を現在のスコープに登録
+    fn register_struct(&mut self, name: String, members: Vec<Type>) {
+        if let Some(current_scope) = self.struct_stack.last_mut() {
+            current_scope.insert(name, members);
+        }
+    }
+
+    // union名を現在のスコープに登録
+    fn register_union(&mut self, name: String, members: Vec<Type>) {
+        if let Some(current_scope) = self.union_stack.last_mut() {
+            current_scope.insert(name, members);
+        }
+    }
+
+    // enum名を現在のスコープに登録
+    fn register_enum(&mut self, name: String, variants: Vec<Ident>) {
+        if let Some(current_scope) = self.enum_stack.last_mut() {
+            current_scope.insert(name, variants);
+        }
+    }
+
+    // typedef名を解決（スコープを逆順に検索）
+    fn resolve_typedef(&self, name: &str) -> Option<Type> {
+        for scope in self.typedef_stack.iter().rev() {
+            if let Some(ty) = scope.get(name) {
+                return Some(ty.clone());
+            }
+        }
+        None
+    }
+
+    // struct名を解決（スコープを逆順に検索）
+    fn resolve_struct(&self, name: &str) -> Option<Vec<Type>> {
+        for scope in self.struct_stack.iter().rev() {
+            if let Some(members) = scope.get(name) {
+                return Some(members.clone());
+            }
+        }
+        None
+    }
+
+    // union名を解決（スコープを逆順に検索）
+    fn resolve_union(&self, name: &str) -> Option<Vec<Type>> {
+        for scope in self.union_stack.iter().rev() {
+            if let Some(members) = scope.get(name) {
+                return Some(members.clone());
+            }
+        }
+        None
+    }
+
+    // enum名を解決（スコープを逆順に検索）
+    fn resolve_enum(&self, name: &str) -> Option<Vec<Ident>> {
+        for scope in self.enum_stack.iter().rev() {
+            if let Some(variants) = scope.get(name) {
+                return Some(variants.clone());
+            }
+        }
+        None
     }
 
     // 宣言文から型を抽出
@@ -71,42 +164,27 @@ impl TypeExtractor {
             DeclStmt::Struct(s) => {
                 let struct_type = self.extract_from_struct(s);
                 if let Some(name) = &s.name {
-                    self.struct_map.insert(
-                        name.name.clone(),
-                        if let Type::Struct(members) = &struct_type {
-                            members.clone()
-                        } else {
-                            vec![]
-                        },
-                    );
+                    if let Type::Struct(members) = &struct_type {
+                        self.register_struct(name.name.clone(), members.clone());
+                    }
                 }
                 vec![struct_type]
             }
             DeclStmt::Union(u) => {
                 let union_type = self.extract_from_union(u);
                 if let Some(name) = &u.name {
-                    self.union_map.insert(
-                        name.name.clone(),
-                        if let Type::Union(members) = &union_type {
-                            members.clone()
-                        } else {
-                            vec![]
-                        },
-                    );
+                    if let Type::Union(members) = &union_type {
+                        self.register_union(name.name.clone(), members.clone());
+                    }
                 }
                 vec![union_type]
             }
             DeclStmt::Enum(e) => {
                 let enum_type = self.extract_from_enum(e);
                 if let Some(name) = &e.name {
-                    self.enum_map.insert(
-                        name.name.clone(),
-                        if let Type::Enum(variants) = &enum_type {
-                            variants.clone()
-                        } else {
-                            vec![]
-                        },
-                    );
+                    if let Type::Enum(variants) = &enum_type {
+                        self.register_enum(name.name.clone(), variants.clone());
+                    }
                 }
                 vec![enum_type]
             }
@@ -157,7 +235,7 @@ impl TypeExtractor {
                     .and_then(|e| match eval_const_expr(e).unwrap() {
                         crate::const_eval::ConstValue::Int(i) => Some(i as usize),
                         _ => Some(0),
-                    }) // 式の評価は複雑なので仮に0
+                    })
                     .unwrap_or(0);
                 Type::Array(Array {
                     array_of: Box::new(element_type),
@@ -196,7 +274,7 @@ impl TypeExtractor {
         }
     }
 
-    // AST型を簡易型に変換（修正版）
+    // AST型を簡易型に変換（スコープ対応版）
     fn convert_ast_type(&self, ast_type: &AstType) -> Type {
         match ast_type {
             AstType::Void => Type::Void,
@@ -204,34 +282,33 @@ impl TypeExtractor {
             AstType::Double => Type::Double,
             AstType::Char => Type::Char,
             AstType::Struct(ident) => {
-                if let Some(members) = self.struct_map.get(&ident.name) {
-                    Type::Struct(members.clone())
+                if let Some(members) = self.resolve_struct(&ident.name) {
+                    Type::Struct(members)
                 } else {
                     // 前方宣言の場合は空のstruct
                     Type::Struct(vec![])
                 }
             }
             AstType::Union(ident) => {
-                if let Some(members) = self.union_map.get(&ident.name) {
-                    Type::Union(members.clone())
+                if let Some(members) = self.resolve_union(&ident.name) {
+                    Type::Union(members)
                 } else {
                     Type::Union(vec![])
                 }
             }
             AstType::Enum(ident) => {
-                if let Some(variants) = self.enum_map.get(&ident.name) {
-                    Type::Enum(variants.clone())
+                if let Some(variants) = self.resolve_enum(&ident.name) {
+                    Type::Enum(variants)
                 } else {
                     Type::Enum(vec![])
                 }
             }
             AstType::Typedef(ident) => {
-                // 修正: typedef名を解決して実際の型を返す
-                if let Some(actual_type) = self.typedef_map.get(&ident.name) {
-                    // 実際の型を返す（Typedef型でラップしない）
-                    actual_type.clone()
+                // スコープを考慮してtypedef名を解決
+                if let Some(actual_type) = self.resolve_typedef(&ident.name) {
+                    actual_type
                 } else {
-                    // 未定義のtypedefの場合はそのまま
+                    // 未定義のtypedefの場合
                     Type::Typedef(Typedef {
                         type_name: ident.clone(),
                         actual_type: Box::new(Type::Void),
@@ -285,7 +362,7 @@ impl TypeExtractor {
         Type::Enum(variants)
     }
 
-    // typedef定義から型を抽出（修正版）
+    // typedef定義から型を抽出（スコープ対応版）
     fn extract_from_typedef(&mut self, t: &AstTypedef) -> Vec<Type> {
         let base_type = match &t.ty {
             TypedefType::Type(ty) => self.convert_ast_type(ty),
@@ -298,12 +375,11 @@ impl TypeExtractor {
             .iter()
             .map(|decl| {
                 let final_type = self.apply_declarator(&base_type, decl);
-                // typedef名を抽出してマップに登録
+                // typedef名を抽出してスコープに登録
                 let name = self.extract_ident_from_declarator(decl.clone());
 
-                // 修正: typedef_mapに実際の型を登録
-                self.typedef_map
-                    .insert(name.name.clone(), final_type.clone());
+                // 現在のスコープにtypedef名を登録
+                self.register_typedef(name.name.clone(), final_type.clone());
 
                 // 戻り値としてはTypedef型を返す（デバッグ用）
                 Type::Typedef(Typedef {
@@ -343,6 +419,74 @@ impl TypeExtractor {
         let return_type = self.convert_ast_type(&sig.ret_type);
         self.apply_declarator(&return_type, &sig.declarator)
     }
+
+    // ブロック文を処理（スコープ管理）
+    pub fn process_block(&mut self, block: &Block) {
+        self.push_scope();
+
+        for stmt in &block.statements {
+            self.process_stmt(stmt);
+        }
+
+        self.pop_scope();
+    }
+
+    // 文を処理（スコープを考慮）
+    pub fn process_stmt(&mut self, stmt: &Stmt) {
+        match stmt {
+            Stmt::DeclStmt(decl) => {
+                let types = self.extract_from_decl(decl);
+                println!("Extracted types: {:#?}", types);
+            }
+            Stmt::Block(block) => {
+                self.process_block(block);
+            }
+            Stmt::Control(control) => {
+                // 制御文のネストしたブロックも処理
+                match control {
+                    Control::If(if_stmt) => {
+                        self.process_stmt(&if_stmt.then_branch);
+                        if let Some(else_branch) = &if_stmt.else_branch {
+                            self.process_stmt(else_branch);
+                        }
+                    }
+                    Control::While(while_stmt) => {
+                        self.process_stmt(&while_stmt.body);
+                    }
+                    Control::DoWhile(do_while_stmt) => {
+                        self.process_stmt(&do_while_stmt.body);
+                    }
+                    Control::For(for_stmt) => {
+                        self.push_scope(); // forループは独自のスコープを持つ
+                        self.process_stmt(&for_stmt.body);
+                        self.pop_scope();
+                    }
+                    Control::Switch(switch_stmt) => {
+                        for case in &switch_stmt.cases {
+                            match case {
+                                SwitchCase::Case(case) => {
+                                    for stmt in &case.stmts {
+                                        self.process_stmt(stmt);
+                                    }
+                                }
+                                SwitchCase::Default(default) => {
+                                    for stmt in &default.stmts {
+                                        self.process_stmt(stmt);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Stmt::Label(label) => {
+                self.process_stmt(&label.stmt);
+            }
+            _ => {
+                // その他の文は特別な処理不要
+            }
+        }
+    }
 }
 
 // 使用例
@@ -361,23 +505,48 @@ mod tests {
         program(p.clone());
         visualize_program(&p);
     }
+
+    #[test]
+    fn test_scope_handling() {
+        let mut input = r#"
+        typedef int MyInt;
+        {
+            typedef double MyInt;  // 内側のスコープで再定義
+            MyInt x;  // これはdouble型
+        }
+        MyInt y;  // これはint型
+        "#
+        .to_string();
+
+        preprocessor::remove_comments(&mut input);
+        let token = lexer::tokenize(&input);
+        let p: ast::Program = parser::program(&mut parser::ParseSession::new(token));
+        program(p.clone());
+    }
 }
 
 fn stmt(stmt: Stmt, extractor: &mut TypeExtractor) {
-    match stmt {
-        Stmt::DeclStmt(decl) => {
-            let types = extractor.extract_from_decl(&decl);
-            println!("{:#?}", types);
-        }
-        _ => todo!(),
-    }
+    extractor.process_stmt(&stmt);
 }
 
 fn top_level(top_level: TopLevel, extractor: &mut TypeExtractor) {
     match top_level {
-        TopLevel::FunctionDef(function_def) => todo!(),
+        TopLevel::FunctionDef(function_def) => {
+            // 関数定義は新しいスコープを作成
+            extractor.push_scope();
+
+            // 関数のパラメータを現在のスコープに登録
+            // （実装は関数の詳細に依存）
+
+            // 関数本体を処理（BlockなのでProcess_blockを使用）
+            extractor.process_block(&function_def.body);
+
+            extractor.pop_scope();
+        }
         TopLevel::Stmt(stm) => stmt(stm, extractor),
-        TopLevel::FunctionProto(_) => todo!(), // 関数プロトタイプは無視
+        TopLevel::FunctionProto(_) => {
+            // 関数プロトタイプは型情報のみ処理
+        }
     }
 }
 
