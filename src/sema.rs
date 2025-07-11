@@ -196,7 +196,7 @@ impl TypeExtractor {
         }
     }
 
-    // AST型を簡易型に変換
+    // AST型を簡易型に変換（修正版）
     fn convert_ast_type(&self, ast_type: &AstType) -> Type {
         match ast_type {
             AstType::Void => Type::Void,
@@ -226,7 +226,9 @@ impl TypeExtractor {
                 }
             }
             AstType::Typedef(ident) => {
+                // 修正: typedef名を解決して実際の型を返す
                 if let Some(actual_type) = self.typedef_map.get(&ident.name) {
+                    // 実際の型を返す（Typedef型でラップしない）
                     actual_type.clone()
                 } else {
                     // 未定義のtypedefの場合はそのまま
@@ -283,7 +285,7 @@ impl TypeExtractor {
         Type::Enum(variants)
     }
 
-    // typedef定義から型を抽出
+    // typedef定義から型を抽出（修正版）
     fn extract_from_typedef(&mut self, t: &AstTypedef) -> Vec<Type> {
         let base_type = match &t.ty {
             TypedefType::Type(ty) => self.convert_ast_type(ty),
@@ -298,13 +300,16 @@ impl TypeExtractor {
                 let final_type = self.apply_declarator(&base_type, decl);
                 // typedef名を抽出してマップに登録
                 let name = self.extract_ident_from_declarator(decl.clone());
-                let typedef_type = Type::Typedef(Typedef {
-                    type_name: name.clone(),
-                    actual_type: Box::new(final_type.clone()),
-                });
+
+                // 修正: typedef_mapに実際の型を登録
                 self.typedef_map
                     .insert(name.name.clone(), final_type.clone());
-                typedef_type
+
+                // 戻り値としてはTypedef型を返す（デバッグ用）
+                Type::Typedef(Typedef {
+                    type_name: name.clone(),
+                    actual_type: Box::new(final_type),
+                })
             })
             .collect()
     }
@@ -312,7 +317,14 @@ impl TypeExtractor {
     // 宣言子から識別子を抽出
     fn extract_ident_from_declarator(&self, declarator: Declarator) -> Ident {
         match declarator {
-            Declarator::Pointer(p) => self.extract_ident_from_direct_declarator(p.inner.unwrap()),
+            Declarator::Pointer(p) => {
+                if let Some(inner) = p.inner.as_ref() {
+                    self.extract_ident_from_direct_declarator(inner.clone())
+                } else {
+                    // ポインタのみの場合は仮の識別子
+                    Ident::new("unnamed")
+                }
+            }
             Declarator::Direct(di) => self.extract_ident_from_direct_declarator(di),
         }
     }
@@ -342,7 +354,7 @@ mod tests {
 
     #[test]
     fn test_basic_types() {
-        let mut input = "int a[1+2][4*4];".to_string();
+        let mut input = "typedef struct test { int x; int *y; } Test; Test g[10];".to_string();
         preprocessor::remove_comments(&mut input);
         let token = lexer::tokenize(&input);
         let p: ast::Program = parser::program(&mut parser::ParseSession::new(token));
@@ -351,28 +363,28 @@ mod tests {
     }
 }
 
-fn stmt(stmt: Stmt) {
+fn stmt(stmt: Stmt, extractor: &mut TypeExtractor) {
     match stmt {
         Stmt::DeclStmt(decl) => {
-            let mut extractor = TypeExtractor::new();
             let types = extractor.extract_from_decl(&decl);
             println!("{:#?}", types);
         }
-
         _ => todo!(),
     }
 }
 
-fn top_level(top_level: TopLevel) {
+fn top_level(top_level: TopLevel, extractor: &mut TypeExtractor) {
     match top_level {
         TopLevel::FunctionDef(function_def) => todo!(),
-        TopLevel::Stmt(stm) => stmt(stm),
+        TopLevel::Stmt(stm) => stmt(stm, extractor),
         TopLevel::FunctionProto(_) => todo!(), // 関数プロトタイプは無視
     }
 }
 
 pub fn program(program: Program) {
+    let mut extractor = TypeExtractor::new();
+
     for item in program.items {
-        top_level(item);
+        top_level(item, &mut extractor);
     }
 }
