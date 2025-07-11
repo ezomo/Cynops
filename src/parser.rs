@@ -358,13 +358,25 @@ fn direct_declarator(parse_session: &mut ParseSession) -> Option<DirectDeclarato
     //ここで左再帰をループに展開
     loop {
         if consume(Token::LBracket, &mut parse_session.tokens) {
-            let size = if !consume(Token::RBracket, &mut parse_session.tokens) {
-                Some(expr(parse_session))
-            } else {
-                None
+            let parse_array_dimension = |parse_session: &mut ParseSession| {
+                let dimension_expr = if !consume(Token::RBracket, &mut parse_session.tokens) {
+                    Some(expr(parse_session))
+                } else {
+                    None
+                };
+                consume(Token::RBracket, &mut parse_session.tokens);
+                dimension_expr
             };
-            consume(Token::RBracket, &mut parse_session.tokens);
-            base = Some(DirectDeclarator::array(base.unwrap(), size))
+
+            let mut array_dimensions = vec![parse_array_dimension(parse_session)];
+
+            while consume(Token::LBracket, &mut parse_session.tokens) {
+                array_dimensions.push(parse_array_dimension(parse_session));
+            }
+
+            for dimension in array_dimensions.iter().rev() {
+                base = Some(DirectDeclarator::array(base.unwrap(), dimension.clone()))
+            }
         } else if consume(Token::LParen, &mut parse_session.tokens) {
             let params = if !consume(Token::RParen, &mut parse_session.tokens) {
                 Some(param_list(parse_session))
