@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 
 // 元のAST定義からインポート（想定）
-use crate::ast::{
-    Array as AstArray, DeclStmt, Declarator, DirectDeclarator, Enum, EnumMember, Func as AstFunc,
-    FunctionSig, Ident, InitDeclarator, MemberDecl, Param, ParamList, Program, Stmt, Struct,
-    TopLevel, Type as AstType, Typed, Typedef as AstTypedef, TypedefType, Union,
+use crate::{
+    ast::{
+        Array as AstArray, DeclStmt, Declarator, DirectDeclarator, Enum, EnumMember,
+        Func as AstFunc, FunctionSig, Ident, InitDeclarator, MemberDecl, Param, ParamList, Program,
+        Stmt, Struct, TopLevel, Type as AstType, Typed, Typedef as AstTypedef, TypedefType, Union,
+    },
+    const_eval::eval_const_expr,
 };
 
 // 簡易型システムの定義
@@ -151,7 +154,10 @@ impl TypeExtractor {
                 let length = array
                     .size
                     .as_ref()
-                    .and_then(|_| Some(0)) // 式の評価は複雑なので仮に0
+                    .and_then(|e| match eval_const_expr(e).unwrap() {
+                        crate::const_eval::ConstValue::Int(i) => Some(i as usize),
+                        _ => Some(0),
+                    }) // 式の評価は複雑なので仮に0
                     .unwrap_or(0);
                 Type::Array(Array {
                     array_of: Box::new(element_type),
@@ -330,30 +336,29 @@ impl TypeExtractor {
 // 使用例
 #[cfg(test)]
 mod tests {
-    use crate::{ast, lexer, parser, preprocessor};
+    use crate::{ast, ast_visualizer::visualize_program, lexer, parser, preprocessor};
 
     use super::*;
 
     #[test]
     fn test_basic_types() {
-        let mut input = "int a[1][2][3][4][5][6][7][8][9][10];".to_string();
+        let mut input = "int a[1+2][4*4];".to_string();
         preprocessor::remove_comments(&mut input);
         let token = lexer::tokenize(&input);
         let p: ast::Program = parser::program(&mut parser::ParseSession::new(token));
-        program(p)
+        program(p.clone());
+        visualize_program(&p);
     }
 }
 
 fn stmt(stmt: Stmt) {
     match stmt {
-        Stmt::DeclStmt(decl) => match decl {
-            DeclStmt::Typed(typed) => {
-                let mut extractor = TypeExtractor::new();
-                let types = extractor.extract_from_typed(&typed);
-                println!("{:#?}", types);
-            }
-            _ => todo!(),
-        },
+        Stmt::DeclStmt(decl) => {
+            let mut extractor = TypeExtractor::new();
+            let types = extractor.extract_from_decl(&decl);
+            println!("{:#?}", types);
+        }
+
         _ => todo!(),
     }
 }
