@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::ast::{Enum, EnumMember};
 use crate::token::{Keyword, Token};
 
+use crate::ast::Typedef;
 use crate::{ast::*, get_type};
 
 pub struct ParseSession {
@@ -307,13 +308,31 @@ fn decl_stmt(parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> DeclS
         consume(Token::r#enum(), tokens);
         DeclStmt::r#enum(enum_def(parse_session, tokens))
     } else if consume(Token::typedef(), tokens) {
-        // DeclStmt::typedef(typedef_stmt(parse_session, tokens))
+        DeclStmt::typedef(typedef_stmt(parse_session, tokens));
         todo!()
     } else {
         let tmp = DeclStmt::member_decl(decl_member(parse_session, tokens));
         consume(Token::Semicolon, tokens);
         tmp
     }
+}
+
+fn typedef_stmt(parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Typedef {
+    let ty = if is_next_composite_type_def(tokens, Token::r#struct()) {
+        consume(Token::r#struct(), tokens);
+        Type::r#struct(struct_def(parse_session, tokens))
+    } else if is_next_composite_type_def(tokens, Token::r#union()) {
+        consume(Token::r#union(), tokens);
+        Type::union(union_def(parse_session, tokens))
+    } else if is_next_composite_type_def(tokens, Token::r#enum()) {
+        consume(Token::r#enum(), tokens);
+        Type::r#enum(enum_def(parse_session, tokens))
+    } else {
+        get_type::parse_type(parse_session, tokens)
+    };
+
+    let ident = consume_ident(tokens);
+    Typedef::new(ident, ty)
 }
 
 fn struct_def(parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Struct {
@@ -782,6 +801,7 @@ fn consume(op: Token, tokens: &mut Vec<Token>) -> bool {
     tokens.remove(0);
     return true;
 }
+
 fn is_next_atom(tokens: &[Token]) -> bool {
     if tokens.is_empty() {
         return false;

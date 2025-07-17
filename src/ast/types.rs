@@ -21,6 +21,14 @@ pub struct Typedef {
     pub type_name: Ident,
     pub actual_type: Box<Type>,
 }
+impl Typedef {
+    pub fn new(type_name: Ident, actual_type: Type) -> Self {
+        Typedef {
+            type_name,
+            actual_type: Box::new(actual_type),
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
@@ -35,6 +43,18 @@ pub enum Type {
     Enum(Enum),
     Pointer(Box<Type>),
     Array(Array),
+}
+
+impl Type {
+    pub fn r#struct(s: Struct) -> Self {
+        Type::Struct(s)
+    }
+    pub fn r#union(u: Union) -> Self {
+        Type::Union(u)
+    }
+    pub fn r#enum(e: Enum) -> Self {
+        Type::Enum(e)
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]

@@ -1,5 +1,5 @@
 use super::{
-    Block, Expr, Ident,
+    Block, Ident, Typedef,
     types::{FunctionSig, Type},
 };
 
@@ -93,11 +93,6 @@ impl EnumMember {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub struct Typedef {
-    pub ident: Ident,
-    pub ty: Type,
-}
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct FunctionDef {
     pub sig: FunctionSig,
