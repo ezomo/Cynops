@@ -28,51 +28,6 @@ pub fn parse_and_extract_idents(
     (parsed_type, idents)
 }
 
-pub fn parse_type(session: &mut ParseSession, tokens: &mut Vec<Token>) -> Type {
-    // 型に関係ない部分（;、{など）が出るまでの部分を切り出す
-    let mut type_tokens = vec![];
-    let mut consumed_count = 0;
-
-    while consumed_count < tokens.len() {
-        match &tokens[consumed_count] {
-            Token::Semicolon | Token::LBrace | Token::RBrace => {
-                break;
-            }
-            _ => {
-                type_tokens.push(tokens[consumed_count].clone());
-                consumed_count += 1;
-            }
-        }
-    }
-
-    // 元のtokensから型に関係する部分を削除
-    tokens.drain(0..consumed_count);
-
-    // 切り出した部分で型解析を実行
-    parse_type_internal(session, &mut type_tokens)
-}
-
-fn parse_type_internal(session: &mut ParseSession, tokens: &mut Vec<Token>) -> Type {
-    let mut base_type = if session.is_base_type(&tokens[0]) {
-        session.cast(&tokens.remove(0)).unwrap()
-    } else {
-        panic!("Expected a base type, found: {:?}", tokens);
-    };
-
-    base_type = parse_prefix_pointers(base_type, tokens);
-
-    parse_declarator(base_type, session, tokens)
-}
-
-fn parse_prefix_pointers(mut base_type: Type, tokens: &mut Vec<Token>) -> Type {
-    // 前: 基本型の前のポインタを処理
-    while !tokens.is_empty() && tokens[0] == Token::Asterisk {
-        base_type = Type::Pointer(Box::new(base_type));
-        tokens.remove(0);
-    }
-    base_type
-}
-
 fn find_matching_paren(tokens: &[Token]) -> usize {
     let mut paren_index = 0;
     let mut depth = 0;
@@ -88,83 +43,71 @@ fn find_matching_paren(tokens: &[Token]) -> usize {
             }
         }
     }
-    paren_index
+    paren_index + 1
 }
 
-fn parse_declarator(
-    mut base_type: Type,
-    session: &mut ParseSession,
-    tokens: &mut Vec<Token>,
-) -> Type {
-    if tokens.is_empty() {
-        return base_type;
+pub fn parse_type(parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Type {
+    let base = base(tokens, parse_session);
+    call(base, tokens, parse_session)
+}
+
+fn base(tokens: &mut Vec<Token>, parse_session: &mut ParseSession) -> Type {
+    // とりあえず全てint
+    let base_type = parse_session.cast(&tokens[0]).unwrap();
+    tokens.remove(0);
+    p(base_type, tokens)
+}
+
+fn p(mut base_type: Type, tokens: &mut Vec<Token>) -> Type {
+    // 前: 基本型の前のポインタを処理
+    while is_next_token(tokens, Token::Asterisk) {
+        tokens.remove(0);
+        base_type = Type::Pointer(Box::new(base_type));
     }
-
-    base_type = parse_prefix_pointers(base_type, tokens);
-
-    // 括弧の対応を見つける
-    let mut skip_index = 0;
-
-    // 真ん中を飛ばす（括弧内の処理のため）
-    if !tokens.is_empty() && tokens[0] == Token::LParen {
-        // 対応する)の位置を検索
-        skip_index = find_matching_paren(&tokens);
-        //そこも含む
-        skip_index += 1;
-    } else {
-        if !tokens.is_empty() && matches!(tokens[0], Token::Ident(_)) {
-            tokens.remove(0);
-        }
-    }
-
-    // 後: 後置演算子（配列、関数）の処理
-    {
-        // tokens の範囲チェックを追加
-        if skip_index > tokens.len() {
-            return base_type;
-        }
-
-        let mut remaining_tokens = tokens[skip_index..].to_vec();
-        tokens.truncate(skip_index);
-
-        // 配列の処理
-        base_type = parse_array_declarator(base_type, &mut remaining_tokens);
-
-        // 関数の処理
-        base_type = parse_function_declarator(base_type, session, &mut remaining_tokens);
-
-        // 残りのトークンを元のtokensに戻す
-        tokens.extend(remaining_tokens);
-    }
-
-    // 中: 括弧内の再帰処理
-    {
-        if !tokens.is_empty() && tokens[0] == Token::LParen {
-            tokens.remove(0);
-            tokens.remove(tokens.len() - 1);
-            return parse_declarator(base_type, session, tokens);
-        }
-    }
-
     base_type
 }
 
-fn parse_array_declarator(mut base_type: Type, remaining_tokens: &mut Vec<Token>) -> Type {
-    if !remaining_tokens.is_empty() && remaining_tokens[0] == Token::LBracket {
-        let mut array_sizes = vec![];
+fn call(mut base_type: Type, tokens: &mut Vec<Token>, parse_session: &mut ParseSession) -> Type {
+    let mut center = if is_next_ident(tokens) {
+        tokens.remove(0);
+        vec![]
+    } else if is_next_token(tokens, Token::LParen) {
+        let end = find_matching_paren(tokens);
+        let mut tmp: Vec<Token> = tokens.drain(0..end).collect();
+        tmp.remove(0);
+        tmp.pop();
+        tmp
+    } else {
+        vec![]
+    };
 
-        while !remaining_tokens.is_empty() && remaining_tokens[0] == Token::LBracket {
-            remaining_tokens.remove(0);
-            // remaining_tokens[0] は数値トークンのはず
-            let size = if let Token::NumInt(n) = remaining_tokens.remove(0) {
-                n
-            } else {
-                panic!("Expected array size");
-            };
-            array_sizes.push(size as usize);
-            if !remaining_tokens.is_empty() && remaining_tokens[0] == Token::RBracket {
-                remaining_tokens.remove(0);
-            }
+    // 残るは後
+
+    if is_next_token(tokens, Token::LParen) {
+        tokens.remove(0);
+        let mut param_types = vec![];
+        param_types.push(parse_type(parse_session, tokens));
+
+        while is_next_token(tokens, Token::Comma) {
+            tokens.remove(0);
+            param_types.push(parse_type(parse_session, tokens));
+        }
+        tokens.remove(0);
+
+        base_type = Type::Func(Func {
+            return_type: Some(Box::new(base_type)),
+            params: param_types,
+        });
+    } else if is_next_token(tokens, Token::LBracket) {
+        tokens.remove(0);
+        let mut array_sizes = vec![];
+        array_sizes.push(consume_size(tokens));
+        tokens.remove(0);
+
+        while is_next_token(tokens, Token::LBrace) {
+            tokens.remove(0);
+            array_sizes.push(consume_size(tokens));
+            tokens.remove(0);
         }
 
         for size in array_sizes.into_iter().rev() {
@@ -173,46 +116,45 @@ fn parse_array_declarator(mut base_type: Type, remaining_tokens: &mut Vec<Token>
                 length: size,
             });
         }
+    } else {
+        return base_type;
     }
-    base_type
+
+    if !center.is_empty() {
+        call(p(base_type, &mut center), &mut center, parse_session)
+    } else {
+        base_type
+    }
 }
 
-fn parse_function_declarator(
-    mut base_type: Type,
-    session: &mut ParseSession,
-    remaining_tokens: &mut Vec<Token>,
-) -> Type {
-    if !remaining_tokens.is_empty() && remaining_tokens[0] == Token::LParen {
-        let mut param_types = vec![];
-        let paren_end = find_matching_paren(&remaining_tokens);
-        let mut param_tokens = remaining_tokens[1..paren_end].to_vec();
-        remaining_tokens.drain(0..=paren_end); // remove params and closing paren
-
-        while !param_tokens.is_empty() {
-            // パラメータ型をパース（内部関数を使用）
-            let param_type = parse_type_internal(session, &mut param_tokens);
-            param_types.push(param_type);
-            if !param_tokens.is_empty() && param_tokens[0] == Token::Comma {
-                param_tokens.remove(0);
-            }
-        }
-
-        base_type = Type::Func(Func {
-            return_type: Some(Box::new(base_type)),
-            params: param_types,
-        });
+fn consume_size(tokens: &mut Vec<Token>) -> usize {
+    if let Token::NumInt(num) = tokens.remove(0) {
+        return num as usize;
+    } else {
+        panic!()
     }
-    base_type
+}
+
+fn is_next_ident(tokens: &[Token]) -> bool {
+    if tokens.is_empty() {
+        return false;
+    }
+    let next = tokens.first().unwrap();
+
+    return matches!(next, Token::Ident(_));
+}
+
+fn is_next_token(tokens: &[Token], token: Token) -> bool {
+    if tokens.is_empty() {
+        return false;
+    }
+    tokens[0] == token
 }
 
 #[test]
 fn test() {
     use crate::lexer;
-    use crate::parser;
-    let mut token = lexer::tokenize(&"int (*funcptr)(int, int);");
-    let mut session = parser::ParseSession::new();
-
-    let a = parse_type(&mut session, &mut token);
-    println!("{:?}", a);
-    println!("{:?}", token);
+    let mut tokens = lexer::tokenize("(()aaaaaaaaaa())()");
+    let a = find_matching_paren(&tokens);
+    println!("{:?}", tokens[0..a].to_vec());
 }

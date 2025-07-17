@@ -520,7 +520,7 @@ fn block(parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Box<Block
     Block::new(code)
 }
 
-fn expr(parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Expr {
+pub fn expr(parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Expr {
     comma(parse_session, tokens)
 }
 

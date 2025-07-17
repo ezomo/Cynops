@@ -1,18 +1,17 @@
-typedef int mynt;
-typedef int *inptr;
-typedef int arr5[5 + 3];
+typedef int myin;
+typedef int *itptr;
+typedef int arr5[5];
 typedef int (*funcptr)(int, int);
 typedef struct {
   int x;
   int y;
-} Pont;
-typedef struct PointStruct {
-  int x;
-  int y;
-} PointAlias;
-typedef enum { RED, GREEN = 2, BLUE = 4, Fack = 0 } Color;
+} Poin;
+typedef union {
+  int i;
+  double f;
+} IntOrFloat;
 
-int main(int argc, char const *argv[]) {
-  /* code */
-  return 0;
-}
+typedef enum { RED, GREEN, BLUE } Color;
+
+typedef int myinf;
+typedef myinf myit2;

@@ -4,7 +4,7 @@ mod ast;
 mod get_type;
 // mod ast_visualizer;
 // mod codegen;
-// mod const_eval;
+mod const_eval;
 mod lexer;
 mod parser;
 mod preprocessor;
@@ -25,6 +25,8 @@ fn main() {
     let mut session = parser::ParseSession::new();
     let program: ast::Program = parser::program(&mut session, &mut token);
     println!("{:#?}", program);
+    println!("{:#?}", token);
+
     // visualize_program(&program);
 
     // sema::program(program);
