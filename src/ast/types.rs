@@ -16,7 +16,6 @@ pub struct Func {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-
 pub struct Typedef {
     pub type_name: Ident,
     pub actual_type: Box<Type>,

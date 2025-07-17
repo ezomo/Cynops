@@ -29,6 +29,30 @@ pub fn parse_and_extract_idents(
 }
 
 pub fn parse_type(session: &mut ParseSession, tokens: &mut Vec<Token>) -> Type {
+    // 型に関係ない部分（;、{など）が出るまでの部分を切り出す
+    let mut type_tokens = vec![];
+    let mut consumed_count = 0;
+
+    while consumed_count < tokens.len() {
+        match &tokens[consumed_count] {
+            Token::Semicolon | Token::LBrace | Token::RBrace => {
+                break;
+            }
+            _ => {
+                type_tokens.push(tokens[consumed_count].clone());
+                consumed_count += 1;
+            }
+        }
+    }
+
+    // 元のtokensから型に関係する部分を削除
+    tokens.drain(0..consumed_count);
+
+    // 切り出した部分で型解析を実行
+    parse_type_internal(session, &mut type_tokens)
+}
+
+fn parse_type_internal(session: &mut ParseSession, tokens: &mut Vec<Token>) -> Type {
     let mut base_type = if session.is_base_type(&tokens[0]) {
         session.cast(&tokens.remove(0)).unwrap()
     } else {
@@ -165,10 +189,9 @@ fn parse_function_declarator(
         remaining_tokens.drain(0..=paren_end); // remove params and closing paren
 
         while !param_tokens.is_empty() {
-            // パラメータ型をパース
-            let param_type = parse_type(session, &mut param_tokens);
+            // パラメータ型をパース（内部関数を使用）
+            let param_type = parse_type_internal(session, &mut param_tokens);
             param_types.push(param_type);
-            println!("{:?}", param_tokens);
             if !param_tokens.is_empty() && param_tokens[0] == Token::Comma {
                 param_tokens.remove(0);
             }
@@ -180,4 +203,16 @@ fn parse_function_declarator(
         });
     }
     base_type
+}
+
+#[test]
+fn test() {
+    use crate::lexer;
+    use crate::parser;
+    let mut token = lexer::tokenize(&"int (*funcptr)(int, int);");
+    let mut session = parser::ParseSession::new();
+
+    let a = parse_type(&mut session, &mut token);
+    println!("{:?}", a);
+    println!("{:?}", token);
 }

@@ -371,8 +371,8 @@ fn decl_stmt(parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> DeclS
 }
 
 fn typedef_stmt(parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Typedef {
-    let mut ident;
-    let mut ty = if is_next_composite_type_def(tokens, Token::r#struct()) {
+    let ident;
+    let ty = if is_next_composite_type_def(tokens, Token::r#struct()) {
         consume(Token::r#struct(), tokens);
         let st = struct_def(parse_session, tokens);
         if st.ident.is_some() {
@@ -425,6 +425,7 @@ fn struct_def(parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Stru
             let mut ms = vec![];
             while !consume(Token::RBrace, tokens) {
                 ms.push(decl_member(parse_session, tokens));
+                consume(Token::Semicolon, tokens);
             }
 
             consume(Token::Semicolon, tokens);
@@ -448,6 +449,7 @@ fn union_def(parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Union
             let mut ms = vec![];
             while !consume(Token::RBrace, tokens) {
                 ms.push(decl_member(parse_session, tokens));
+                consume(Token::Semicolon, tokens);
             }
 
             consume(Token::Semicolon, tokens);
@@ -957,7 +959,6 @@ fn is_next_decl_stmt(parse_session: &ParseSession, tokens: &[Token]) -> bool {
         return false;
     }
 
-    println!("is_next_decl_stmt: {:?}", parse_session);
     is_next_type(parse_session, tokens)
         || tokens.first().unwrap() == &Token::r#struct()
         || tokens.first().unwrap() == &Token::r#union()
