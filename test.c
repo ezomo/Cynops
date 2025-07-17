@@ -1,1 +1,3 @@
-int main(void) { int x; }
+typedef int nat;
+
+nat y;

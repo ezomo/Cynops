@@ -18,7 +18,10 @@ pub fn parse_and_extract_idents(
     let mut idents = vec![];
     for i in 0..(original_len - remaining_len) {
         if let Token::Ident(name) = &original_tokens[i] {
-            idents.push(Ident { name: name.clone() });
+            if !session.is_base_type(&Token::Ident(name.to_string())) {
+                let id = Ident { name: name.clone() };
+                idents.push(id);
+            }
         }
     }
 
@@ -26,14 +29,12 @@ pub fn parse_and_extract_idents(
 }
 
 pub fn parse_type(session: &mut ParseSession, tokens: &mut Vec<Token>) -> Type {
-    let mut base_type = match &tokens[0] {
-        t if *t == Token::r#int() => Type::Int,
-        t if *t == Token::r#void() => Type::Void,
-        t if *t == Token::r#char() => Type::Char,
-        t if *t == Token::r#double() => Type::Double,
-        _ => panic!("Expected base type, found {:?}", tokens),
+    let mut base_type = if session.is_base_type(&tokens[0]) {
+        session.cast(&tokens.remove(0)).unwrap()
+    } else {
+        panic!("Expected a base type, found: {:?}", tokens);
     };
-    tokens.remove(0);
+
     base_type = parse_prefix_pointers(base_type, tokens);
 
     parse_declarator(base_type, session, tokens)
