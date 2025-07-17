@@ -29,6 +29,7 @@ impl TopLevel {
         TopLevel::FunctionDef(FunctionDef {
             sig: function_sig,
             body: stmt,
+            param_name: Vec::new(), // Provide an appropriate value for param_name
         })
     }
 

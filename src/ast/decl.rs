@@ -5,275 +5,102 @@ use super::{
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum DeclStmt {
-    Typed(Typed),
+    MemberDecl(MemberDecl),
     Struct(Struct),
     Union(Union),
     Enum(Enum),
     Typedef(Typedef),
 }
-
 impl DeclStmt {
-    pub fn typed(ty: Type, declarators: Vec<InitDeclarator>) -> Self {
-        DeclStmt::Typed(Typed { ty, declarators })
+    pub fn member_decl(m: MemberDecl) -> Self {
+        DeclStmt::MemberDecl(m)
     }
 
-    pub fn struct_decl(s: Struct) -> Self {
-        DeclStmt::Struct(s)
+    pub fn r#struct(strct: Struct) -> Self {
+        DeclStmt::Struct(strct)
     }
 
-    pub fn union_decl(u: Union) -> Self {
-        DeclStmt::Union(u)
+    pub fn union(union: Union) -> Self {
+        DeclStmt::Union(union)
     }
 
-    pub fn enum_decl(e: Enum) -> Self {
-        DeclStmt::Enum(e)
+    pub fn r#enum(enm: Enum) -> Self {
+        DeclStmt::Enum(enm)
     }
 
-    pub fn typedef_decl(t: Typedef) -> Self {
-        DeclStmt::Typedef(t)
-    }
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub struct Typed {
-    pub ty: Type,
-    pub declarators: Vec<InitDeclarator>,
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub struct InitDeclarator {
-    pub declarator: Declarator,
-    pub init: Option<Initializer>,
-}
-impl InitDeclarator {
-    pub fn new(declarator: Declarator, init: Option<Initializer>) -> Self {
-        InitDeclarator { declarator, init }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct Pointer {
-    pub level: usize,
-    pub inner: Box<Option<DirectDeclarator>>,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub enum Declarator {
-    Pointer(Pointer),
-    Direct(DirectDeclarator),
-}
-impl Declarator {
-    pub fn pointer(level: usize, inner: Option<DirectDeclarator>) -> Self {
-        Declarator::Pointer(Pointer {
-            level,
-            inner: Box::new(inner),
-        })
-    }
-
-    pub fn direct(direct: DirectDeclarator) -> Self {
-        Declarator::Direct(direct)
-    }
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-
-pub struct Array {
-    pub base: Box<DirectDeclarator>,
-    pub size: Option<Expr>,
-}
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub struct Func {
-    pub base: Box<DirectDeclarator>,
-    pub params: Option<ParamList>,
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub enum DirectDeclarator {
-    Ident(Ident),
-    Paren(Box<Declarator>), // 例: (*f)
-    Array(Array),
-    Func(Func),
-}
-impl DirectDeclarator {
-    /// 識別子からDirectDeclaratorを作る
-    pub fn ident(name: Ident) -> Self {
-        DirectDeclarator::Ident(name)
-    }
-
-    /// 括弧つきDeclaratorからDirectDeclaratorを作る
-    pub fn paren(decl: Declarator) -> Self {
-        DirectDeclarator::Paren(Box::new(decl))
-    }
-
-    /// 配列型DirectDeclaratorを作る
-    pub fn array(base: DirectDeclarator, size: Option<Expr>) -> Self {
-        DirectDeclarator::Array(Array {
-            base: Box::new(base),
-            size,
-        })
-    }
-
-    /// 関数型DirectDeclaratorを作る
-    pub fn func(base: DirectDeclarator, params: Option<ParamList>) -> Self {
-        DirectDeclarator::Func(Func {
-            base: Box::new(base),
-            params,
-        })
-    }
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub struct Param {
-    pub ty: Type,
-    pub name: Option<Declarator>,
-}
-impl Param {
-    pub fn new(ty: Type, name: Option<Declarator>) -> Self {
-        Self { ty, name: name }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub enum ParamList {
-    Void,               // f(void)
-    Params(Vec<Param>), // f(int x, char y)
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub enum Initializer {
-    Expr(Box<Expr>),
-    List(Vec<Initializer>), // 複合初期化子: {1, 2}
-}
-impl Initializer {
-    /// 単一式による初期化子を作る
-    pub fn expr(expr: Expr) -> Self {
-        Initializer::Expr(Box::new(expr))
-    }
-
-    /// 複合リストによる初期化子を作る
-    pub fn list(list: Vec<Initializer>) -> Self {
-        Initializer::List(list)
-    }
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub struct FunctionDef {
-    pub sig: FunctionSig,
-    pub body: Block,
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub struct Struct {
-    pub name: Option<Ident>,
-    pub members: Vec<MemberDecl>,
-}
-impl Struct {
-    pub fn new(name: Option<Ident>, members: Vec<MemberDecl>) -> Self {
-        Self { name, members }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub struct Union {
-    pub name: Option<Ident>,
-    pub members: Vec<MemberDecl>,
-}
-impl Union {
-    pub fn new(name: Option<Ident>, members: Vec<MemberDecl>) -> Self {
-        Self { name, members }
+    pub fn typedef(typedef: Typedef) -> Self {
+        DeclStmt::Typedef(typedef)
     }
 }
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct MemberDecl {
+    pub ident: Ident,
     pub ty: Type,
-    pub declarators: Vec<Declarator>,
 }
+
 impl MemberDecl {
-    pub fn new(ty: Type, declarators: Vec<Declarator>) -> Self {
-        Self { ty, declarators }
+    pub fn new(ident: Ident, ty: Type) -> Self {
+        MemberDecl { ident, ty }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+pub struct Struct {
+    pub ident: Option<Ident>,
+    pub member: Vec<MemberDecl>,
+}
+
+impl Struct {
+    pub fn new(ident: Option<Ident>, member: Vec<MemberDecl>) -> Self {
+        Struct { ident, member }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+pub struct Union {
+    pub ident: Option<Ident>,
+    pub member: Vec<MemberDecl>,
+}
+
+impl Union {
+    pub fn new(ident: Option<Ident>, member: Vec<MemberDecl>) -> Self {
+        Union { ident, member }
     }
 }
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Enum {
-    pub name: Option<Ident>,
+    pub ident: Option<Ident>,
     pub variants: Vec<EnumMember>,
 }
+
 impl Enum {
-    pub fn new(name: Option<Ident>, variants: Vec<EnumMember>) -> Self {
-        Self { name, variants }
+    pub fn new(ident: Option<Ident>, variants: Vec<EnumMember>) -> Self {
+        Enum { ident, variants }
     }
 }
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct EnumMember {
-    pub name: Ident,
-    pub value: Option<usize>, // = 指定があるとき
+    pub ident: Ident,
+    pub value: Option<usize>, // 明示的な値がある場合
 }
+
 impl EnumMember {
-    pub fn new(name: Ident, value: Option<usize>) -> Self {
-        Self { name, value }
+    pub fn new(ident: Ident, value: Option<usize>) -> Self {
+        EnumMember { ident, value }
     }
 }
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Typedef {
-    pub ty: TypedefType,              // struct/union/enum/primitive など
-    pub declarators: Vec<Declarator>, // Point, MyInt などの名前
+    pub ident: Ident,
+    pub ty: Type,
 }
-impl Typedef {
-    pub fn new(ty: TypedefType, declarators: Vec<Declarator>) -> Self {
-        Self { ty, declarators }
-    }
-}
-
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub enum TypedefType {
-    Type(Type),
-    Struct(Struct),
-    Union(Union),
-    Enum(Enum),
-}
-impl TypedefType {
-    pub fn r#type(ty: Type) -> Self {
-        TypedefType::Type(ty)
-    }
-    pub fn struct_decl(s: Struct) -> Self {
-        TypedefType::Struct(s)
-    }
-    pub fn union_decl(u: Union) -> Self {
-        TypedefType::Union(u)
-    }
-    pub fn enum_decl(e: Enum) -> Self {
-        TypedefType::Enum(e)
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub enum AbstractDeclarator {
-    Pointer {
-        level: usize,
-        inner: Box<Option<DirectAbstractDeclarator>>,
-    },
-    Direct(DirectAbstractDeclarator),
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub enum DirectAbstractDeclarator {
-    Paren(Box<AbstractDeclarator>), // 例: (*)
-    Array {
-        base: Box<DirectAbstractDeclarator>,
-        size: Option<Expr>,
-    },
-    Func {
-        base: Box<DirectAbstractDeclarator>,
-        params: Option<ParamList>,
-    },
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct TypeName {
-    pub base: Type,
-    pub declarator: Option<AbstractDeclarator>,
+pub struct FunctionDef {
+    pub sig: FunctionSig,
+    pub param_name: Vec<Ident>,
+    pub body: Block,
 }
