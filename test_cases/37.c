@@ -11,10 +11,10 @@ int *x = &y, y = 5;
 
 char c;
 char c = 'a';
-char s[] = {'h', 'e', 'l', 'l', 'o'};
-// char *s = "hello";
+char s[5] = {'h', 'e', 'l', 'l', 'o'};
+char *s = "hello";
 
-void (*f)();          // 関数ポインタ
+void (*f)(void);      // 関数ポインタ
 int (*cmp)(int, int); // 関数ポインタ with param
 int *(*f)(int);       // 関数ポインタ returning pointer
 int (*a[5])(int);     // 関数ポインタの配列

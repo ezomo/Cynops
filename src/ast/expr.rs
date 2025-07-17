@@ -1,5 +1,5 @@
 use super::{AssignOp, BinaryOp, Ident, PostfixOp, UnaryOp};
-use crate::ast::{MemberAccessOp, TypeName};
+use crate::ast::{MemberAccessOp, Type};
 use ordered_float::OrderedFloat;
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Postfix {
@@ -84,13 +84,13 @@ pub struct MemberAccess {
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Sizeof {
-    Type(Box<TypeName>),
+    Type(Type),
     Expr(Box<Expr>),
 }
 
 impl Sizeof {
-    pub fn r#type(ty: TypeName) -> Self {
-        Self::Type(Box::new(ty))
+    pub fn r#type(ty: Type) -> Self {
+        Self::Type(ty)
     }
     pub fn r#expr(expr: Expr) -> Self {
         Self::Expr(Box::new(expr))
@@ -99,7 +99,7 @@ impl Sizeof {
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Cast {
-    pub r#type: Box<TypeName>,
+    pub r#type: Box<Type>,
     pub expr: Box<Expr>,
 }
 
@@ -200,7 +200,7 @@ impl Expr {
         Box::new(Expr::Sizeof(sizeof))
     }
 
-    pub fn cast(r#type: TypeName, expr: Expr) -> Box<Self> {
+    pub fn cast(r#type: Type, expr: Expr) -> Box<Self> {
         Box::new(Expr::Cast(Cast {
             r#type: Box::new(r#type),
             expr: Box::new(expr),

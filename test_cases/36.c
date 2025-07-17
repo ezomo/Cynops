@@ -11,7 +11,7 @@ int *filter(int (*judge)(int), int *list, int len, int *out_len) {
 
 int j(int x) { return x > 500; }
 
-int main() {
+int main(void) {
   int list[1000];
   int i;
   for (i = 0; i < 1000; i++) {

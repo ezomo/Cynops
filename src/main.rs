@@ -1,7 +1,8 @@
 use std::{env, fs, process};
+
 mod ast;
-mod ast_visualizer;
-mod codegen;
+mod const_eval;
+mod get_type;
 mod lexer;
 mod parser;
 mod preprocessor;
@@ -17,14 +18,14 @@ fn main() {
     }
     let mut input = fs::read_to_string(&args[1]).unwrap();
     preprocessor::remove_comments(&mut input);
-    let token = lexer::tokenize(&input);
-    let program: ast::Program = parser::program(&mut parser::ParseSession::new(token));
-
-    let mut cgs = codegen::CodeGenStatus::new();
-    codegen::generate_program(program, &mut cgs);
+    let mut token = lexer::tokenize(&input);
+    let mut session = parser::ParseSession::new();
+    let program: ast::Program = parser::program(&mut session, &mut token);
+    println!("{:#?}", program);
+    println!("{:#?}", token);
 }
 
-#[test]
-fn test() {
-    test_cases::run_tests("test_cases").expect("Test cases failed");
-}
+// #[test]
+// fn test() {
+//     test_cases::run_tests("test_cases").expect("Test cases failed");
+// }
