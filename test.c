@@ -1,6 +1,6 @@
 typedef int myin;
 typedef int *itptr;
-typedef int arr5[5];
+typedef int arr5[5 + 1];
 typedef int (*funcptr)(int, int);
 typedef struct {
   int x;

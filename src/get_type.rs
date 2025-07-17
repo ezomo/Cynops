@@ -1,7 +1,8 @@
 use crate::ast::{Array, Func, Ident, Type};
+use crate::const_eval::eval_const_expr;
 use crate::parser::ParseSession;
+use crate::parser::expr;
 use crate::token::Token;
-
 /// Parse a complete C type declaration
 
 pub fn parse_and_extract_idents(
@@ -101,12 +102,27 @@ fn call(mut base_type: Type, tokens: &mut Vec<Token>, parse_session: &mut ParseS
     } else if is_next_token(tokens, Token::LBracket) {
         tokens.remove(0);
         let mut array_sizes = vec![];
-        array_sizes.push(consume_size(tokens));
+
+        array_sizes.push(
+            eval_const_expr(&expr(parse_session, tokens))
+                .unwrap()
+                .to_int()
+                .map_err(|e| format!("Failed to convert size to integer: {}", e))
+                .unwrap()
+                .max(0) as usize,
+        );
         tokens.remove(0);
 
         while is_next_token(tokens, Token::LBrace) {
             tokens.remove(0);
-            array_sizes.push(consume_size(tokens));
+            array_sizes.push(
+                eval_const_expr(&expr(parse_session, tokens))
+                    .unwrap()
+                    .to_int()
+                    .map_err(|e| format!("Failed to convert size to integer: {}", e))
+                    .unwrap()
+                    .max(0) as usize,
+            );
             tokens.remove(0);
         }
 
@@ -124,14 +140,6 @@ fn call(mut base_type: Type, tokens: &mut Vec<Token>, parse_session: &mut ParseS
         call(p(base_type, &mut center), &mut center, parse_session)
     } else {
         base_type
-    }
-}
-
-fn consume_size(tokens: &mut Vec<Token>) -> usize {
-    if let Token::NumInt(num) = tokens.remove(0) {
-        return num as usize;
-    } else {
-        panic!()
     }
 }
 
