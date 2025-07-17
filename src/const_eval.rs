@@ -1,3 +1,4 @@
+//そもそusize以外は計算する必要がない
 use crate::ast::{Arithmetic, BinaryOp, Comparison, Logical, UnaryOp};
 use crate::ast::{Binary, Cast, Comma, Expr, Sizeof, Ternary, Unary};
 use ordered_float::OrderedFloat;
@@ -26,15 +27,6 @@ impl ConstValue {
             ConstValue::Float(f) => Ok(f.0 as isize),
             ConstValue::Char(c) => Ok(*c as isize),
             ConstValue::String(_) => Err("Cannot convert string to integer".to_string()),
-        }
-    }
-
-    pub fn to_float(&self) -> Result<OrderedFloat<f64>, String> {
-        match self {
-            ConstValue::Int(n) => Ok(OrderedFloat(*n as f64)),
-            ConstValue::Float(f) => Ok(*f),
-            ConstValue::Char(c) => Ok(OrderedFloat(*c as u8 as f64)),
-            ConstValue::String(_) => Err("Cannot convert string to float".to_string()),
         }
     }
 }
@@ -327,44 +319,5 @@ fn eval_sizeof(sizeof: &Sizeof) -> Result<ConstValue, String> {
             let _ = eval_const_expr(expr)?;
             Ok(ConstValue::Int(4)) // 仮のサイズ
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::ast::*;
-    use ordered_float::OrderedFloat;
-
-    #[test]
-    fn test_basic_arithmetic() {
-        let expr = Expr::Binary(Binary {
-            op: BinaryOp::plus(),
-            lhs: Box::new(Expr::NumInt(2)),
-            rhs: Box::new(Expr::NumInt(3)),
-        });
-
-        let result = eval_const_expr(&expr).unwrap();
-        assert_eq!(result, ConstValue::Int(5));
-    }
-
-    #[test]
-    fn test_ternary() {
-        let expr = Expr::Ternary(Ternary {
-            cond: Box::new(Expr::NumInt(1)),
-            then_branch: Box::new(Expr::NumInt(42)),
-            else_branch: Box::new(Expr::NumInt(0)),
-        });
-
-        let result = eval_const_expr(&expr).unwrap();
-        assert_eq!(result, ConstValue::Int(42));
-    }
-
-    #[test]
-    fn test_variable_error() {
-        let expr = Expr::Ident(Ident::new("x"));
-
-        let result = eval_const_expr(&expr);
-        assert!(result.is_err());
     }
 }

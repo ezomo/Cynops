@@ -1,15 +1,12 @@
 use std::{env, fs, process};
 
 mod ast;
-mod get_type;
-// mod ast_visualizer;
-// mod codegen;
 mod const_eval;
+mod get_type;
 mod lexer;
 mod parser;
 mod preprocessor;
-// mod sema;
-// mod test_cases;
+mod test_cases;
 mod token;
 
 fn main() {
@@ -26,12 +23,6 @@ fn main() {
     let program: ast::Program = parser::program(&mut session, &mut token);
     println!("{:#?}", program);
     println!("{:#?}", token);
-
-    // visualize_program(&program);
-
-    // sema::program(program);
-    // let mut cgs = codegen::CodeGenStatus::new();
-    // codegen::generate_program(program, &mut cgs);
 }
 
 // #[test]

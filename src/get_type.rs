@@ -112,8 +112,7 @@ fn call(mut base_type: Type, tokens: &mut Vec<Token>, parse_session: &mut ParseS
                 .max(0) as usize,
         );
         tokens.remove(0);
-
-        while is_next_token(tokens, Token::LBrace) {
+        while is_next_token(tokens, Token::LBracket) {
             tokens.remove(0);
             array_sizes.push(
                 eval_const_expr(&expr(parse_session, tokens))
@@ -157,12 +156,4 @@ fn is_next_token(tokens: &[Token], token: Token) -> bool {
         return false;
     }
     tokens[0] == token
-}
-
-#[test]
-fn test() {
-    use crate::lexer;
-    let mut tokens = lexer::tokenize("(()aaaaaaaaaa())()");
-    let a = find_matching_paren(&tokens);
-    println!("{:?}", tokens[0..a].to_vec());
 }

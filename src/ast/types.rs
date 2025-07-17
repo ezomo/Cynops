@@ -38,7 +38,6 @@ pub enum Type {
     Func(Func),
     Struct(Struct),
     Union(Union),
-    Typedef(Typedef),
     Enum(Enum),
     Pointer(Box<Type>),
     Array(Array),

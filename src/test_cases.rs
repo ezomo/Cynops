@@ -1,7 +1,6 @@
 use std::fs;
 
 // 実際のモジュール（プロジェクトに合わせて調整）
-use crate::ast_visualizer;
 use crate::lexer;
 use crate::parser;
 use crate::preprocessor;
@@ -68,15 +67,11 @@ fn run_parser_test(input: &mut String) -> Result<(), String> {
     run_parser_test_with_options(input, false)
 }
 
-fn run_parser_test_with_options(input: &mut String, show_ast: bool) -> Result<(), String> {
+fn run_parser_test_with_options(input: &mut String, _show_ast: bool) -> Result<(), String> {
     preprocessor::remove_comments(input);
     let tokens = lexer::tokenize(input);
-    let mut parse_session = parser::ParseSession::new(tokens);
-    let program = parser::program(&mut parse_session);
-
-    if show_ast {
-        ast_visualizer::visualize_program(&program);
-    }
+    let mut parse_session = parser::ParseSession::new();
+    let _ = parser::program(&mut parse_session, &mut tokens.clone());
 
     Ok(())
 }

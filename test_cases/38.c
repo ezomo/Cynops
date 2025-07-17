@@ -1,6 +1,6 @@
 // 　構造体
 
-struct Point {
+struct Poit {
   int x;
   int y;
 };

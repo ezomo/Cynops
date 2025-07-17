@@ -1,3 +1,5 @@
+use crate::ast::Expr;
+
 use super::{
     Block, Ident, Typedef,
     types::{FunctionSig, Type},
@@ -5,15 +7,15 @@ use super::{
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum DeclStmt {
-    MemberDecl(MemberDecl),
+    InitVec(Vec<Init>),
     Struct(Struct),
     Union(Union),
     Enum(Enum),
     Typedef(Typedef),
 }
 impl DeclStmt {
-    pub fn member_decl(m: MemberDecl) -> Self {
-        DeclStmt::MemberDecl(m)
+    pub fn init_vec(vec: Vec<Init>) -> Self {
+        DeclStmt::InitVec(vec)
     }
 
     pub fn r#struct(strct: Struct) -> Self {
@@ -98,4 +100,22 @@ pub struct FunctionDef {
     pub sig: FunctionSig,
     pub param_name: Vec<Ident>,
     pub body: Block,
+}
+
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+pub enum InitData {
+    Expr(Expr),
+    Compound(Vec<InitData>), // 構造体・配列初期化子 {1, 2}
+}
+
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+pub struct Init {
+    pub r: MemberDecl,
+    pub l: Option<InitData>,
+}
+
+impl Init {
+    pub fn new(r: MemberDecl, l: Option<InitData>) -> Self {
+        Init { r, l }
+    }
 }
