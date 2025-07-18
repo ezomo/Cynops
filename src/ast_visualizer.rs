@@ -51,7 +51,7 @@ fn visualize_function_def(func: &FunctionDef, indent: usize, is_last: bool, pref
     );
 
     let has_body = !func.body.statements.is_empty();
-    let has_params = !func.param_name.is_empty();
+    let has_params = !func.param_names.is_empty();
     let total_items = 2 + if has_body { 1 } else { 0 } + if has_params { 1 } else { 0 }; // ReturnType, Params, Body
 
     let mut current_item = 0;
@@ -73,8 +73,8 @@ fn visualize_function_def(func: &FunctionDef, indent: usize, is_last: bool, pref
             current_item == total_items,
             &extend_prefix(&prefix, !is_last),
         );
-        for (i, param) in func.param_name.iter().enumerate() {
-            let is_last_param = i == func.param_name.len() - 1;
+        for (i, param) in func.param_names.iter().enumerate() {
+            let is_last_param = i == func.param_names.len() - 1;
             print_branch(
                 "Param",
                 &param.name,

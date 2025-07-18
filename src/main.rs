@@ -1,7 +1,11 @@
 use std::{env, fs, process};
 
+use crate::codegen::generate_program;
+
 mod ast;
+#[allow(dead_code)]
 mod ast_visualizer;
+mod codegen;
 mod const_eval;
 mod get_type;
 mod lexer;
@@ -22,5 +26,6 @@ fn main() {
     let mut token = lexer::tokenize(&input);
     let mut session = parser::ParseSession::new();
     let program: ast::Program = parser::program(&mut session, &mut token);
-    ast_visualizer::visualize_program(&program)
+    // ast_visualizer::visualize_program(&program);
+    generate_program(program, &mut codegen::CodeGenStatus::new());
 }

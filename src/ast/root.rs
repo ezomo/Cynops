@@ -1,3 +1,5 @@
+use crate::ast::Ident;
+
 use super::Block;
 use super::FunctionSig;
 use super::Stmt;
@@ -25,11 +27,11 @@ pub enum TopLevel {
     Stmt(Stmt),
 }
 impl TopLevel {
-    pub fn function_def(function_sig: FunctionSig, stmt: Block) -> Self {
+    pub fn function_def(function_sig: FunctionSig, param_names: Vec<Ident>, stmt: Block) -> Self {
         TopLevel::FunctionDef(FunctionDef {
             sig: function_sig,
             body: stmt,
-            param_name: Vec::new(), // Provide an appropriate value for param_name
+            param_names: param_names, // Provide an appropriate value for param_name
         })
     }
 

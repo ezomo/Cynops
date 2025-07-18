@@ -166,11 +166,14 @@ pub fn program(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Pr
             let sig = function_sig(_parse_session, tokens);
             if consume(Token::LBrace, tokens) {
                 // function definition
-                code.items
-                    .push(TopLevel::function_def(sig, *block(_parse_session, tokens)));
+                code.items.push(TopLevel::function_def(
+                    sig.0,
+                    sig.1,
+                    *block(_parse_session, tokens),
+                ));
             } else {
                 // function prototype
-                code.items.push(TopLevel::function_proto(sig));
+                code.items.push(TopLevel::function_proto(sig.0));
                 consume(Token::Semicolon, tokens);
             }
         } else {
@@ -182,9 +185,12 @@ pub fn program(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Pr
     code
 }
 
-fn function_sig(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> FunctionSig {
-    let (types, ident) = get_type::parse_and_extract_idents(_parse_session, tokens);
-    FunctionSig::new(types, ident[0].clone())
+fn function_sig(
+    _parse_session: &mut ParseSession,
+    tokens: &mut Vec<Token>,
+) -> (FunctionSig, Vec<Ident>) {
+    let (types, mut ident) = get_type::parse_and_extract_idents(_parse_session, tokens);
+    (FunctionSig::new(types, ident.remove(0)), ident)
 }
 
 fn stmt(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Box<Stmt> {
