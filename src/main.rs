@@ -1,6 +1,7 @@
 use std::{env, fs, process};
 
 mod ast;
+mod ast_visualizer;
 mod const_eval;
 mod get_type;
 mod lexer;
@@ -21,11 +22,5 @@ fn main() {
     let mut token = lexer::tokenize(&input);
     let mut session = parser::ParseSession::new();
     let program: ast::Program = parser::program(&mut session, &mut token);
-    println!("{:#?}", program);
-    println!("{:#?}", token);
+    ast_visualizer::visualize_program(&program)
 }
-
-// #[test]
-// fn test() {
-//     test_cases::run_tests("test_cases").expect("Test cases failed");
-// }

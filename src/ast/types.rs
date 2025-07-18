@@ -53,6 +53,58 @@ impl Type {
     pub fn r#enum(e: Enum) -> Self {
         Type::Enum(e)
     }
+
+    /// Type を Rust 風の表記に変換する
+    pub fn to_rust_format(&self) -> String {
+        match self {
+            Type::Void => "void".to_string(),
+            Type::Int => "int".to_string(),
+            Type::Double => "double".to_string(),
+            Type::Char => "char".to_string(),
+            Type::Func(func) => {
+                let params = if func.params.is_empty() {
+                    "void".to_string()
+                } else {
+                    func.params
+                        .iter()
+                        .map(|p| p.to_rust_format())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                };
+
+                let return_type = match &func.return_type {
+                    Some(ret) => ret.to_rust_format(),
+                    None => "void".to_string(),
+                };
+
+                format!("fn({}) -> {}", params, return_type)
+            }
+            Type::Struct(s) => format!(
+                "struct {}",
+                s.ident
+                    .as_ref()
+                    .map_or("Anonymous".to_string(), |n| n.name.clone())
+            ),
+            Type::Union(u) => format!(
+                "union {}",
+                u.ident
+                    .as_ref()
+                    .map_or("Anonymous".to_string(), |n| n.name.clone())
+            ),
+            Type::Enum(e) => format!(
+                "enum {}",
+                e.ident
+                    .as_ref()
+                    .map_or("Anonymous".to_string(), |n| n.name.clone())
+            ),
+            Type::Pointer(inner) => {
+                format!("*{}", inner.to_rust_format())
+            }
+            Type::Array(arr) => {
+                format!("[{}; {}]", arr.array_of.to_rust_format(), arr.length)
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
