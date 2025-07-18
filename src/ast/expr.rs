@@ -99,7 +99,7 @@ impl Sizeof {
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Cast {
-    pub r#type: Type,
+    pub r#type: Box<Type>,
     pub expr: Box<Expr>,
 }
 
@@ -202,7 +202,7 @@ impl Expr {
 
     pub fn cast(r#type: Type, expr: Expr) -> Box<Self> {
         Box::new(Expr::Cast(Cast {
-            r#type: r#type,
+            r#type: Box::new(r#type),
             expr: Box::new(expr),
         }))
     }

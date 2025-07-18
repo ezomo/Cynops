@@ -1,4 +1,4 @@
-void test() {
+void test(void) {
   a[1];     // 配列アクセス
   func();   // 関数呼び出し
   a++;      // 後置インクリメント
@@ -7,7 +7,7 @@ void test() {
   p->field; // メンバアクセス（->）
 }
 
-void test() {
+void test(void) {
   obj.method()[3].x->y++; // 複合例
   a[1][2][3][4][5][6][7][8][9][10];
   b[a[1]];
@@ -19,7 +19,7 @@ void test() {
   ((((((((((v))))))))))++;            // ← 多重括弧 + 後置演算
 }
 
-void basic_postfix_tests() {
+void basic_postfix_tests(void) {
   // 基本的な単一演算子
   a[0];
   b[99];
@@ -54,7 +54,7 @@ void basic_postfix_tests() {
   obj.method()++;
   ptr->get_val()--;
 }
-void array_access_combinations() {
+void array_access_combinations(void) {
   // 多次元配列アクセス
   a[1][2];
   b[1][2][3];
@@ -83,7 +83,7 @@ void array_access_combinations() {
   cube[get_x()][get_y()][get_z()];
 }
 
-void function_call_combinations() {
+void function_call_combinations(void) {
   // 連続関数呼び出し
   func()();
   method()()();
@@ -113,7 +113,7 @@ void function_call_combinations() {
   method()--;
 }
 
-void member_access_combinations() {
+void member_access_combinations(void) {
   // ドット演算子チェーン
   obj.field;
   obj.nested.field;
@@ -146,7 +146,7 @@ void member_access_combinations() {
   ptr->set_data(x);
 }
 
-void increment_decrement_combinations() {
+void increment_decrement_combinations(void) {
   // 基本的な後置演算
   i++;
   j--;
@@ -177,7 +177,7 @@ void increment_decrement_combinations() {
   (ptr->get_object()).value--;
 }
 
-void complex_combinations() {
+void complex_combinations(void) {
   // 超複雑な組み合わせ
   obj.method()[0].next->get_data()[key++]--;
   ptr->callback(x, y)[result].field->array[--index];
@@ -224,7 +224,7 @@ void complex_combinations() {
   value = (counter++ > 10) ? get_max() : get_min()[index];
 }
 
-void stress_test_cases() {
+void stress_test_cases(void) {
   // ストレステスト用の極端なケース
 
   // 超多次元配列
@@ -261,7 +261,7 @@ void stress_test_cases() {
                    get_callback()[key--]);
 }
 
-void realistic_usage_examples() {
+void realistic_usage_examples(void) {
   // 一般的なデータ構造操作
 
   // 連結リスト走査

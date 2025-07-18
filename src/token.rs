@@ -180,22 +180,6 @@ impl Token {
 }
 
 impl Token {
-    pub fn r#int() -> Self {
-        Token::Keyword(Keyword::Int)
-    }
-
-    pub fn r#double() -> Self {
-        Token::Keyword(Keyword::Double)
-    }
-
-    pub fn r#char() -> Self {
-        Token::Keyword(Keyword::Char)
-    }
-
-    pub fn r#void() -> Self {
-        Token::Keyword(Keyword::Void)
-    }
-
     pub fn r#return() -> Self {
         Token::Keyword(Keyword::Return)
     }

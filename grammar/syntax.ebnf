@@ -38,7 +38,7 @@ decl_stmt         = typedef_stmt
 init_declarator   = declarator [ "=" initializer  ] ;
 initializer       = expr | "{" initializer_list "}" ;
 initializer_list  = initializer { "," initializer } ;
-declarator        = { "*" } [direct_declarator] ;
+declarator        = { "*" } direct_declarator ;
 direct_declarator = ident
                   | "(" declarator ")"                      // 関数ポインタなど
                   | direct_declarator "[" [expr] "]"        // 配列
@@ -60,6 +60,15 @@ enum_member       = ident [ "=" num ] { "," ident [ "=" num ] } ;
 
 // 型
 type = "int" | "double" | "char" | "void" | "struct" ident | "union" ident | "enum" ident ;
+
+type_name = type [abstract_declarator] ;
+
+abstract_declarator = "*" abstract_declarator
+                    | direct_abstract_declarator ;
+
+direct_abstract_declarator = "(" abstract_declarator ")"
+                           | direct_abstract_declarator "[" [expr] "]"
+                           | direct_abstract_declarator "(" [param_list] ")" ;
 
 // 式(expression)
 expr            = comma ;
@@ -84,8 +93,8 @@ add             = mul { ("+" | "-") mul } ;
 mul             = unary { ("*" | "/" | "%") unary } ;
 unary           = ( "++" | "--" | "+" | "-" | "*" | "&" | "!" | "~" ) unary
                 | "sizeof" expr           
-                | "sizeof" "(" type ")"
-                |"(" type ")" unary    
+                | "sizeof" "(" type_name ")"
+                |"(" type_name ")" unary    
                 | postfix ;
 
 
