@@ -5,6 +5,8 @@ use std::collections::HashMap;
 pub struct CodeGenStatus {
     pub name_gen: NameGenerator,
     pub variables: HashMap<Ident, String>,
+    pub return_value_ptr: Option<String>,
+    pub return_label: Option<String>,
 }
 
 impl Block {
@@ -18,6 +20,8 @@ impl CodeGenStatus {
         Self {
             name_gen: NameGenerator::new(),
             variables: HashMap::new(),
+            return_value_ptr: None,
+            return_label: None,
         }
     }
 }
@@ -115,7 +119,7 @@ fn gen_expr(expr: Expr, cgs: &mut CodeGenStatus) -> String {
                 if let Expr::Ident(ident) = *assign.lhs {
                     let rhs = gen_expr(*assign.rhs, cgs);
                     let ptr = cgs.variables.get(&ident).unwrap();
-                    println!("store i32 %{}, i32* %{}", rhs, ptr);
+                    println!("store i32 %{}, ptr %{}", rhs, ptr);
                     return ptr.clone();
                 } else {
                     panic!("The left side is not variable!");
@@ -131,7 +135,7 @@ fn gen_expr(expr: Expr, cgs: &mut CodeGenStatus) -> String {
         Expr::Ident(ident) => {
             let tmp = cgs.name_gen.next();
             let ptr = cgs.variables.get(&ident).unwrap();
-            println!("%{} = load i32, i32* %{}", tmp, ptr);
+            println!("%{} = load i32, ptr %{}", tmp, ptr);
             return tmp;
         }
         Expr::Call(call) => {
@@ -168,85 +172,75 @@ fn gen_control(control: Control, cgs: &mut CodeGenStatus) -> String {
             let if_name = cgs.name_gen.next();
 
             println!(
-                "br i1 %{}, label %if{}_true, label %if{}_false",
+                "br i1 %{}, label %then_label{}, label %else_label{}",
                 con, if_name, if_name
             );
-            println!("if{}_true:", if_name);
 
-            let if_result = gen_stmt(*be.then_branch, cgs);
-            if if_result != EVIL {
-                println!("br label %if{}_end", if_name);
-            }
+            // then branch
+            println!("then_label{}:", if_name);
+            gen_stmt(*be.then_branch, cgs);
+            println!("br label %end_label{}", if_name);
 
-            println!("if{}_false:", if_name);
+            // else branch
+            println!("else_label{}:", if_name);
+            be.else_branch.map(|b| gen_stmt(*b, cgs));
+            println!("br label %end_label{}", if_name);
 
-            let else_result = be
-                .else_branch
-                .map(|b| gen_stmt(*b, cgs))
-                .unwrap_or_else(|| {
-                    println!("br label %if{}_end", if_name);
-                    EVIL.to_string()
-                });
-
-            if else_result != EVIL {
-                println!("br label %if{}_end", if_name);
-            }
-
-            if if_result != EVIL || else_result != EVIL {
-                println!("if{}_end:", if_name);
-            }
+            println!("end_label{}:", if_name);
 
             IGNORE.to_string()
         }
         Control::While(be) => {
             let while_name = cgs.name_gen.next();
 
-            println!("br label %begin{}", while_name);
-            println!("begin{}:", while_name);
+            println!("br label %cond_label{}", while_name);
+            println!("cond_label{}:", while_name);
 
             let con = i32toi1(gen_expr(*be.cond, cgs), cgs);
 
             println!(
-                "br i1 %{}, label %while_true{}, label %end{}",
+                "br i1 %{}, label %body_label{}, label %end_label{}",
                 con, while_name, while_name
             );
 
-            println!("while_true{}:", while_name);
+            println!("body_label{}:", while_name);
 
             gen_stmt(*be.body, cgs);
 
-            println!("br label %begin{}", while_name);
-            println!("end{}:", while_name);
+            println!("br label %cond_label{}", while_name);
+            println!("end_label{}:", while_name);
 
             IGNORE.to_string()
         }
         Control::For(be) => {
             let for_name = cgs.name_gen.next();
 
+            // 初期化
             be.init
                 .map(|x| gen_expr(*x, cgs))
                 .unwrap_or(IGNORE.to_string());
 
-            println!("br label %begin{}", for_name);
-            println!("begin{}:", for_name);
+            println!("br label %cond_label{}", for_name);
+            println!("cond_label{}:", for_name);
 
             let con = i32toi1(gen_expr(*be.cond.unwrap(), cgs), cgs);
 
             println!(
-                "br i1 %{}, label %for_true{}, label %end{}",
+                "br i1 %{}, label %body_label{}, label %end_label{}",
                 con, for_name, for_name
             );
 
-            println!("for_true{}:", for_name);
+            println!("body_label{}:", for_name);
 
             gen_stmt(*be.body, cgs);
 
+            // 増分
             be.step
                 .map(|x| gen_expr(*x, cgs))
                 .unwrap_or(IGNORE.to_string());
 
-            println!("br label %begin{}", for_name);
-            println!("end{}:", for_name);
+            println!("br label %cond_label{}", for_name);
+            println!("end_label{}:", for_name);
 
             IGNORE.to_string()
         }
@@ -257,8 +251,18 @@ fn gen_control(control: Control, cgs: &mut CodeGenStatus) -> String {
 fn gen_stmt(stmt: Stmt, cgs: &mut CodeGenStatus) -> String {
     match stmt {
         Stmt::Return(be) => {
-            let lhs = gen_expr(*be.value.unwrap(), cgs);
-            println!("ret i32 %{}", lhs);
+            let rhs = gen_expr(*be.value.unwrap(), cgs);
+
+            // return値をreturn_value_ptrに保存
+            if let Some(ref return_ptr) = cgs.return_value_ptr {
+                println!("store i32 %{}, ptr %{}", rhs, return_ptr);
+            }
+
+            // return_labelにジャンプ
+            if let Some(ref return_label) = cgs.return_label {
+                println!("br label %{}", return_label);
+            }
+
             return EVIL.to_string();
         }
         Stmt::Control(control) => gen_control(control, cgs),
@@ -276,7 +280,7 @@ fn gen_stmt(stmt: Stmt, cgs: &mut CodeGenStatus) -> String {
                             println!("%{} = alloca i32", alloc);
                             alloc
                         });
-                        println!("store i32 %{}, i32* %{}", rhs, ptr);
+                        println!("store i32 %{}, ptr %{}", rhs, ptr);
                         return ptr.clone();
                     }
                 }
@@ -308,20 +312,40 @@ fn gen_function(function: FunctionDef, cgs: &mut CodeGenStatus) -> String {
             .join(", ")
     );
 
+    // return用の変数とラベルを設定
+    let return_ptr = cgs.name_gen.next();
+    let return_label = "return_label".to_string();
+    println!("%{} = alloca i32", return_ptr);
+
+    cgs.return_value_ptr = Some(return_ptr.clone());
+    cgs.return_label = Some(return_label.clone());
+
+    // 引数の処理
     for (i, param_name) in params.iter().enumerate() {
         let ptr = cgs.name_gen.next();
         println!("%{} = alloca i32", ptr);
-        println!("store i32 %{}, i32* %{}", args[i], ptr);
+        println!("store i32 %{}, ptr %{}", args[i], ptr);
         cgs.variables.insert(param_name.clone(), ptr);
     }
 
+    // 関数本体の処理
     for stmt in function.body.into_vec() {
         gen_stmt(*stmt, cgs);
     }
 
+    // 常にreturn_labelにジャンプ（return文がない場合のため）
+    println!("br label %{}", return_label);
+
+    // return_labelとreturn処理
+    println!("{}:", return_label);
+    println!("%val = load i32, ptr %{}", return_ptr);
+    println!("ret i32 %val");
+
     println!("}}");
 
-    // 名前空間のクリア
+    // 関数終了時にreturn関連の情報をクリア
+    cgs.return_value_ptr = None;
+    cgs.return_label = None;
     cgs.variables.clear();
 
     return IGNORE.to_string();
