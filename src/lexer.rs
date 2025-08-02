@@ -3,15 +3,13 @@ use token::Token;
 
 pub fn tokenize(input: &str) -> Vec<Token> {
     let mut tokens = Vec::new();
-    let symbols_sorted: Vec<&str> = {
-        let mut syms: Vec<_> = Token::SYMBOLS.iter().map(|x| x.0).collect();
-        syms.sort_by(|a, b| b.len().cmp(&a.len())); // 長い記号優先
-        syms
-    };
-
-    let mut input = input.trim();
-    while !input.is_empty() {
-        input = input.trim_start();
+    let inputs = input.trim().trim_ascii().split(' ');
+    for mut input in inputs {
+        if let Some(a) = Token::classify(input) {
+            tokens.push(a);
+            input.chars().next();
+            continue;
+        }
         if let Some(first) = input.chars().next() {
             // 数字
             if first.is_ascii_digit() {
@@ -22,8 +20,6 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                     input = &input[1..];
                     let num_str2: String =
                         input.chars().take_while(|c| c.is_ascii_digit()).collect();
-                    input = &input[num_str2.len()..];
-
                     tokens.push(Token::NumFloat(
                         format!("{}.{}", num_str, num_str2).parse().unwrap(),
                     ));
@@ -34,27 +30,12 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                 continue;
             }
 
-            // 記号（長いものから）
-            let mut matched = false;
-            for &sym in &symbols_sorted {
-                if input.starts_with(sym) {
-                    tokens.push(Token::classify(&sym.to_string()).unwrap());
-                    input = &input[sym.len()..];
-                    matched = true;
-                    break;
-                }
-            }
-            if matched {
-                continue;
-            }
-
             // 文字リテラル
             if input.starts_with('\'') {
                 tokens.push(Token::Char(input.chars().nth(1).unwrap()));
                 if input.chars().nth(2).unwrap() != '\'' {
                     panic!("error")
                 }
-                input = &input[3..];
                 continue;
             }
 
@@ -82,7 +63,6 @@ pub fn tokenize(input: &str) -> Vec<Token> {
 
                 let content: String = input[1..end].to_string();
                 tokens.push(Token::String(content));
-                input = &input[end + 1..];
                 continue;
             }
 
@@ -91,9 +71,7 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                 let can_ident =
                     |c: &char| c.is_ascii_alphabetic() || c.is_ascii_digit() || *c == '_';
                 let ident_str: String = input.chars().take_while(|c| can_ident(c)).collect();
-                let str_len = ident_str.len();
                 tokens.push(Token::Ident(ident_str.to_string()));
-                input = &input[str_len..];
                 continue;
             }
 
@@ -105,5 +83,5 @@ pub fn tokenize(input: &str) -> Vec<Token> {
 }
 #[test]
 fn test_tokenize() {
-    println!("{:?}", tokenize("a=1"));
+    println!("{:?}", tokenize("int main(void) { int inta = 0; }"));
 }
