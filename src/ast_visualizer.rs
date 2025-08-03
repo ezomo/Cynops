@@ -33,7 +33,7 @@ fn visualize_function_proto(
     );
 
     print_branch(
-        "ReturnType",
+        "Type",
         &proto.sig.ty.to_rust_format(),
         indent + 1,
         true,
@@ -57,7 +57,7 @@ fn visualize_function_def(func: &FunctionDef, indent: usize, is_last: bool, pref
     let mut current_item = 0;
     current_item += 1;
     print_branch(
-        "ReturnType",
+        "Type",
         &func.sig.ty.to_rust_format(),
         indent + 1,
         current_item == total_items,
@@ -551,13 +551,7 @@ fn visualize_type(ty: &Type, indent: usize, is_last: bool, prefix: Vec<bool>) {
             let next_prefix = extend_prefix(&prefix, !is_last);
 
             if let Some(return_type) = &func.return_type {
-                print_branch(
-                    "ReturnType",
-                    "",
-                    indent + 1,
-                    func.params.is_empty(),
-                    &next_prefix,
-                );
+                print_branch("Type", "", indent + 1, func.params.is_empty(), &next_prefix);
                 visualize_type(
                     return_type,
                     indent + 2,

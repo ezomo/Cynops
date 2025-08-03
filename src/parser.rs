@@ -4,8 +4,8 @@ use crate::ast::{Enum, EnumMember};
 use crate::token::{Keyword, Token};
 
 use crate::ast::Typedef;
-use crate::{ast::*, get_type};
-
+use crate::ast::*;
+use crate::typelib;
 #[derive(Debug)]
 pub struct ParseSession {
     pub typedef_stack: Vec<HashMap<Ident, Type>>,
@@ -162,7 +162,9 @@ pub fn program(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Pr
     _parse_session.push_scope();
     let mut code = Program::new();
     while !tokens.is_empty() {
-        if is_next_type(&_parse_session, tokens) && is_next_fn(&tokens[1..]) {
+        if is_next_type(&_parse_session, tokens)
+            && matches!(typelib::get_type(_parse_session, tokens), Type::Func(_))
+        {
             let sig = function_sig(_parse_session, tokens);
             if consume(Token::LBrace, tokens) {
                 // function definition
@@ -189,7 +191,7 @@ fn function_sig(
     _parse_session: &mut ParseSession,
     tokens: &mut Vec<Token>,
 ) -> (FunctionSig, Vec<Ident>) {
-    let (types, mut ident) = get_type::parse_and_extract_idents(_parse_session, tokens);
+    let (types, mut ident) = typelib::consume_and_extract_idents(_parse_session, tokens);
     (FunctionSig::new(types, ident.remove(0)), ident)
 }
 
@@ -392,7 +394,7 @@ fn init_vec(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Vec<I
 fn init(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Init {
     Init::new(
         {
-            let (types, ident) = get_type::parse_and_extract_idents(_parse_session, tokens);
+            let (types, ident) = typelib::consume_and_extract_idents(_parse_session, tokens);
             MemberDecl::new(ident[0].clone(), types)
         },
         {
@@ -450,7 +452,7 @@ fn typedef_stmt(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> T
         ident = consume_ident(tokens);
         Type::r#enum(en)
     } else {
-        let (t, i) = get_type::parse_and_extract_idents(_parse_session, tokens);
+        let (t, i) = typelib::consume_and_extract_idents(_parse_session, tokens);
         ident = i[0].clone();
         t
     };
@@ -511,7 +513,7 @@ fn union_def(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Unio
 }
 
 fn decl_member(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> MemberDecl {
-    let (types, ident) = get_type::parse_and_extract_idents(_parse_session, tokens);
+    let (types, ident) = typelib::consume_and_extract_idents(_parse_session, tokens);
     MemberDecl::new(ident[0].clone(), types)
 }
 
@@ -1119,7 +1121,7 @@ fn consume_ident(tokens: &mut Vec<Token>) -> Ident {
 }
 
 fn consume_type(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Type {
-    get_type::parse_type(_parse_session, tokens)
+    typelib::consume_type(_parse_session, tokens)
 }
 
 fn get_ident(tokens: &[Token]) -> Ident {
