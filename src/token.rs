@@ -99,8 +99,43 @@ pub enum Keyword {
     Sizeof,   // 'sizeof'
 }
 
+impl Keyword {
+    pub const SYMBOLS: [(&str, Self); 21] = [
+        ("int", Self::Int),
+        ("double", Self::Double),
+        ("char", Self::Char),
+        ("void", Self::Void),
+        ("if", Self::If),
+        ("else", Self::Else),
+        ("while", Self::While),
+        ("do", Self::Do),
+        ("for", Self::For),
+        ("return", Self::Return),
+        ("break", Self::Break),
+        ("continue", Self::Continue),
+        ("switch", Self::Switch),
+        ("case", Self::Case),
+        ("default", Self::Default),
+        ("goto", Self::Goto),
+        ("struct", Self::Struct),
+        ("union", Self::Union),
+        ("enum", Self::Enum),
+        ("typedef", Self::Typedef),
+        ("sizeof", Self::Sizeof),
+    ];
+
+    pub fn classify(input: &str) -> Option<Self> {
+        for (symbol, token) in Self::SYMBOLS.iter() {
+            if *symbol == input {
+                return Some(token.clone());
+            }
+        }
+        None
+    }
+}
+
 impl Token {
-    pub const SYMBOLS: [(&str, Self); 66] = [
+    pub const SYMBOLS: [(&str, Self); 45] = [
         ("?", Self::Question),
         (":", Self::Colon),
         ("+", Self::Plus),
@@ -146,27 +181,6 @@ impl Token {
         (",", Self::Comma),
         (".", Self::Dot),
         ("->", Self::MinusGreater),
-        ("int", Self::Keyword(Keyword::Int)),
-        ("double", Self::Keyword(Keyword::Double)),
-        ("char", Self::Keyword(Keyword::Char)),
-        ("void", Self::Keyword(Keyword::Void)),
-        ("if", Self::Keyword(Keyword::If)),
-        ("else", Self::Keyword(Keyword::Else)),
-        ("while", Self::Keyword(Keyword::While)),
-        ("do", Self::Keyword(Keyword::Do)),
-        ("for", Self::Keyword(Keyword::For)),
-        ("return", Self::Keyword(Keyword::Return)),
-        ("break", Self::Keyword(Keyword::Break)),
-        ("continue", Self::Keyword(Keyword::Continue)),
-        ("switch", Self::Keyword(Keyword::Switch)),
-        ("case", Self::Keyword(Keyword::Case)),
-        ("default", Self::Keyword(Keyword::Default)),
-        ("goto", Self::Keyword(Keyword::Goto)),
-        ("struct", Self::Keyword(Keyword::Struct)),
-        ("union", Self::Keyword(Keyword::Union)),
-        ("enum", Self::Keyword(Keyword::Enum)),
-        ("typedef", Self::Keyword(Keyword::Typedef)),
-        ("sizeof", Self::Keyword(Keyword::Sizeof)),
     ];
 
     pub fn classify(input: &str) -> Option<Self> {
