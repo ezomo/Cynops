@@ -12,6 +12,8 @@ pub struct ParseSession {
     pub struct_stack: Vec<HashMap<Ident, Type>>,
     pub union_stack: Vec<HashMap<Ident, Type>>,
     pub enum_stack: Vec<HashMap<Ident, Type>>,
+    pub variable_stack: Vec<HashMap<Ident, Type>>,
+    pub function_map: HashMap<Ident, Type>,
 }
 
 impl ParseSession {
@@ -21,6 +23,8 @@ impl ParseSession {
             struct_stack: Vec::new(),
             union_stack: Vec::new(),
             enum_stack: Vec::new(),
+            variable_stack: Vec::new(),
+            function_map: HashMap::new(),
         }
     }
 
@@ -30,6 +34,7 @@ impl ParseSession {
         self.struct_stack.push(HashMap::new());
         self.union_stack.push(HashMap::new());
         self.enum_stack.push(HashMap::new());
+        self.variable_stack.push(HashMap::new());
     }
 
     // 現在のスコープを終了
@@ -45,6 +50,9 @@ impl ParseSession {
         }
         if self.enum_stack.len() > 1 {
             self.enum_stack.pop();
+        }
+        if self.variable_stack.len() > 1 {
+            self.variable_stack.pop();
         }
     }
 
@@ -155,6 +163,25 @@ impl ParseSession {
         if let Some(current_scope) = self.enum_stack.last_mut() {
             current_scope.insert(name, variants);
         }
+    }
+
+    fn register_variable(&mut self, name: Ident, variants: Type) {
+        if let Some(current_scope) = self.variable_stack.last_mut() {
+            current_scope.insert(name, variants);
+        }
+    }
+
+    fn get_variable(&self, name: &Ident) -> Option<Type> {
+        for scope in self.variable_stack.iter().rev() {
+            if let Some(ty) = scope.get(name) {
+                return Some(ty.clone());
+            }
+        }
+        None
+    }
+
+    fn register_function(&mut self, name: Ident, variants: Type) {
+        self.function_map.insert(name, variants);
     }
 }
 
@@ -395,6 +422,7 @@ fn init(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Init {
     Init::new(
         {
             let (types, ident) = typelib::consume_and_extract_idents(_parse_session, tokens);
+            _parse_session.register_variable(ident[0].clone(), types.clone());
             MemberDecl::new(ident[0].clone(), types)
         },
         {
@@ -514,6 +542,7 @@ fn union_def(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Unio
 
 fn decl_member(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> MemberDecl {
     let (types, ident) = typelib::consume_and_extract_idents(_parse_session, tokens);
+    _parse_session.register_variable(ident[0].clone(), types.clone());
     MemberDecl::new(ident[0].clone(), types)
 }
 
@@ -868,6 +897,7 @@ fn unary(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Box<Expr
     } else if is_next_cast(_parse_session, tokens) {
         Expr::cast(
             {
+                consume(Token::LParen, tokens);
                 let tmp = consume_type(_parse_session, tokens);
                 consume(Token::RParen, tokens);
                 tmp
@@ -940,7 +970,8 @@ fn primary(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Expr {
     if is_next_atom(tokens) {
         consume_atom(tokens)
     } else {
-        Expr::ident(consume_ident(tokens))
+        let ident = consume_ident(tokens);
+        Expr::variable(ident.clone(), _parse_session.get_variable(&ident).unwrap())
     }
 }
 
@@ -1121,6 +1152,7 @@ fn consume_ident(tokens: &mut Vec<Token>) -> Ident {
 }
 
 fn consume_type(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Type {
+    println!("consume_type: {:?}", tokens);
     typelib::consume_type(_parse_session, tokens)
 }
 

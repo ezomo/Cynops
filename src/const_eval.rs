@@ -46,7 +46,7 @@ pub fn eval_const_expr(expr: &Expr) -> Result<ConstValue, String> {
         Expr::Sizeof(sizeof) => eval_sizeof(sizeof),
 
         // 実行時要素は処理しない
-        Expr::Ident(_) => Err("Variables are not compile-time constants".to_string()),
+        Expr::Variable(_) => Err("Variables are not compile-time constants".to_string()),
         Expr::Call(_) => Err("Function calls are not compile-time constants".to_string()),
         Expr::Subscript(_) => Err("Array subscripts are not compile-time constants".to_string()),
         Expr::MemberAccess(_) => Err("Member access is not compile-time constant".to_string()),

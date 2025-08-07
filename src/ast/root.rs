@@ -1,9 +1,8 @@
-use crate::ast::Ident;
-
 use super::Block;
 use super::FunctionSig;
 use super::Stmt;
 use super::decl::FunctionDef;
+use crate::ast::Ident;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Program {

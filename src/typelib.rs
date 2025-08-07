@@ -57,7 +57,6 @@ pub fn consume_type(parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -
 }
 
 fn base(tokens: &mut Vec<Token>, parse_session: &mut ParseSession) -> Type {
-    // とりあえず全てint
     let base_type = parse_session.cast(&tokens[0]).unwrap();
     tokens.remove(0);
     p(base_type, tokens)
