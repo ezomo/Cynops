@@ -5,6 +5,7 @@ use crate::token::{Keyword, Token};
 
 use crate::ast::Typedef;
 use crate::ast::*;
+use crate::sema::entry;
 use crate::typelib;
 #[derive(Debug)]
 pub struct ParseSession {
@@ -180,6 +181,17 @@ impl ParseSession {
         None
     }
 
+    fn get_function(&self, name: &Ident) -> Option<Type> {
+        self.function_map.get(name).cloned()
+    }
+
+    fn get_var_fn(&self, name: &Ident) -> Option<Type> {
+        if let Some(ty) = self.get_variable(name) {
+            return Some(ty);
+        }
+        self.get_function(name)
+    }
+
     fn register_function(&mut self, name: Ident, variants: Type) {
         self.function_map.insert(name, variants);
     }
@@ -193,13 +205,28 @@ pub fn program(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Pr
             && matches!(typelib::get_type(_parse_session, tokens), Type::Func(_))
         {
             let sig = function_sig(_parse_session, tokens);
+
+            _parse_session.register_function(sig.0.ident.clone(), sig.0.ty.clone());
+
             if consume(Token::LBrace, tokens) {
+                _parse_session.push_scope();
+
+                match sig.0.ty.clone() {
+                    Type::Func(a) => {
+                        (0..sig.1.len()).for_each(|i| {
+                            _parse_session.register_variable(sig.1[i].clone(), a.params[i].clone())
+                        });
+                    }
+                    _ => panic!(),
+                };
                 // function definition
                 code.items.push(TopLevel::function_def(
                     sig.0,
                     sig.1,
                     *block(_parse_session, tokens),
                 ));
+
+                _parse_session.pop_scope();
             } else {
                 // function prototype
                 code.items.push(TopLevel::function_proto(sig.0));
@@ -966,12 +993,12 @@ fn primary(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Expr {
         return node;
     }
     // そうでなければ数値か変数か関数のはず
-
-    if is_next_atom(tokens) {
+    else if is_next_atom(tokens) {
         consume_atom(tokens)
     } else {
+        // 変数か関数のはず
         let ident = consume_ident(tokens);
-        Expr::variable(ident.clone(), _parse_session.get_variable(&ident).unwrap())
+        Expr::variable(ident.clone(), _parse_session.get_var_fn(&ident).unwrap())
     }
 }
 
@@ -1152,7 +1179,6 @@ fn consume_ident(tokens: &mut Vec<Token>) -> Ident {
 }
 
 fn consume_type(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Type {
-    println!("consume_type: {:?}", tokens);
     typelib::consume_type(_parse_session, tokens)
 }
 

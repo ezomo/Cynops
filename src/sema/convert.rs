@@ -1,6 +1,14 @@
 use super::{SemaExpr, TypedExpr};
 use crate::ast::*;
 
+impl Expr {
+    /// ExprをTypedExprに変換する
+    /// ここでは型チェックも行う
+    pub fn to_typed_expr(self) -> TypedExpr {
+        entry(self)
+    }
+}
+
 pub fn entry(exper: Expr) -> TypedExpr {
     match exper {
         Expr::Assign(a) => assign(a),
