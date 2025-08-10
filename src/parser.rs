@@ -198,10 +198,16 @@ impl ParseSession {
 }
 
 pub fn program(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Program {
+    let _is_next_composite_type_def = |tokens: &mut Vec<Token>| {
+        is_next_composite_type_def(tokens, Token::r#enum())
+            || is_next_composite_type_def(tokens, Token::r#struct())
+            || is_next_composite_type_def(tokens, Token::r#union())
+    };
     _parse_session.push_scope();
     let mut code = Program::new();
     while !tokens.is_empty() {
         if is_next_type(&_parse_session, tokens)
+            && !_is_next_composite_type_def(tokens)
             && matches!(typelib::get_type(_parse_session, tokens), Type::Func(_))
         {
             let sig = function_sig(_parse_session, tokens);
@@ -471,7 +477,7 @@ fn init_data(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Init
         }
         InitData::Compound(elements)
     } else {
-        InitData::Expr(*assign(_parse_session, tokens))
+        InitData::Expr(assign(_parse_session, tokens).to_typed_expr())
     }
 }
 
@@ -1045,20 +1051,6 @@ fn is_next_ident(tokens: &[Token]) -> bool {
     let next = tokens.first().unwrap();
 
     return matches!(next, Token::Ident(_));
-}
-
-fn is_next_fn(tokens: &[Token]) -> bool {
-    if tokens.is_empty() {
-        return false;
-    }
-    if !is_next_ident(tokens) {
-        return false;
-    }
-    if tokens.len() < 2 {
-        return false;
-    }
-    let second = tokens.get(1).unwrap();
-    return matches!(second, Token::LParen);
 }
 
 fn is_next_type(_parse_session: &ParseSession, tokens: &[Token]) -> bool {
