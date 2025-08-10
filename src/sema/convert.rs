@@ -129,11 +129,14 @@ fn call(a: crate::ast::expr::Call) -> TypedExpr {
             }
 
             // 引数と仮引数の型チェック
-            if args.len() != func_type.params.len() {
+            if args.len() != func_type.params.len()
+                && (func_type.params.len() == 0 && func_type.params[0] != Type::Void)
+            {
                 panic!(
-                    "引数の個数が一致しません: expected {}, got {}",
+                    "引数の個数が一致しません: expected {}, got {},{:?}",
                     func_type.params.len(),
-                    args.len()
+                    args.len(),
+                    func_type.params
                 );
             }
 
