@@ -192,20 +192,89 @@ fn memberaccess(a: crate::ast::expr::MemberAccess) -> TypedExpr {
     // メンバーアクセスの型チェック
     let member_type = match (&base.r#type, &a.kind) {
         // 構造体.メンバー
-        (Type::Struct(_), MemberAccessOp::Dot) => {
-            // 実際の実装では構造体定義から取得
-            Type::Int // 仮の型
+        (Type::Struct(struct_def), MemberAccessOp::Dot) => {
+            // MemberDeclから実際のメンバー型を取得
+            struct_def
+                .member
+                .iter()
+                .find(|member| member.ident.name == a.member.name)
+                .map(|member| member.ty.clone())
+                .unwrap_or_else(|| {
+                    panic!(
+                        "構造体 {} にメンバー {} が見つかりません",
+                        struct_def
+                            .ident
+                            .as_ref()
+                            .map(|id| id.name.as_str())
+                            .unwrap_or("Anonymous"),
+                        a.member.name
+                    )
+                })
+        }
+        // 共用体.メンバー
+        (Type::Union(union_def), MemberAccessOp::Dot) => {
+            // MemberDeclから実際のメンバー型を取得
+            union_def
+                .member
+                .iter()
+                .find(|member| member.ident.name == a.member.name)
+                .map(|member| member.ty.clone())
+                .unwrap_or_else(|| {
+                    panic!(
+                        "共用体 {} にメンバー {} が見つかりません",
+                        union_def
+                            .ident
+                            .as_ref()
+                            .map(|id| id.name.as_str())
+                            .unwrap_or("Anonymous"),
+                        a.member.name
+                    )
+                })
         }
         // ポインタ->メンバー
         (Type::Pointer(inner_type), MemberAccessOp::MinusGreater) => {
             match inner_type.as_ref() {
-                Type::Struct(_) => {
-                    // 実際の実装では構造体定義から取得
-                    Type::Int // 仮の型
+                Type::Struct(struct_def) => {
+                    // MemberDeclから実際のメンバー型を取得
+                    struct_def
+                        .member
+                        .iter()
+                        .find(|member| member.ident.name == a.member.name)
+                        .map(|member| member.ty.clone())
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "構造体 {} にメンバー {} が見つかりません",
+                                struct_def
+                                    .ident
+                                    .as_ref()
+                                    .map(|id| id.name.as_str())
+                                    .unwrap_or("Anonymous"),
+                                a.member.name
+                            )
+                        })
+                }
+                Type::Union(union_def) => {
+                    // MemberDeclから実際のメンバー型を取得
+                    union_def
+                        .member
+                        .iter()
+                        .find(|member| member.ident.name == a.member.name)
+                        .map(|member| member.ty.clone())
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "共用体 {} にメンバー {} が見つかりません",
+                                union_def
+                                    .ident
+                                    .as_ref()
+                                    .map(|id| id.name.as_str())
+                                    .unwrap_or("Anonymous"),
+                                a.member.name
+                            )
+                        })
                 }
                 _ => {
                     panic!(
-                        "-> 演算子はポインタ型の構造体に対してのみ使用可能です: {:?}",
+                        "-> 演算子はポインタ型の構造体または共用体に対してのみ使用可能です: {:?}",
                         inner_type
                     );
                 }

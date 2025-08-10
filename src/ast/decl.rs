@@ -1,4 +1,4 @@
-use crate::ast::Expr;
+use crate::sema;
 
 use super::{
     Block, Ident, Typedef,
@@ -104,7 +104,7 @@ pub struct FunctionDef {
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum InitData {
-    Expr(Expr),
+    Expr(sema::TypedExpr),
     Compound(Vec<InitData>), // 構造体・配列初期化子 {1, 2}
 }
 

@@ -1,9 +1,11 @@
-// use crate::codegen::generate_program;
+mod codegen;
 use std::{env, fs, process};
+
+use crate::ast_visualizer::visualize_program;
 
 mod ast;
 #[allow(dead_code)]
-// mod ast_visualizer;
+mod ast_visualizer;
 // mod codegen;
 mod const_eval;
 mod lexer;
@@ -26,9 +28,9 @@ fn main() {
     let mut token = lexer::tokenize(&input);
     let mut session = parser::ParseSession::new();
     let program: ast::Program = parser::program(&mut session, &mut token);
+    // codegen::generate_program(program, &mut codegen::CodeGenStatus::new());
+    visualize_program(&program);
     println!("{:#?}", program);
-    // ast_visualizer::visualize_program(&program);
-    // generate_program(program, &mut codegen::CodeGenStatus::new());
 }
 
 #[cfg(test)]
@@ -38,8 +40,13 @@ mod tests {
     #[test]
     fn test_extract_exprs() {
         let mut input = "
-        int a(void){return 0;}
-        int b(void){return a(1+2+3);}
+        struct person1 {
+            char *name;
+            char sex;
+            int age;
+            char *add;
+            char *job;
+        };
         "
         .to_string();
         preprocessor::remove_comments(&mut input);

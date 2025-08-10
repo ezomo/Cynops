@@ -1,4 +1,5 @@
 use crate::ast::*;
+use crate::sema::TypedExpr;
 
 pub fn visualize_program(program: &Program) {
     println!("Program");
@@ -114,7 +115,7 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
         Stmt::Return(ret) => {
             if let Some(expr) = &ret.value {
                 print_branch("Return", "", indent, is_last, &prefix);
-                visualize_expr(expr, indent + 1, true, extend_prefix(&prefix, !is_last));
+                visualize_typed_expr(expr, indent + 1, true, extend_prefix(&prefix, !is_last));
             } else {
                 print_branch("Return", "(void)", indent, is_last, &prefix);
             }
@@ -240,9 +241,9 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 );
             }
         },
-        Stmt::ExprStmt(expr) => {
+        Stmt::TypedExprStmt(expr) => {
             print_branch("ExprStmt", "", indent, is_last, &prefix);
-            visualize_expr(expr, indent + 1, true, extend_prefix(&prefix, !is_last));
+            visualize_typed_expr(expr, indent + 1, true, extend_prefix(&prefix, !is_last));
         }
         Stmt::Control(control) => match control {
             Control::If(if_stmt) => {
@@ -250,7 +251,7 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 let next_prefix = extend_prefix(&prefix, !is_last);
 
                 print_branch("Condition", "", indent + 1, false, &next_prefix);
-                visualize_expr(
+                visualize_typed_expr(
                     &if_stmt.cond,
                     indent + 2,
                     true,
@@ -286,7 +287,7 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 let next_prefix = extend_prefix(&prefix, !is_last);
 
                 print_branch("Condition", "", indent + 1, false, &next_prefix);
-                visualize_expr(
+                visualize_typed_expr(
                     &while_stmt.cond,
                     indent + 2,
                     true,
@@ -322,7 +323,7 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 if let Some(init) = &for_stmt.init {
                     remaining_items -= 1;
                     print_branch("Init", "", indent + 1, remaining_items == 0, &next_prefix);
-                    visualize_expr(
+                    visualize_typed_expr(
                         init,
                         indent + 2,
                         true,
@@ -338,7 +339,7 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                         remaining_items == 0,
                         &next_prefix,
                     );
-                    visualize_expr(
+                    visualize_typed_expr(
                         cond,
                         indent + 2,
                         true,
@@ -348,7 +349,7 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 if let Some(step) = &for_stmt.step {
                     remaining_items -= 1;
                     print_branch("Step", "", indent + 1, remaining_items == 0, &next_prefix);
-                    visualize_expr(
+                    visualize_typed_expr(
                         step,
                         indent + 2,
                         true,
@@ -376,7 +377,7 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 );
 
                 print_branch("Condition", "", indent + 1, true, &next_prefix);
-                visualize_expr(
+                visualize_typed_expr(
                     &do_while_stmt.cond,
                     indent + 2,
                     true,
@@ -394,7 +395,7 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                     switch_stmt.cases.is_empty(),
                     &next_prefix,
                 );
-                visualize_expr(
+                visualize_typed_expr(
                     &switch_stmt.cond,
                     indent + 2,
                     true,
@@ -490,7 +491,7 @@ fn visualize_init(init: &Init, indent: usize, is_last: bool, prefix: Vec<bool>) 
 fn visualize_init_data(init_data: &InitData, indent: usize, is_last: bool, prefix: Vec<bool>) {
     match init_data {
         InitData::Expr(expr) => {
-            visualize_expr(expr, indent, is_last, prefix);
+            visualize_typed_expr(expr, indent, is_last, prefix);
         }
         InitData::Compound(list) => {
             if list.is_empty() {
@@ -684,7 +685,7 @@ fn visualize_switch_case(case: &SwitchCase, indent: usize, is_last: bool, prefix
                 case_stmt.stmts.is_empty(),
                 &next_prefix,
             );
-            visualize_expr(
+            visualize_typed_expr(
                 &case_stmt.expr,
                 indent + 2,
                 true,
@@ -726,33 +727,59 @@ fn visualize_switch_case(case: &SwitchCase, indent: usize, is_last: bool, prefix
     }
 }
 
-fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) {
+fn visualize_typed_expr(typed_expr: &TypedExpr, indent: usize, is_last: bool, prefix: Vec<bool>) {
+    // Show type information first
+    print_branch(
+        "TypedExpr",
+        &format!("Type: {}", typed_expr.r#type.to_rust_format()),
+        indent,
+        is_last,
+        &prefix,
+    );
+
+    // Then show the expression
+    visualize_sema_expr(
+        &typed_expr.r#expr,
+        indent + 1,
+        true,
+        extend_prefix(&prefix, !is_last),
+    );
+}
+
+fn visualize_sema_expr(
+    expr: &crate::sema::SemaExpr,
+    indent: usize,
+    is_last: bool,
+    prefix: Vec<bool>,
+) {
+    use crate::sema::SemaExpr;
+
     match expr {
-        Expr::Comma(c) => {
+        SemaExpr::Comma(c) => {
             print_branch("Comma", "", indent, is_last, &prefix);
             let new_prefix = extend_prefix(&prefix, !is_last);
 
             for (i, expr) in c.assigns.iter().enumerate() {
                 let is_last_expr = i == c.assigns.len() - 1;
-                visualize_expr(expr, indent + 1, is_last_expr, new_prefix.clone());
+                visualize_typed_expr(expr, indent + 1, is_last_expr, new_prefix.clone());
             }
         }
-        Expr::NumInt(n) => {
+        SemaExpr::NumInt(n) => {
             print_branch("Number", &n.to_string(), indent, is_last, &prefix);
         }
-        Expr::NumFloat(n) => {
+        SemaExpr::NumFloat(n) => {
             print_branch("Number", &n.to_string(), indent, is_last, &prefix);
         }
-        Expr::Char(c) => {
+        SemaExpr::Char(c) => {
             print_branch("Character", &format!("'{}'", c), indent, is_last, &prefix);
         }
-        Expr::String(c) => {
+        SemaExpr::String(c) => {
             print_branch("String", &format!("\"{}\"", c), indent, is_last, &prefix);
         }
-        Expr::Ident(name) => {
+        SemaExpr::Ident(name) => {
             print_branch("Identifier", &name.name, indent, is_last, &prefix);
         }
-        Expr::Binary(binary) => {
+        SemaExpr::Binary(binary) => {
             print_branch(
                 "Binary",
                 &format!("{:?}", binary.op),
@@ -763,7 +790,7 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
             let new_prefix = extend_prefix(&prefix, !is_last);
 
             print_branch("Left", "", indent + 1, false, &new_prefix);
-            visualize_expr(
+            visualize_typed_expr(
                 &binary.lhs,
                 indent + 2,
                 true,
@@ -771,14 +798,14 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
             );
 
             print_branch("Right", "", indent + 1, true, &new_prefix);
-            visualize_expr(
+            visualize_typed_expr(
                 &binary.rhs,
                 indent + 2,
                 true,
                 extend_prefix(&new_prefix, false),
             );
         }
-        Expr::Unary(unary) => {
+        SemaExpr::Unary(unary) => {
             print_branch(
                 "Unary",
                 &format!("{:?}", unary.op),
@@ -793,14 +820,14 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 true,
                 &extend_prefix(&prefix, !is_last),
             );
-            visualize_expr(
+            visualize_typed_expr(
                 &unary.expr,
                 indent + 2,
                 true,
                 extend_prefix(&extend_prefix(&prefix, !is_last), false),
             );
         }
-        Expr::Postfix(postfix) => {
+        SemaExpr::Postfix(postfix) => {
             print_branch(
                 "Postfix",
                 &format!("{:?}", postfix.op),
@@ -815,19 +842,19 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 true,
                 &extend_prefix(&prefix, !is_last),
             );
-            visualize_expr(
+            visualize_typed_expr(
                 &postfix.expr,
                 indent + 2,
                 true,
                 extend_prefix(&extend_prefix(&prefix, !is_last), false),
             );
         }
-        Expr::Call(call) => {
+        SemaExpr::Call(call) => {
             print_branch("FunctionCall", "", indent, is_last, &prefix);
             let next_prefix = extend_prefix(&prefix, !is_last);
 
             print_branch("Function", "", indent + 1, false, &next_prefix);
-            visualize_expr(
+            visualize_typed_expr(
                 &call.func,
                 indent + 2,
                 true,
@@ -838,7 +865,7 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 print_branch("Arguments", "", indent + 1, true, &next_prefix);
                 for (i, arg) in call.args.iter().enumerate() {
                     let last = i == call.args.len() - 1;
-                    visualize_expr(
+                    visualize_typed_expr(
                         arg,
                         indent + 2,
                         last,
@@ -849,7 +876,7 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 print_branch("Arguments", "(empty)", indent + 1, true, &next_prefix);
             }
         }
-        Expr::Assign(assign) => {
+        SemaExpr::Assign(assign) => {
             print_branch(
                 "Assignment",
                 &format!("{:?}", assign.op),
@@ -860,7 +887,7 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
             let new_prefix = extend_prefix(&prefix, !is_last);
 
             print_branch("Left", "", indent + 1, false, &new_prefix);
-            visualize_expr(
+            visualize_typed_expr(
                 &assign.lhs,
                 indent + 2,
                 true,
@@ -868,19 +895,19 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
             );
 
             print_branch("Right", "", indent + 1, true, &new_prefix);
-            visualize_expr(
+            visualize_typed_expr(
                 &assign.rhs,
                 indent + 2,
                 true,
                 extend_prefix(&new_prefix, false),
             );
         }
-        Expr::Ternary(ternary) => {
+        SemaExpr::Ternary(ternary) => {
             print_branch("Ternary", "", indent, is_last, &prefix);
             let new_prefix = extend_prefix(&prefix, !is_last);
 
             print_branch("Condition", "", indent + 1, false, &new_prefix);
-            visualize_expr(
+            visualize_typed_expr(
                 &ternary.cond,
                 indent + 2,
                 true,
@@ -888,7 +915,7 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
             );
 
             print_branch("Then", "", indent + 1, false, &new_prefix);
-            visualize_expr(
+            visualize_typed_expr(
                 &ternary.then_branch,
                 indent + 2,
                 true,
@@ -896,19 +923,19 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
             );
 
             print_branch("Else", "", indent + 1, true, &new_prefix);
-            visualize_expr(
+            visualize_typed_expr(
                 &ternary.else_branch,
                 indent + 2,
                 true,
                 extend_prefix(&new_prefix, false),
             );
         }
-        Expr::Subscript(array_access) => {
+        SemaExpr::Subscript(array_access) => {
             print_branch("ArrayAccess", "", indent, is_last, &prefix);
             let next_prefix = extend_prefix(&prefix, !is_last);
 
             print_branch("Array", "", indent + 1, false, &next_prefix);
-            visualize_expr(
+            visualize_typed_expr(
                 &array_access.name,
                 indent + 2,
                 true,
@@ -916,14 +943,14 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
             );
 
             print_branch("Index", "", indent + 1, true, &next_prefix);
-            visualize_expr(
+            visualize_typed_expr(
                 &array_access.index,
                 indent + 2,
                 true,
                 extend_prefix(&next_prefix, false),
             );
         }
-        Expr::MemberAccess(member_access) => {
+        SemaExpr::MemberAccess(member_access) => {
             print_branch(
                 "MemberAccess",
                 &format!("{:?}", member_access.kind),
@@ -934,7 +961,7 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
             let next_prefix = extend_prefix(&prefix, !is_last);
 
             print_branch("Base", "", indent + 1, false, &next_prefix);
-            visualize_expr(
+            visualize_typed_expr(
                 &member_access.base,
                 indent + 2,
                 true,
@@ -942,29 +969,37 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
             );
 
             print_branch("Member", "", indent + 1, true, &next_prefix);
-            let member_expr = Expr::Ident(member_access.member.clone());
-            visualize_expr(
+            let member_expr = TypedExpr::new(
+                crate::ast::Type::Void, // Placeholder type for member identifier
+                SemaExpr::Ident(member_access.member.clone()),
+            );
+            visualize_typed_expr(
                 &member_expr,
                 indent + 2,
                 true,
                 extend_prefix(&next_prefix, false),
             );
         }
-        Expr::Sizeof(sizeof) => {
+        SemaExpr::Sizeof(sizeof) => {
             print_branch("Sizeof", "", indent, is_last, &prefix);
             let next_prefix = extend_prefix(&prefix, !is_last);
 
             match sizeof {
-                Sizeof::Type(ty) => {
+                crate::sema::Sizeof::Type(ty) => {
                     print_branch("Type", &format!("{:?}", ty), indent + 1, true, &next_prefix);
                 }
-                Sizeof::Expr(expr) => {
+                crate::sema::Sizeof::Expr(expr) => {
                     print_branch("Expression", "", indent + 1, true, &next_prefix);
-                    visualize_expr(expr, indent + 2, true, extend_prefix(&next_prefix, false));
+                    visualize_typed_expr(
+                        expr,
+                        indent + 2,
+                        true,
+                        extend_prefix(&next_prefix, false),
+                    );
                 }
             }
         }
-        Expr::Cast(cast) => {
+        SemaExpr::Cast(cast) => {
             print_branch("Cast", "", indent, is_last, &prefix);
             let next_prefix = extend_prefix(&prefix, !is_last);
 
@@ -976,7 +1011,7 @@ fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 &next_prefix,
             );
             print_branch("Expression", "", indent + 1, true, &next_prefix);
-            visualize_expr(
+            visualize_typed_expr(
                 &cast.expr,
                 indent + 2,
                 true,
