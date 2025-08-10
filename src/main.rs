@@ -30,7 +30,7 @@ fn main() {
     let program: ast::Program = parser::program(&mut session, &mut token);
     // codegen::generate_program(program, &mut codegen::CodeGenStatus::new());
     visualize_program(&program);
-    println!("{:#?}", program);
+    // println!("{:#?}", program);
 }
 
 #[cfg(test)]
