@@ -800,7 +800,6 @@ mod gen_stmt {
 
             // 条件評価ラベル
             println!("{}:", cond_label);
-            // TODO: 条件式の評価
             let cond_result = gen_typed_expr(*do_while_stmt.cond, cgs); // todo!()で条件式を評価した結果
             println!(
                 "  br i1 %{}, label %{}, label %{}",
@@ -853,8 +852,7 @@ mod gen_stmt {
             // ステップラベル
             println!("{}:", step_label);
             if let Some(_step) = for_stmt.step {
-                // TODO: ステップ式の評価
-                todo!()
+                gen_typed_expr(*_step, cgs);
             }
             println!("  br label %{}", cond_label);
 
@@ -872,8 +870,7 @@ mod gen_stmt {
             // breakラベルをプッシュ（switchではcontinueは使用不可なので空文字列）
             cgs.break_labels.push(end_label.clone());
 
-            // TODO: switch条件式の評価
-            let cond_result = gen_typed_expr(*switch_stmt.cond, cgs); // todo!()で条件式を評価した結果
+            let cond_result = gen_typed_expr(*switch_stmt.cond, cgs);
 
             // switchの開始
             print!("  switch i64 %{}, label %{} [", cond_result, default_label);
