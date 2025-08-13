@@ -1,5 +1,4 @@
 use super::{DeclStmt, Expr, Ident};
-use crate::const_eval;
 use crate::sema::TypedExpr;
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Block {

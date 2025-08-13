@@ -685,12 +685,15 @@ fn visualize_switch_case(case: &SwitchCase, indent: usize, is_last: bool, prefix
                 case_stmt.stmts.is_empty(),
                 &next_prefix,
             );
-            visualize_typed_expr(
-                &case_stmt.expr,
-                indent + 2,
-                true,
-                extend_prefix(&next_prefix, !case_stmt.stmts.is_empty()),
-            );
+
+            // TODO
+            // print_branch(
+            //     "Value",
+            //     "",
+            //     indent + 1,
+            //     case_stmt.stmts.is_empty(),
+            //     &next_prefix,
+            // );
 
             if !case_stmt.stmts.is_empty() {
                 print_branch("Statements", "", indent + 1, true, &next_prefix);

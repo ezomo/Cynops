@@ -1,6 +1,6 @@
 //TypedExprに対応した定数計算モジュール
+use crate::ast::Type;
 use crate::ast::{Arithmetic, BinaryOp, Comparison, Logical, UnaryOp};
-use crate::ast::{Type, expr};
 use crate::sema::{SemaExpr, TypedExpr};
 
 impl TypedExpr {

@@ -1,12 +1,12 @@
-mod codegen;
+// mod codegen;
 use std::{env, fs, process};
 
-use crate::ast_visualizer::visualize_program;
+use ast_visualizer::visualize_program;
 
 mod ast;
 #[allow(dead_code)]
 mod ast_visualizer;
-// mod codegen;
+mod codegen;
 mod const_eval;
 mod lexer;
 mod parser;
@@ -15,7 +15,6 @@ mod sema;
 mod test_cases;
 mod token;
 mod typelib;
-
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -28,8 +27,7 @@ fn main() {
     let mut token = lexer::tokenize(&input);
     let mut session = parser::ParseSession::new();
     let program: ast::Program = parser::program(&mut session, &mut token);
-    // codegen::generate_program(program, &mut codegen::CodeGenStatus::new());
-    visualize_program(&program);
+    codegen::generate_program(program.clone(), &mut codegen::CodeGenStatus::new());
     // println!("{:#?}", program);
 }
 
