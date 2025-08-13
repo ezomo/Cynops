@@ -1,4 +1,5 @@
 use super::{DeclStmt, Expr, Ident};
+use crate::const_eval;
 use crate::sema::TypedExpr;
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Block {
@@ -19,7 +20,7 @@ pub struct If {
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Case {
-    pub expr: TypedExpr,
+    pub const_expr: isize,
     pub stmts: Vec<Box<Stmt>>,
 }
 
@@ -42,7 +43,7 @@ pub struct Switch {
 impl SwitchCase {
     pub fn case(expr: Expr, stmts: Vec<Box<Stmt>>) -> Self {
         SwitchCase::Case(Case {
-            expr: expr.to_typed_expr(),
+            const_expr: expr.to_typed_expr().eval_const().unwrap(),
             stmts,
         })
     }

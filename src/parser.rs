@@ -5,7 +5,6 @@ use crate::token::{Keyword, Token};
 
 use crate::ast::Typedef;
 use crate::ast::*;
-use crate::sema::entry;
 use crate::typelib;
 #[derive(Debug)]
 pub struct ParseSession {

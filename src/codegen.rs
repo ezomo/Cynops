@@ -8,10 +8,11 @@ pub struct CodeGenStatus {
     pub variables: HashMap<Ident, String>,
     pub return_value_ptr: Option<String>,
     pub return_label: Option<String>,
-    pub break_label: Option<String>,
-    pub continue_label: Option<String>,
+    pub break_labels: Vec<String>,    // break用ラベルのスタック
+    pub continue_labels: Vec<String>, // continue用ラベルのスタック
     pub string_literals: HashMap<String, String>, // 文字列リテラルのキャッシュ
-    pub global_counter: usize,                    // グローバル変数用カウンタ
+    pub global_counter: usize,        // グローバル変数用カウンタ
+    pub label_counter: usize,         // ラベル用カウンタ
 }
 
 impl Block {
@@ -27,21 +28,36 @@ impl CodeGenStatus {
             variables: HashMap::new(),
             return_value_ptr: None,
             return_label: None,
-            break_label: None,
-            continue_label: None,
+            break_labels: Vec::new(),
+            continue_labels: Vec::new(),
             string_literals: HashMap::new(),
             global_counter: 0,
+            label_counter: 0,
         }
     }
 
     pub fn push_loop_labels(&mut self, break_label: String, continue_label: String) {
-        self.break_label = Some(break_label);
-        self.continue_label = Some(continue_label);
+        self.break_labels.push(break_label);
+        self.continue_labels.push(continue_label);
     }
 
     pub fn pop_loop_labels(&mut self) {
-        self.break_label = None;
-        self.continue_label = None;
+        self.break_labels.pop();
+        self.continue_labels.pop();
+    }
+
+    pub fn current_break_label(&self) -> Option<&String> {
+        self.break_labels.last()
+    }
+
+    pub fn current_continue_label(&self) -> Option<&String> {
+        self.continue_labels.last()
+    }
+
+    pub fn next_label(&mut self, prefix: &str) -> String {
+        let label = format!("{}_{}", prefix, self.label_counter);
+        self.label_counter += 1;
+        label
     }
 
     pub fn get_or_create_string_literal(&mut self, s: &str) -> String {
@@ -98,9 +114,6 @@ impl Ident {
     }
 }
 
-const EVIL: &str = "evil";
-const IGNORE: &str = "ignore";
-
 impl ToLLVMIR for Arithmetic {
     fn to_llvmir(&self) -> &str {
         match self {
@@ -142,22 +155,20 @@ impl ToLLVMIR for UnaryOp {
     }
 }
 
-fn i1toi32(name_i1: String, cgs: &mut CodeGenStatus) -> String {
+fn i1toi64(name_i1: String, cgs: &mut CodeGenStatus) -> String {
     let name = cgs.name_gen.next();
-    println!("%{} = zext i1 %{} to i32", name, name_i1);
+    println!("%{} = zext i1 %{} to i64", name, name_i1);
     name
 }
 
-fn i32toi1(name_i32: String, cgs: &mut CodeGenStatus) -> String {
+fn i64toi1(name_i64: String, cgs: &mut CodeGenStatus) -> String {
     let name = cgs.name_gen.next();
-    println!("%{} = icmp ne i32 %{}, 0", name, name_i32);
+    println!("%{} = icmp ne i64 %{}, 0", name, name_i64);
     name
 }
-
 fn gen_typed_expr(expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
     gen_expr(expr.r#expr, cgs)
 }
-
 fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
     use crate::sema::SemaExpr;
 
@@ -168,7 +179,7 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
                 let rhs = gen_typed_expr(*binary.rhs, cgs);
                 let name = cgs.name_gen.next();
 
-                println!("%{} = {} i32 %{}, %{}", name, ari.to_llvmir(), lhs, rhs);
+                println!("%{} = {} i64 %{}, %{}", name, ari.to_llvmir(), lhs, rhs);
                 name
             }
             BinaryOp::Comparison(com) => {
@@ -176,13 +187,13 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
                 let rhs = gen_typed_expr(*binary.rhs, cgs);
                 let name = cgs.name_gen.next();
 
-                println!("%{} = {} i32 %{}, %{}", name, com.to_llvmir(), lhs, rhs);
-                i1toi32(name, cgs)
+                println!("%{} = {} i64 %{}, %{}", name, com.to_llvmir(), lhs, rhs);
+                name
             }
             BinaryOp::Logical(Logical::AmpersandAmpersand) => {
                 // 短絡評価: lhs && rhs
                 let lhs = gen_typed_expr(*binary.lhs, cgs);
-                let lhs_bool = i32toi1(lhs, cgs);
+                let lhs_bool = i64toi1(lhs, cgs);
 
                 let true_label = cgs.name_gen.next_with_prefix("and_true");
                 let false_label = cgs.name_gen.next_with_prefix("and_false");
@@ -206,7 +217,7 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
                 println!("{}:", end_label);
                 let result = cgs.name_gen.next();
                 println!(
-                    "%{} = phi i32 [%{}, %{}], [0, %{}]",
+                    "%{} = phi i64 [%{}, %{}], [0, %{}]",
                     result, rhs, true_label, false_label
                 );
                 result
@@ -214,7 +225,7 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
             BinaryOp::Logical(Logical::PipePipe) => {
                 // 短絡評価: lhs || rhs
                 let lhs = gen_typed_expr(*binary.lhs, cgs);
-                let lhs_bool = i32toi1(lhs.clone(), cgs);
+                let lhs_bool = i64toi1(lhs.clone(), cgs);
 
                 let false_label = cgs.name_gen.next_with_prefix("or_false");
                 let true_label = cgs.name_gen.next_with_prefix("or_true");
@@ -238,7 +249,7 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
                 println!("{}:", end_label);
                 let result = cgs.name_gen.next();
                 println!(
-                    "%{} = phi i32 [%{}, %{}], [%{}, %{}]",
+                    "%{} = phi i64 [%{}, %{}], [%{}, %{}]",
                     result, lhs, true_label, rhs, false_label
                 );
                 result
@@ -249,7 +260,7 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
                 if let SemaExpr::Ident(ident) = &assign.lhs.r#expr {
                     let rhs = gen_typed_expr(*assign.rhs, cgs);
                     let ptr = cgs.variables.get(ident).unwrap();
-                    println!("store i32 %{}, ptr %{}", rhs, ptr);
+                    println!("store i64 %{}, ptr %{}", rhs, ptr);
                     rhs
                 } else {
                     panic!("The left side is not variable!");
@@ -260,7 +271,7 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
                 if let SemaExpr::Ident(ident) = &assign.lhs.r#expr {
                     let ptr = cgs.variables.get(ident).unwrap().clone();
                     let lhs_val = cgs.name_gen.next();
-                    println!("%{} = load i32, ptr %{}", lhs_val, ptr);
+                    println!("%{} = load i64, ptr %{}", lhs_val, ptr);
 
                     let rhs = gen_typed_expr(*assign.rhs, cgs);
                     let result = cgs.name_gen.next();
@@ -279,8 +290,8 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
                         _ => panic!("Unsupported assign op"),
                     };
 
-                    println!("%{} = {} i32 %{}, %{}", result, op, lhs_val, rhs);
-                    println!("store i32 %{}, ptr %{}", result, ptr);
+                    println!("%{} = {} i64 %{}, %{}", result, op, lhs_val, rhs);
+                    println!("store i64 %{}, ptr %{}", result, ptr);
                     result
                 } else {
                     panic!("The left side is not variable!");
@@ -289,7 +300,7 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
         },
         SemaExpr::NumInt(num) => {
             let name1 = cgs.name_gen.next();
-            println!("%{} = add i32 0, {}", name1, num);
+            println!("%{} = add i64 0, {}", name1, num);
             name1
         }
         SemaExpr::NumFloat(num) => {
@@ -306,7 +317,7 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
             let global_name = cgs.get_or_create_string_literal(&s);
             let name = cgs.name_gen.next();
             println!(
-                "%{} = getelementptr inbounds [{}x i8], ptr @{}, i32 0, i32 0",
+                "%{} = getelementptr inbounds [{}x i8], ptr @{}, i64 0, i64 0",
                 name,
                 s.len() + 1,
                 global_name
@@ -316,7 +327,7 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
         SemaExpr::Ident(ident) => {
             let tmp = cgs.name_gen.next();
             let ptr = cgs.variables.get(&ident).unwrap();
-            println!("%{} = load i32, ptr %{}", tmp, ptr);
+            println!("%{} = load i64, ptr %{}", tmp, ptr);
             tmp
         }
         SemaExpr::Call(call) => {
@@ -324,7 +335,7 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
             let args: Vec<String> = call
                 .args
                 .iter()
-                .map(|arg| format!("i32 noundef %{}", gen_typed_expr(*arg.clone(), cgs)))
+                .map(|arg| format!("i64 noundef %{}", gen_typed_expr(*arg.clone(), cgs)))
                 .collect();
 
             let fn_name = match &call.func.r#expr {
@@ -332,7 +343,7 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
                 _ => panic!("Function call target is not an identifier"),
             };
             println!(
-                "%{} = call i32 @{}({})",
+                "%{} = call i64 @{}({})",
                 name,
                 fn_name.get_name(),
                 args.join(", ")
@@ -344,19 +355,19 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
                 UnaryOp::Minus => {
                     let operand = gen_typed_expr(*unary.expr, cgs);
                     let name = cgs.name_gen.next();
-                    println!("%{} = sub i32 0, %{}", name, operand);
+                    println!("%{} = sub i64 0, %{}", name, operand);
                     name
                 }
                 UnaryOp::Bang => {
                     let operand = gen_typed_expr(*unary.expr, cgs);
                     let name = cgs.name_gen.next();
-                    println!("%{} = icmp eq i32 %{}, 0", name, operand);
-                    i1toi32(name, cgs)
+                    println!("%{} = icmp eq i64 %{}, 0", name, operand);
+                    i1toi64(name, cgs)
                 }
                 UnaryOp::Tilde => {
                     let operand = gen_typed_expr(*unary.expr, cgs);
                     let name = cgs.name_gen.next();
-                    println!("%{} = xor i32 %{}, -1", name, operand);
+                    println!("%{} = xor i64 %{}, -1", name, operand);
                     name
                 }
                 UnaryOp::PlusPlus => {
@@ -364,10 +375,10 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
                     if let SemaExpr::Ident(ident) = &unary.expr.r#expr {
                         let ptr = cgs.variables.get(ident).unwrap().clone();
                         let old_val = cgs.name_gen.next();
-                        println!("%{} = load i32, ptr %{}", old_val, ptr);
+                        println!("%{} = load i64, ptr %{}", old_val, ptr);
                         let new_val = cgs.name_gen.next();
-                        println!("%{} = add i32 %{}, 1", new_val, old_val);
-                        println!("store i32 %{}, ptr %{}", new_val, ptr);
+                        println!("%{} = add i64 %{}, 1", new_val, old_val);
+                        println!("store i64 %{}, ptr %{}", new_val, ptr);
                         new_val
                     } else {
                         panic!("++ can only be applied to variables");
@@ -378,10 +389,10 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
                     if let SemaExpr::Ident(ident) = &unary.expr.r#expr {
                         let ptr = cgs.variables.get(ident).unwrap().clone();
                         let old_val = cgs.name_gen.next();
-                        println!("%{} = load i32, ptr %{}", old_val, ptr);
+                        println!("%{} = load i64, ptr %{}", old_val, ptr);
                         let new_val = cgs.name_gen.next();
-                        println!("%{} = sub i32 %{}, 1", new_val, old_val);
-                        println!("store i32 %{}, ptr %{}", new_val, ptr);
+                        println!("%{} = sub i64 %{}, 1", new_val, old_val);
+                        println!("store i64 %{}, ptr %{}", new_val, ptr);
                         new_val
                     } else {
                         panic!("-- can only be applied to variables");
@@ -400,7 +411,7 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
                     // 間接参照演算子 *x
                     let ptr = gen_typed_expr(*unary.expr, cgs);
                     let name = cgs.name_gen.next();
-                    println!("%{} = load i32, ptr %{}", name, ptr);
+                    println!("%{} = load i64, ptr %{}", name, ptr);
                     name
                 }
             }
@@ -412,10 +423,10 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
                     if let SemaExpr::Ident(ident) = &postfix.expr.r#expr {
                         let ptr = cgs.variables.get(ident).unwrap().clone();
                         let old_val = cgs.name_gen.next();
-                        println!("%{} = load i32, ptr %{}", old_val, ptr);
+                        println!("%{} = load i64, ptr %{}", old_val, ptr);
                         let new_val = cgs.name_gen.next();
-                        println!("%{} = add i32 %{}, 1", new_val, old_val);
-                        println!("store i32 %{}, ptr %{}", new_val, ptr);
+                        println!("%{} = add i64 %{}, 1", new_val, old_val);
+                        println!("store i64 %{}, ptr %{}", new_val, ptr);
                         old_val // 後置なので古い値を返す
                     } else {
                         panic!("++ can only be applied to variables");
@@ -426,10 +437,10 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
                     if let SemaExpr::Ident(ident) = &postfix.expr.r#expr {
                         let ptr = cgs.variables.get(ident).unwrap().clone();
                         let old_val = cgs.name_gen.next();
-                        println!("%{} = load i32, ptr %{}", old_val, ptr);
+                        println!("%{} = load i64, ptr %{}", old_val, ptr);
                         let new_val = cgs.name_gen.next();
-                        println!("%{} = sub i32 %{}, 1", new_val, old_val);
-                        println!("store i32 %{}, ptr %{}", new_val, ptr);
+                        println!("%{} = sub i64 %{}, 1", new_val, old_val);
+                        println!("store i64 %{}, ptr %{}", new_val, ptr);
                         old_val // 後置なので古い値を返す
                     } else {
                         panic!("-- can only be applied to variables");
@@ -439,7 +450,7 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
         }
         SemaExpr::Ternary(ternary) => {
             let cond = gen_typed_expr(*ternary.cond, cgs);
-            let cond_bool = i32toi1(cond, cgs);
+            let cond_bool = i64toi1(cond, cgs);
 
             let true_label = cgs.name_gen.next_with_prefix("ternary_true");
             let false_label = cgs.name_gen.next_with_prefix("ternary_false");
@@ -464,7 +475,7 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
             println!("{}:", end_label);
             let result = cgs.name_gen.next();
             println!(
-                "%{} = phi i32 [%{}, %{}], [%{}, %{}]",
+                "%{} = phi i64 [%{}, %{}], [%{}, %{}]",
                 result, true_val, true_label, false_val, false_label
             );
             result
@@ -475,11 +486,11 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
             let index = gen_typed_expr(*subscript.index, cgs);
             let name = cgs.name_gen.next();
             println!(
-                "%{} = getelementptr inbounds i32, ptr %{}, i32 %{}",
+                "%{} = getelementptr inbounds i64, ptr %{}, i64 %{}",
                 name, arr_ptr, index
             );
             let result = cgs.name_gen.next();
-            println!("%{} = load i32, ptr %{}", result, name);
+            println!("%{} = load i64, ptr %{}", result, name);
             result
         }
         SemaExpr::MemberAccess(member_access) => {
@@ -490,22 +501,22 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
                     // obj.member
                     let name = cgs.name_gen.next();
                     println!(
-                        "%{} = getelementptr inbounds %struct, ptr %{}, i32 0, i32 {}",
+                        "%{} = getelementptr inbounds %struct, ptr %{}, i64 0, i64 {}",
                         name, base, 0
                     ); // 簡略化のため0番目として扱う
                     let result = cgs.name_gen.next();
-                    println!("%{} = load i32, ptr %{}", result, name);
+                    println!("%{} = load i64, ptr %{}", result, name);
                     result
                 }
                 MemberAccessOp::MinusGreater => {
                     // ptr->member
                     let name = cgs.name_gen.next();
                     println!(
-                        "%{} = getelementptr inbounds %struct, ptr %{}, i32 0, i32 {}",
+                        "%{} = getelementptr inbounds %struct, ptr %{}, i64 0, i64 {}",
                         name, base, 0
                     ); // 簡略化のため0番目として扱う
                     let result = cgs.name_gen.next();
-                    println!("%{} = load i32, ptr %{}", result, name);
+                    println!("%{} = load i64, ptr %{}", result, name);
                     result
                 }
             }
@@ -513,7 +524,7 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
         SemaExpr::Sizeof(_sizeof) => {
             // sizeof演算子 - 簡略化のため4（intのサイズ）を返す
             let name = cgs.name_gen.next();
-            println!("%{} = add i32 0, 4", name);
+            println!("%{} = add i64 0, 4", name);
             name
         }
         SemaExpr::Cast(cast) => {
@@ -524,7 +535,7 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
         }
         SemaExpr::Comma(comma) => {
             // カンマ演算子 - 最後の式の値を返す
-            let mut last_val = IGNORE.to_string();
+            let mut last_val = "".to_string();
             for assign in comma.assigns {
                 last_val = gen_typed_expr(assign, cgs);
             }
@@ -532,303 +543,409 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
         }
     }
 }
+mod gen_stmt {
+    use crate::ast::*;
+    use crate::codegen::CodeGenStatus;
+    use crate::codegen::gen_expr;
+    use crate::codegen::gen_typed_expr;
+    use crate::sema::TypedExpr;
 
-fn gen_control(control: Control, cgs: &mut CodeGenStatus) -> String {
-    match control {
-        Control::If(be) => {
-            let con = i32toi1(gen_typed_expr(*be.cond, cgs), cgs);
-            let if_name = cgs.name_gen.next();
-
-            println!(
-                "br i1 %{}, label %then_label{}, label %else_label{}",
-                con, if_name, if_name
-            );
-
-            // then branch
-            println!("then_label{}:", if_name);
-            gen_stmt(*be.then_branch, cgs);
-            println!("br label %end_label{}", if_name);
-
-            // else branch
-            println!("else_label{}:", if_name);
-            if let Some(else_branch) = be.else_branch {
-                gen_stmt(*else_branch, cgs);
+    pub fn stmt(stmt: Stmt, cgs: &mut CodeGenStatus) {
+        match stmt {
+            Stmt::Block(block) => self::block(block, cgs),
+            Stmt::DeclStmt(declstmt) => self::declstmt(declstmt, cgs),
+            Stmt::Control(control) => self::control(control, cgs),
+            Stmt::Break => r#break(cgs),
+            Stmt::Continue => r#continue(cgs),
+            Stmt::Return(ret) => r#return(ret, cgs),
+            Stmt::Goto(goto) => self::goto(goto, cgs),
+            Stmt::Label(label) => self::label(label, cgs),
+            Stmt::TypedExprStmt(expr) => {
+                let _ = gen_typed_expr(expr, cgs);
             }
-            println!("br label %end_label{}", if_name);
-
-            println!("end_label{}:", if_name);
-
-            IGNORE.to_string()
         }
-        Control::While(be) => {
-            let while_name = cgs.name_gen.next();
-            let break_label = format!("end_label{}", while_name);
-            let continue_label = format!("cond_label{}", while_name);
+    }
 
-            cgs.push_loop_labels(break_label.clone(), continue_label.clone());
+    pub fn block(block: Block, cgs: &mut CodeGenStatus) {
+        for _stmt in block.into_vec() {
+            stmt(*_stmt, cgs);
+        }
+    }
 
-            println!("br label %{}", continue_label);
-            println!("{}:", continue_label);
+    fn declstmt(declstmt: DeclStmt, cgs: &mut CodeGenStatus) {
+        match declstmt {
+            DeclStmt::InitVec(inits) => {
+                for init in inits {
+                    declare_variable(init, cgs);
+                }
+            }
+            _ => {
+                // Struct, Union, Enum, Typedef は今回は対象外
+                todo!("構造体、共用体、列挙型、typedef は未対応")
+            }
+        }
+    }
 
-            let con = i32toi1(gen_typed_expr(*be.cond, cgs), cgs);
+    fn declare_variable(init: Init, cgs: &mut CodeGenStatus) {
+        let var_name = cgs.name_gen.next_with_prefix("var");
+        let llvm_type = get_llvm_type(&init.r.ty);
 
+        // 変数を割り当て
+        println!("  %{} = alloca {}", var_name, llvm_type);
+
+        // 変数名をマップに登録
+        cgs.variables.insert(init.r.ident.clone(), var_name.clone());
+
+        // 初期化子がある場合は初期化
+        if let Some(init_data) = init.l {
+            initialize_variable(&var_name, init_data, &init.r.ty, cgs);
+        }
+    }
+
+    fn initialize_variable(
+        var_name: &str,
+        init_data: InitData,
+        var_type: &Type,
+        cgs: &mut CodeGenStatus,
+    ) {
+        match init_data {
+            InitData::Expr(typed_expr) => {
+                // 単純な式による初期化
+                let value = gen_typed_expr(typed_expr, cgs);
+                let llvm_type = get_llvm_type(var_type);
+                println!("  store {} %{}, ptr %{}", llvm_type, value, var_name);
+            }
+            InitData::Compound(compound_list) => {
+                match var_type {
+                    Type::Array(arr) => {
+                        // 配列の初期化 {1, 2, 3}
+                        for (index, element) in compound_list.into_iter().enumerate() {
+                            let element_ptr = cgs.name_gen.next();
+                            let array_type =
+                                format!("[{} x {}]", arr.length, get_llvm_type(&arr.array_of));
+                            println!(
+                                "  %{} = getelementptr inbounds {}, ptr %{}, i64 0, i64 {}",
+                                element_ptr, array_type, var_name, index
+                            );
+
+                            initialize_variable(&element_ptr, element, &arr.array_of, cgs);
+                        }
+                    }
+                    _ => {
+                        todo!("構造体・共用体の複合初期化は未対応")
+                    }
+                }
+            }
+        }
+    }
+
+    fn get_llvm_type(ty: &Type) -> String {
+        match ty {
+            Type::Void => "void".to_string(),
+            Type::Int => "i64".to_string(),
+            Type::Double => "double".to_string(),
+            Type::Char => "i8".to_string(),
+            Type::Pointer(_) => "ptr".to_string(),
+            Type::Array(arr) => {
+                format!("[{} x {}]", arr.length, get_llvm_type(&arr.array_of))
+            }
+            _ => todo!("未対応の型: {:?}", ty),
+        }
+    }
+
+    fn control(control: Control, cgs: &mut CodeGenStatus) {
+        match control {
+            Control::If(if_stmt) => controls::r#if(if_stmt, cgs),
+            Control::While(while_stmt) => controls::r#while(while_stmt, cgs),
+            Control::DoWhile(do_while_stmt) => controls::r#do_while(do_while_stmt, cgs),
+            Control::For(for_stmt) => controls::r#for(for_stmt, cgs),
+            Control::Switch(switch_stmt) => controls::r#switch(switch_stmt, cgs),
+        }
+    }
+
+    fn r#break(cgs: &mut CodeGenStatus) {
+        if let Some(break_label) = cgs.current_break_label() {
+            println!("  br label %{}", break_label);
+        } else {
+            panic!("break statement outside of loop");
+        }
+    }
+
+    fn r#continue(cgs: &mut CodeGenStatus) {
+        if let Some(continue_label) = cgs.current_continue_label() {
+            println!("  br label %{}", continue_label);
+        } else {
+            panic!("continue statement outside of loop");
+        }
+    }
+
+    fn r#return(ret: Return, cgs: &mut CodeGenStatus) {
+        let rhs = if let Some(value) = ret.value {
+            gen_typed_expr(*value, cgs)
+        } else {
+            // voidの場合は0を返す
+            let name = cgs.name_gen.next();
+            println!("%{} = add i64 0, 0", name);
+            name
+        };
+
+        // return値をreturn_value_ptrに保存
+        if let Some(ref return_ptr) = cgs.return_value_ptr {
+            println!("store i64 %{}, ptr %{}", rhs, return_ptr);
+        }
+
+        // return_labelにジャンプ
+        if let Some(ref return_label) = cgs.return_label {
+            println!("br label %{}", return_label);
+        }
+    }
+
+    fn goto(goto: Goto, _cgs: &mut CodeGenStatus) {
+        println!("  br label %{}", goto.label.get_name());
+    }
+
+    fn label(label: Label, cgs: &mut CodeGenStatus) {
+        println!("{}:", label.name.get_name());
+        stmt(*label.stmt, cgs);
+    }
+
+    mod controls {
+        use super::*;
+
+        pub fn r#if(if_stmt: If, cgs: &mut CodeGenStatus) {
+            let then_label = cgs.next_label("then");
+            let else_label = cgs.next_label("else");
+            let end_label = cgs.next_label("end");
+
+            // 条件の評価（TypedExprなのでtodo!()）
+            // TODO: 条件式の評価
+            let cond_result = gen_typed_expr(*if_stmt.cond, cgs); // todo!()で条件式を評価した結果
+
+            // 条件による分岐
+            if if_stmt.else_branch.is_some() {
+                println!(
+                    "  br i1 %{}, label %{}, label %{}",
+                    cond_result, then_label, else_label
+                );
+            } else {
+                println!(
+                    "  br i1 %{}, label %{}, label %{}",
+                    cond_result, then_label, end_label
+                );
+            }
+
+            // then ブロック
+            println!("{}:", then_label);
+            stmt(*if_stmt.then_branch, cgs);
+            println!("  br label %{}", end_label);
+
+            // else ブロック（存在する場合）
+            if let Some(else_branch) = if_stmt.else_branch {
+                println!("{}:", else_label);
+                stmt(*else_branch, cgs);
+                println!("  br label %{}", end_label);
+            }
+
+            // 終了ラベル
+            println!("{}:", end_label);
+        }
+
+        pub fn r#while(while_stmt: While, cgs: &mut CodeGenStatus) {
+            let cond_label = cgs.next_label("while_cond");
+            let body_label = cgs.next_label("while_body");
+            let end_label = cgs.next_label("while_end");
+
+            // ループラベルをプッシュ
+            cgs.push_loop_labels(end_label.clone(), cond_label.clone());
+
+            // 条件の評価へジャンプ
+            println!("  br label %{}", cond_label);
+
+            // 条件評価ラベル
+            println!("{}:", cond_label);
+            // TODO: 条件式の評価
+            let cond_result = gen_typed_expr(*while_stmt.cond, cgs); // todo!()で条件式を評価した結果
             println!(
-                "br i1 %{}, label %body_label{}, label %{}",
-                con, while_name, break_label
+                "  br i1 %{}, label %{}, label %{}",
+                cond_result, body_label, end_label
             );
 
-            println!("body_label{}:", while_name);
+            // 本体ラベル
+            println!("{}:", body_label);
+            stmt(*while_stmt.body, cgs);
+            println!("  br label %{}", cond_label);
 
-            gen_stmt(*be.body, cgs);
+            // 終了ラベル
+            println!("{}:", end_label);
 
-            println!("br label %{}", continue_label);
-            println!("{}:", break_label);
-
+            // ループラベルをポップ
             cgs.pop_loop_labels();
-
-            IGNORE.to_string()
         }
-        Control::DoWhile(be) => {
-            let do_while_name = cgs.name_gen.next();
-            let break_label = format!("end_label{}", do_while_name);
-            let continue_label = format!("cond_label{}", do_while_name);
 
-            cgs.push_loop_labels(break_label.clone(), continue_label.clone());
+        pub fn r#do_while(do_while_stmt: DoWhile, cgs: &mut CodeGenStatus) {
+            let body_label = cgs.next_label("do_body");
+            let cond_label = cgs.next_label("do_cond");
+            let end_label = cgs.next_label("do_end");
 
-            println!("br label %body_label{}", do_while_name);
-            println!("body_label{}:", do_while_name);
+            // ループラベルをプッシュ
+            cgs.push_loop_labels(end_label.clone(), cond_label.clone());
 
-            gen_stmt(*be.body, cgs);
+            // 本体へジャンプ
+            println!("  br label %{}", body_label);
 
-            println!("{}:", continue_label);
-            let con = i32toi1(gen_typed_expr(*be.cond, cgs), cgs);
+            // 本体ラベル
+            println!("{}:", body_label);
+            stmt(*do_while_stmt.body, cgs);
+            println!("  br label %{}", cond_label);
 
+            // 条件評価ラベル
+            println!("{}:", cond_label);
+            // TODO: 条件式の評価
+            let cond_result = gen_typed_expr(*do_while_stmt.cond, cgs); // todo!()で条件式を評価した結果
             println!(
-                "br i1 %{}, label %body_label{}, label %{}",
-                con, do_while_name, break_label
+                "  br i1 %{}, label %{}, label %{}",
+                cond_result, body_label, end_label
             );
 
-            println!("{}:", break_label);
+            // 終了ラベル
+            println!("{}:", end_label);
 
+            // ループラベルをポップ
             cgs.pop_loop_labels();
-
-            IGNORE.to_string()
         }
-        Control::For(be) => {
-            let for_name = cgs.name_gen.next();
-            let break_label = format!("end_label{}", for_name);
-            let continue_label = format!("step_label{}", for_name);
 
-            cgs.push_loop_labels(break_label.clone(), continue_label.clone());
+        pub fn r#for(for_stmt: For, cgs: &mut CodeGenStatus) {
+            let cond_label = cgs.next_label("for_cond");
+            let body_label = cgs.next_label("for_body");
+            let step_label = cgs.next_label("for_step");
+            let end_label = cgs.next_label("for_end");
+
+            // ループラベルをプッシュ（continueはstepラベルへ）
+            cgs.push_loop_labels(end_label.clone(), step_label.clone());
 
             // 初期化
-            if let Some(init) = be.init {
-                gen_typed_expr(*init, cgs);
+            if let Some(_init) = for_stmt.init {
+                let _ = gen_typed_expr(*_init, cgs);
             }
 
-            println!("br label %cond_label{}", for_name);
-            println!("cond_label{}:", for_name);
+            // 条件の評価へジャンプ
+            println!("  br label %{}", cond_label);
 
-            let con = if let Some(cond) = be.cond {
-                i32toi1(gen_typed_expr(*cond, cgs), cgs)
+            // 条件評価ラベル
+            println!("{}:", cond_label);
+            if let Some(_cond) = for_stmt.cond {
+                // TODO: 条件式の評価
+                let cond_result = gen_typed_expr(*_cond, cgs); // todo!()で条件式を評価した結果
+                println!(
+                    "  br i1 %{}, label %{}, label %{}",
+                    cond_result, body_label, end_label
+                );
             } else {
-                // 条件がない場合は常にtrue
-                let name = cgs.name_gen.next();
-                println!("%{} = add i1 0, true", name);
-                name
-            };
-
-            println!(
-                "br i1 %{}, label %body_label{}, label %{}",
-                con, for_name, break_label
-            );
-
-            println!("body_label{}:", for_name);
-
-            gen_stmt(*be.body, cgs);
-
-            // step処理
-            println!("{}:", continue_label);
-            if let Some(step) = be.step {
-                gen_typed_expr(*step, cgs);
+                // 条件なし（無限ループ）
+                println!("  br label %{}", body_label);
             }
 
-            println!("br label %cond_label{}", for_name);
-            println!("{}:", break_label);
+            // 本体ラベル
+            println!("{}:", body_label);
+            stmt(*for_stmt.body, cgs);
+            println!("  br label %{}", step_label);
 
+            // ステップラベル
+            println!("{}:", step_label);
+            if let Some(_step) = for_stmt.step {
+                // TODO: ステップ式の評価
+                todo!()
+            }
+            println!("  br label %{}", cond_label);
+
+            // 終了ラベル
+            println!("{}:", end_label);
+
+            // ループラベルをポップ
             cgs.pop_loop_labels();
-
-            IGNORE.to_string()
         }
-        Control::Switch(switch) => {
-            let switch_name = cgs.name_gen.next();
-            let break_label = format!("end_label{}", switch_name);
 
-            cgs.push_loop_labels(break_label.clone(), IGNORE.to_string());
+        pub fn r#switch(switch_stmt: Switch, cgs: &mut CodeGenStatus) {
+            let end_label = cgs.next_label("switch_end");
+            let default_label = cgs.next_label("switch_default");
 
-            let cond = gen_typed_expr(*switch.cond, cgs);
+            // breakラベルをプッシュ（switchではcontinueは使用不可なので空文字列）
+            cgs.break_labels.push(end_label.clone());
 
-            // 各caseのラベルを生成
-            let case_labels: Vec<String> = switch
-                .cases
-                .iter()
-                .enumerate()
-                .map(|(i, _)| format!("case_label{}_{}", switch_name, i))
-                .collect();
+            // TODO: switch条件式の評価
+            let cond_result = gen_typed_expr(*switch_stmt.cond, cgs); // todo!()で条件式を評価した結果
 
-            let default_label = format!("default_label{}", switch_name);
+            // switchの開始
+            print!("  switch i64 %{}, label %{} [", cond_result, default_label);
 
-            // switch文のディスパッチ部分
-            for (i, case) in switch.cases.iter().enumerate() {
+            let mut case_labels = Vec::new();
+            let mut has_default = false;
+
+            // ケースラベルの生成
+            for (i, case) in switch_stmt.cases.iter().enumerate() {
                 match case {
-                    SwitchCase::Case(c) => {
-                        let case_val = gen_typed_expr(c.expr.clone(), cgs);
-                        let cmp_name = cgs.name_gen.next();
-                        println!("%{} = icmp eq i32 %{}, %{}", cmp_name, cond, case_val);
-
-                        let next_label = if i + 1 < case_labels.len() {
-                            format!("check_case{}_{}", switch_name, i + 1)
-                        } else {
-                            default_label.clone()
-                        };
-
-                        println!(
-                            "br i1 %{}, label %{}, label %{}",
-                            cmp_name, case_labels[i], next_label
-                        );
+                    SwitchCase::Case(case_stmt) => {
+                        let case_label = cgs.next_label(&format!("case_{}", i));
+                        case_labels.push((case_label.clone(), case));
+                        let case_value = case_stmt.const_expr.to_string(); // todo!()でcase値を評価
+                        print!("\n    i64 {}, label %{}", case_value, case_label);
                     }
-                    SwitchCase::Default(_) => {}
+                    SwitchCase::Default(_) => {
+                        has_default = true;
+                    }
                 }
             }
+            println!("\n  ]");
 
             // 各caseの処理
-            for (i, case) in switch.cases.iter().enumerate() {
-                match case {
-                    SwitchCase::Case(c) => {
-                        println!("{}:", case_labels[i]);
-                        for stmt in &c.stmts {
-                            gen_stmt(*stmt.clone(), cgs);
-                        }
+            for i in 0..case_labels.len() {
+                let (label, case) = &case_labels[i];
+                if let SwitchCase::Case(case_stmt) = case {
+                    println!("{}:", label);
+                    for stmt in &case_stmt.stmts {
+                        super::stmt(*stmt.clone(), cgs);
                     }
-                    SwitchCase::Default(d) => {
-                        println!("{}:", default_label);
-                        for stmt in &d.stmts {
-                            gen_stmt(*stmt.clone(), cgs);
-                        }
+                    // break文が無い場合は次のcaseへfall through
+                    if i < case_labels.len() - 1 {
+                        println!("  br label %{}", case_labels[i + 1].0);
                     }
                 }
             }
 
-            println!("{}:", break_label);
-
-            cgs.pop_loop_labels();
-
-            IGNORE.to_string()
-        }
-    }
-}
-
-fn gen_stmt(stmt: Stmt, cgs: &mut CodeGenStatus) -> String {
-    match stmt {
-        Stmt::Return(be) => {
-            let rhs = if let Some(value) = be.value {
-                gen_typed_expr(*value, cgs)
-            } else {
-                // voidの場合は0を返す
-                let name = cgs.name_gen.next();
-                println!("%{} = add i32 0, 0", name);
-                name
-            };
-
-            // return値をreturn_value_ptrに保存
-            if let Some(ref return_ptr) = cgs.return_value_ptr {
-                println!("store i32 %{}, ptr %{}", rhs, return_ptr);
-            }
-
-            // return_labelにジャンプ
-            if let Some(ref return_label) = cgs.return_label {
-                println!("br label %{}", return_label);
-            }
-
-            return EVIL.to_string();
-        }
-        Stmt::Control(control) => gen_control(control, cgs),
-        Stmt::TypedExprStmt(expr) => gen_typed_expr(expr, cgs),
-        Stmt::DeclStmt(decl) => match decl {
-            DeclStmt::InitVec(init_vec) => {
-                for init in init_vec {
-                    let ident = init.r.ident.clone();
-                    let ptr = cgs.name_gen.next();
-                    println!("%{} = alloca i32", ptr);
-
-                    if let Some(init_data) = init.l {
-                        match init_data {
-                            InitData::Expr(expr) => {
-                                let rhs = gen_typed_expr(expr, cgs);
-                                println!("store i32 %{}, ptr %{}", rhs, ptr);
-                            }
-                            InitData::Compound(_) => {
-                                // 複合初期化子は未対応のため、デフォルト値0で初期化
-                                println!("store i32 0, ptr %{}", ptr);
-                            }
+            // defaultケースの処理
+            println!("{}:", default_label);
+            if has_default {
+                for case in &switch_stmt.cases {
+                    if let SwitchCase::Default(default_case) = case {
+                        for stmt in &default_case.stmts {
+                            super::stmt(*stmt.clone(), cgs);
                         }
-                    } else {
-                        // 初期化なしの場合は0で初期化
-                        println!("store i32 0, ptr %{}", ptr);
+                        break;
                     }
-
-                    cgs.variables.insert(ident, ptr);
                 }
-                IGNORE.to_string()
             }
-            DeclStmt::Struct(_) | DeclStmt::Union(_) | DeclStmt::Enum(_) | DeclStmt::Typedef(_) => {
-                // 構造体、共用体、列挙型、typedefは未対応
-                IGNORE.to_string()
-            }
-        },
-        Stmt::Block(block) => {
-            for stmt in block.statements {
-                gen_stmt(*stmt, cgs);
-            }
-            IGNORE.to_string()
-        }
-        Stmt::Break => {
-            if let Some(ref break_label) = cgs.break_label.clone() {
-                println!("br label %{}", break_label);
-            } else {
-                panic!("Break statement outside of loop");
-            }
-            EVIL.to_string()
-        }
-        Stmt::Continue => {
-            if let Some(ref continue_label) = cgs.continue_label.clone() {
-                println!("br label %{}", continue_label);
-            } else {
-                panic!("Continue statement outside of loop");
-            }
-            EVIL.to_string()
-        }
-        Stmt::Goto(goto) => {
-            println!("br label %{}", goto.label.get_name());
-            EVIL.to_string()
-        }
-        Stmt::Label(label) => {
-            println!("{}:", label.name.get_name());
-            gen_stmt(*label.stmt, cgs)
+            println!("  br label %{}", end_label);
+
+            // 終了ラベル
+            println!("{}:", end_label);
+
+            // breakラベルをポップ
+            cgs.break_labels.pop();
         }
     }
 }
 
-fn gen_function(function: FunctionDef, cgs: &mut CodeGenStatus) -> String {
+// gen_stmt.rsの最後に追加する関数生成機能
+fn gen_function(function: FunctionDef, cgs: &mut CodeGenStatus) {
     let name = function.sig.ident.clone();
     let params = function.param_names.clone();
     let args: Vec<String> = params.iter().map(|_| cgs.name_gen.next()).collect();
 
     println!(
-        "define i32 @{}({}) {{",
+        "define i64 @{}({}) {{",
         name.get_name(),
         args.iter()
-            .map(|x| format!("i32 noundef %{}", x))
+            .map(|x| format!("i64 noundef %{}", x))
             .collect::<Vec<_>>()
             .join(", ")
     );
@@ -836,7 +953,7 @@ fn gen_function(function: FunctionDef, cgs: &mut CodeGenStatus) -> String {
     // return用の変数とラベルを設定
     let return_ptr = cgs.name_gen.next();
     let return_label = "return_label".to_string();
-    println!("%{} = alloca i32", return_ptr);
+    println!("%{} = alloca i64", return_ptr);
 
     cgs.return_value_ptr = Some(return_ptr.clone());
     cgs.return_label = Some(return_label.clone());
@@ -844,14 +961,14 @@ fn gen_function(function: FunctionDef, cgs: &mut CodeGenStatus) -> String {
     // 引数の処理
     for (i, param_name) in params.iter().enumerate() {
         let ptr = cgs.name_gen.next();
-        println!("%{} = alloca i32", ptr);
-        println!("store i32 %{}, ptr %{}", args[i], ptr);
+        println!("%{} = alloca i64", ptr);
+        println!("store i64 %{}, ptr %{}", args[i], ptr);
         cgs.variables.insert(param_name.clone(), ptr);
     }
 
     // 関数本体の処理
     for stmt in function.body.into_vec() {
-        gen_stmt(*stmt, cgs);
+        gen_stmt::stmt(*stmt, cgs);
     }
 
     // 常にreturn_labelにジャンプ（return文がない場合のため）
@@ -859,8 +976,8 @@ fn gen_function(function: FunctionDef, cgs: &mut CodeGenStatus) -> String {
 
     // return_labelとreturn処理
     println!("{}:", return_label);
-    println!("%val = load i32, ptr %{}", return_ptr);
-    println!("ret i32 %val");
+    println!("%val = load i64, ptr %{}", return_ptr);
+    println!("ret i64 %val");
 
     println!("}}");
 
@@ -868,21 +985,18 @@ fn gen_function(function: FunctionDef, cgs: &mut CodeGenStatus) -> String {
     cgs.return_value_ptr = None;
     cgs.return_label = None;
     cgs.variables.clear();
-
-    return IGNORE.to_string();
 }
 
-fn gen_top_level(top_level: TopLevel, cgs: &mut CodeGenStatus) -> String {
+fn gen_top_level(top_level: TopLevel, cgs: &mut CodeGenStatus) {
     match top_level {
         TopLevel::FunctionDef(function_def) => gen_function(function_def, cgs),
-        TopLevel::Stmt(stmt) => gen_stmt(stmt, cgs),
-        TopLevel::FunctionProto(_) => IGNORE.to_string(), // 関数プロトタイプは無視
+        TopLevel::FunctionProto(_) => todo!(), // 関数プロトタイプは無視
+        TopLevel::Stmt(stmt) => gen_stmt::stmt(stmt, cgs),
     }
 }
 
-pub fn generate_program(program: Program, cgs: &mut CodeGenStatus) -> String {
+pub fn generate_program(program: Program, cgs: &mut CodeGenStatus) {
     for item in program.items {
         gen_top_level(item, cgs);
     }
-    IGNORE.to_string()
 }
