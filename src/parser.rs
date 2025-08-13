@@ -935,7 +935,7 @@ fn unary(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Box<Expr
                 consume(Token::RParen, tokens);
                 tmp
             },
-            expr(_parse_session, tokens),
+            *unary(_parse_session, tokens),
         )
     } else {
         Box::new(postfix(_parse_session, tokens))
