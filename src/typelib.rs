@@ -1,5 +1,4 @@
 use crate::ast::{Array, Func, Ident, Type};
-use crate::const_eval::eval_const_expr;
 use crate::parser::ParseSession;
 use crate::parser::expr;
 use crate::token::Token;
@@ -107,23 +106,21 @@ fn call(mut base_type: Type, tokens: &mut Vec<Token>, parse_session: &mut ParseS
         let mut array_sizes = vec![];
 
         array_sizes.push(
-            eval_const_expr(&expr(parse_session, tokens))
-                .unwrap()
-                .to_int()
-                .map_err(|e| format!("Failed to convert size to integer: {}", e))
-                .unwrap()
-                .max(0) as usize,
+            expr(parse_session, tokens)
+                .to_typed_expr()
+                .eval_const()
+                .clone()
+                .unwrap() as usize,
         );
         tokens.remove(0);
         while is_next_token(tokens, Token::LBracket) {
             tokens.remove(0);
             array_sizes.push(
-                eval_const_expr(&expr(parse_session, tokens))
-                    .unwrap()
-                    .to_int()
-                    .map_err(|e| format!("Failed to convert size to integer: {}", e))
-                    .unwrap()
-                    .max(0) as usize,
+                expr(parse_session, tokens)
+                    .to_typed_expr()
+                    .eval_const()
+                    .clone()
+                    .unwrap() as usize,
             );
             tokens.remove(0);
         }
