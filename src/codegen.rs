@@ -546,9 +546,7 @@ fn gen_expr(expr: crate::sema::SemaExpr, cgs: &mut CodeGenStatus) -> String {
 mod gen_stmt {
     use crate::ast::*;
     use crate::codegen::CodeGenStatus;
-    use crate::codegen::gen_expr;
     use crate::codegen::gen_typed_expr;
-    use crate::sema::TypedExpr;
 
     pub fn stmt(stmt: Stmt, cgs: &mut CodeGenStatus) {
         match stmt {
@@ -705,6 +703,7 @@ mod gen_stmt {
     }
 
     fn label(label: Label, cgs: &mut CodeGenStatus) {
+        println!("br label %{}", label.name.get_name());
         println!("{}:", label.name.get_name());
         stmt(*label.stmt, cgs);
     }
