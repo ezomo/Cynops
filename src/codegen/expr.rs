@@ -32,18 +32,18 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
                 let end_label = cgs.name_gen.value();
 
                 println!(
-                    "br i1 {}, label {}, label {}",
+                    "br i1 {}, label %{}, label %{}",
                     lhs_bool, true_label, false_label
                 );
 
                 // true branch
                 println!("{}:", true_label);
                 let rhs = gen_expr(*binary.rhs, cgs);
-                println!("br label {}", end_label);
+                println!("br label %{}", end_label);
 
                 // false branch
                 println!("{}:", false_label);
-                println!("br label {}", end_label);
+                println!("br label %{}", end_label);
 
                 // end
                 println!("{}:", end_label);
@@ -64,18 +64,18 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
                 let end_label = cgs.name_gen.value();
 
                 println!(
-                    "br i1 {}, label {}, label {}",
+                    "br i1 {}, label %{}, label %{}",
                     lhs_bool, true_label, false_label
                 );
 
                 // false branch
                 println!("{}:", false_label);
                 let rhs = gen_expr(*binary.rhs, cgs);
-                println!("br label {}", end_label);
+                println!("br label %{}", end_label);
 
                 // true branch
                 println!("{}:", true_label);
-                println!("br label {}", end_label);
+                println!("br label %{}", end_label);
 
                 // end
                 println!("{}:", end_label);
@@ -303,19 +303,19 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
             let end_label = cgs.name_gen.value();
 
             println!(
-                "br i1 {}, label {}, label {}",
+                "br i1 {}, label %{}, label %{}",
                 cond_bool, true_label, false_label
             );
 
             // true branch
             println!("{}:", true_label);
             let true_val = gen_expr(*ternary.then_branch, cgs);
-            println!("br label {}", end_label);
+            println!("br label %{}", end_label);
 
             // false branch
             println!("{}:", false_label);
             let false_val = gen_expr(*ternary.else_branch, cgs);
-            println!("br label {}", end_label);
+            println!("br label %{}", end_label);
 
             // end
             println!("{}:", end_label);
