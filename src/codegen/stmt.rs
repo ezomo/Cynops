@@ -38,11 +38,11 @@ fn declstmt(declstmt: DeclStmt, cgs: &mut CodeGenStatus) {
 }
 
 fn declare_variable(init: Init, cgs: &mut CodeGenStatus) {
-    let var_name = cgs.name_gen.next();
+    let var_name = cgs.name_gen.value();
     let llvm_type = &init.r.ty.get_llvm_type();
 
     // 変数を割り当て
-    println!("%{} = alloca {}", var_name, llvm_type);
+    println!("{} = alloca {}", var_name, llvm_type);
 
     // 変数名をマップに登録
     cgs.variables.insert(init.r.ident.clone(), var_name.clone());
@@ -64,18 +64,18 @@ fn initialize_variable(
             // 単純な式による初期化
             let value = gen_expr(typed_expr, cgs);
             let llvm_type = var_type.get_llvm_type();
-            println!("  store {} %{}, ptr %{}", llvm_type, value, var_name);
+            println!("  store {} {}, ptr {}", llvm_type, value, var_name);
         }
         InitData::Compound(compound_list) => {
             match var_type {
                 Type::Array(arr) => {
                     // 配列の初期化 {1, 2, 3}
                     for (index, element) in compound_list.into_iter().enumerate() {
-                        let element_ptr = cgs.name_gen.next();
+                        let element_ptr = cgs.name_gen.value();
                         let array_type =
                             format!("[{} x {}]", arr.length, &arr.array_of.get_llvm_type());
                         println!(
-                            "  %{} = getelementptr inbounds {}, ptr %{}, i64 0, i64 {}",
+                            "  {} = getelementptr inbounds {}, ptr {}, i64 0, i64 {}",
                             element_ptr, array_type, var_name, index
                         );
 
@@ -122,14 +122,14 @@ fn r#return(ret: Return, cgs: &mut CodeGenStatus) {
     } else {
         // voidの場合は0を返す
         //TODO
-        let name = cgs.name_gen.next();
-        println!("%{} = add i64 0, 0", name);
+        let name = cgs.name_gen.value();
+        println!("{} = add i64 0, 0", name);
         name
     };
 
     // return値をreturn_value_ptrに保存
     if let Some(ref return_ptr) = cgs.return_value_ptr {
-        println!("store i64 %{}, ptr %{}", rhs, return_ptr);
+        println!("store i64 {}, ptr {}", rhs, return_ptr);
     }
 
     // return_labelにジャンプ
@@ -162,12 +162,12 @@ mod controls {
         // 条件による分岐
         if if_stmt.else_branch.is_some() {
             println!(
-                "  br i1 %{}, label %{}, label %{}",
+                "  br i1 {}, label %{}, label %{}",
                 cond_result, then_label, else_label
             );
         } else {
             println!(
-                "  br i1 %{}, label %{}, label %{}",
+                "  br i1 {}, label %{}, label %{}",
                 cond_result, then_label, end_label
             );
         }
@@ -203,7 +203,7 @@ mod controls {
         println!("{}:", cond_label);
         let cond_result = gen_expr(*while_stmt.cond, cgs); // todo!()で条件式を評価した結果
         println!(
-            "  br i1 %{}, label %{}, label %{}",
+            "  br i1 {}, label %{}, label %{}",
             cond_result, body_label, end_label
         );
 
@@ -239,7 +239,7 @@ mod controls {
         println!("{}:", cond_label);
         let cond_result = gen_expr(*do_while_stmt.cond, cgs); // todo!()で条件式を評価した結果
         println!(
-            "  br i1 %{}, label %{}, label %{}",
+            "  br i1 {}, label %{}, label %{}",
             cond_result, body_label, end_label
         );
 
@@ -272,7 +272,7 @@ mod controls {
         if let Some(_cond) = for_stmt.cond {
             let cond_result = gen_expr(*_cond, cgs); // todo!()で条件式を評価した結果
             println!(
-                "  br i1 %{}, label %{}, label %{}",
+                "  br i1 {}, label %{}, label %{}",
                 cond_result, body_label, end_label
             );
         } else {
@@ -309,7 +309,7 @@ mod controls {
         let cond_result = gen_expr(*switch_stmt.cond, cgs);
 
         // switchの開始
-        print!("  switch i64 %{}, label %{} [", cond_result, default_label);
+        print!("  switch i64 {}, label %{} [", cond_result, default_label);
 
         let mut case_labels = Vec::new();
         let mut has_default = false;

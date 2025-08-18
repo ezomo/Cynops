@@ -22,13 +22,13 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
             .get_llvm_type(),
         function.sig.ident.get_name(),
         args.iter()
-            .map(|x| format!("{} %{}", x.1.get_llvm_type(), x.0.get_name()))
+            .map(|x| format!("{} {}", x.1.get_llvm_type(), x.0.get_name()))
             .collect::<Vec<_>>()
             .join(", "),
     );
 
     // return用の変数とラベルを設定
-    let return_ptr = cgs.name_gen.next();
+    let return_ptr = cgs.name_gen.value();
     let return_label = "return_label".to_string();
     let return_type = function
         .sig
@@ -37,7 +37,7 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
         .unwrap()
         .return_type
         .get_llvm_type();
-    println!("%{} = alloca {}", return_ptr, return_type);
+    println!("{} = alloca {}", return_ptr, return_type);
 
     cgs.return_value_ptr = Some(return_ptr.clone());
     cgs.return_label = Some(return_label.clone());
@@ -45,13 +45,13 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
     // 引数の処理
     {
         for (ident, ty) in &args {
-            let ptr = cgs.name_gen.next();
-            println!("%{} = alloca {}", ptr, ty.get_llvm_type());
+            let ptr = cgs.name_gen.value();
+            println!("{} = alloca {}", ptr, ty.get_llvm_type());
             cgs.variables.insert(ident.clone(), ptr);
         }
         for (ident, ty) in &args {
             println!(
-                "store {} %{}, ptr %{}",
+                "store {} {}, ptr {}",
                 ty.get_llvm_type(),
                 ident.get_name(),
                 cgs.variables[&ident]
@@ -69,7 +69,7 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
 
     // return_labelとreturn処理
     println!("{}:", return_label);
-    println!("%val = load {}, ptr %{}", return_type, return_ptr);
+    println!("%val = load {}, ptr {}", return_type, return_ptr);
     println!("ret {} %val", return_type);
 
     println!("}}");

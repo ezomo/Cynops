@@ -90,11 +90,18 @@ impl NameGenerator {
         Self { counter: 0 }
     }
 
-    pub fn next(&mut self) -> String {
-        let name = format!("tmp{}", self.counter);
+    fn next(&mut self) -> usize {
         self.counter += 1;
-        name
+        self.counter
     }
+
+    pub fn value(&mut self) -> String {
+        format!("%{}", self.next())
+    }
+
+    // pub fn lavel(&mut self) -> String {
+    //     format!("{}", self.next())
+    // }
 }
 
 pub trait ToLLVMIR {
@@ -149,14 +156,14 @@ impl ToLLVMIR for UnaryOp {
 }
 
 pub fn i1toi64(name_i1: String, cgs: &mut CodeGenStatus) -> String {
-    let name = cgs.name_gen.next();
-    println!("%{} = zext i1 %{} to i64", name, name_i1);
+    let name = cgs.name_gen.value();
+    println!("{} = zext i1 {} to i64", name, name_i1);
     name
 }
 
 pub fn i64toi1(name_i64: String, cgs: &mut CodeGenStatus) -> String {
-    let name = cgs.name_gen.next();
-    println!("%{} = icmp ne i64 %{}, 0", name, name_i64);
+    let name = cgs.name_gen.value();
+    println!("{} = icmp ne i64 {}, 0", name, name_i64);
     name
 }
 
