@@ -11,7 +11,14 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
                 let rhs = gen_expr(*binary.rhs, cgs);
                 let name = cgs.name_gen.value();
 
-                println!("{} = {} i64 {}, {}", name, ari.to_llvmir(), lhs, rhs);
+                println!(
+                    "{} = {} {} {}, {}",
+                    name,
+                    ari.to_llvmir(),
+                    typed_expr.r#type.to_llvm_format(),
+                    lhs,
+                    rhs
+                );
                 name
             }
             BinaryOp::Comparison(com) => {
@@ -19,7 +26,14 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
                 let rhs = gen_expr(*binary.rhs, cgs);
                 let name = cgs.name_gen.value();
 
-                println!("{} = {} i64 {}, {}", name, com.to_llvmir(), lhs, rhs);
+                println!(
+                    "{} = {} {} {}, {}",
+                    name,
+                    com.to_llvmir(),
+                    typed_expr.r#type.to_llvm_format(),
+                    lhs,
+                    rhs
+                );
                 name
             }
             BinaryOp::Logical(Logical::AmpersandAmpersand) => {
@@ -89,14 +103,15 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
         },
         SemaExpr::Assign(assign) => match assign.op {
             AssignOp::Equal => {
-                if let SemaExpr::Ident(ident) = &assign.lhs.r#expr {
-                    let rhs = gen_expr(*assign.rhs, cgs);
-                    let ptr = cgs.variables.get(ident).unwrap();
-                    println!("store i64 {}, ptr {}", rhs, ptr);
-                    rhs
-                } else {
-                    panic!("The left side is not variable!");
-                }
+                let rhs = gen_expr(*assign.rhs, cgs);
+                let ptr = gen_expr(*assign.lhs, cgs);
+                println!(
+                    "store {} {}, ptr {}",
+                    typed_expr.r#type.to_llvm_format(),
+                    rhs,
+                    ptr
+                );
+                rhs
             }
             _ => {
                 // 複合代入演算子 (+=, -=, など)
@@ -123,24 +138,28 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
                         _ => panic!("Unsupported assign op"),
                     };
 
-                    println!("{} = {} i64 {}, {}", result, op, lhs_val, rhs);
-                    println!("store i64 {}, ptr {}", result, ptr);
+                    println!(
+                        "{} = {} {} {}, {}",
+                        result,
+                        op,
+                        typed_expr.r#type.to_llvm_format(),
+                        lhs_val,
+                        rhs
+                    );
+                    println!(
+                        "store {} {}, ptr {}",
+                        typed_expr.r#type.to_llvm_format(),
+                        result,
+                        ptr
+                    );
                     result
                 } else {
                     panic!("The left side is not variable!");
                 }
             }
         },
-        SemaExpr::NumInt(num) => {
-            let name1 = cgs.name_gen.value();
-            println!("{} = add i64 0, {}", name1, num);
-            name1
-        }
-        SemaExpr::NumFloat(num) => {
-            let name1 = cgs.name_gen.value();
-            println!("{} = fadd double 0.0, {}", name1, num.0);
-            name1
-        }
+        SemaExpr::NumInt(num) => num.to_string(),
+        SemaExpr::NumFloat(num) => num.to_string(),
         SemaExpr::Char(ch) => {
             let name1 = cgs.name_gen.value();
             println!("{} = add i8 0, {}", name1, ch as u8);
@@ -159,12 +178,8 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
         }
         SemaExpr::Ident(ident) => match typed_expr.r#type {
             Type::Array(_) => cgs.variables[&ident].clone(),
-            _ => {
-                let tmp = cgs.name_gen.value();
-                let ptr = cgs.variables.get(&ident).unwrap();
-                println!("{} = load i64, ptr {}", tmp, ptr);
-                tmp
-            }
+            Type::Pointer(_) => cgs.variables[&ident].clone(),
+            _ => cgs.variables[&ident].clone(),
         },
         SemaExpr::Call(call) => {
             let name = cgs.name_gen.value();
@@ -245,17 +260,14 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
                 }
                 UnaryOp::Asterisk => {
                     // 間接参照演算子 *x
+                    let ptr_type = unary.expr.r#type.to_llvm_format();
                     let ptr = gen_expr(*unary.expr, cgs);
                     let name = cgs.name_gen.value();
                     println!(
-                        "{} = load {}, ptr {}",
+                        "{} = load {}*, {}* {}",
                         name,
-                        typed_expr
-                            .r#type
-                            .as_array()
-                            .unwrap()
-                            .array_of
-                            .get_llvm_type(),
+                        typed_expr.r#type.to_llvm_format(),
+                        ptr_type,
                         ptr
                     );
                     name
@@ -328,33 +340,22 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
         }
         SemaExpr::Subscript(subscript) => {
             // TODO
+
             fn array_access(subscript: Subscript, cgs: &mut CodeGenStatus) -> String {
-                let inside_type = subscript.subject.r#type.get_llvm_type();
+                let inside_type = subscript.subject.r#type.to_llvm_format();
                 let arr_ptr = gen_expr(*subscript.subject, cgs);
                 let index = gen_expr(*subscript.index, cgs);
 
                 let name = cgs.name_gen.value();
                 println!(
-                    "{} = getelementptr inbounds {}, ptr {}, i64 0 ,i64 {}",
-                    name, inside_type, arr_ptr, index
+                    "{} = getelementptr inbounds {}, {}* {}, i64 0 ,i64 {}",
+                    name, inside_type, inside_type, arr_ptr, index
                 );
 
                 name
             }
 
-            let result = array_access(subscript, cgs);
-            if !matches!(typed_expr.r#type, Type::Array(_)) {
-                let name = cgs.name_gen.value();
-                println!(
-                    "{} = load {}, ptr {}",
-                    name,
-                    typed_expr.r#type.get_llvm_type(),
-                    result
-                );
-                name
-            } else {
-                result
-            }
+            array_access(subscript, cgs)
         }
         SemaExpr::MemberAccess(member_access) => {
             // 構造体メンバアクセス

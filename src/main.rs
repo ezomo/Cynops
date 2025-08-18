@@ -36,19 +36,21 @@ mod tests {
     #[test]
     fn test_extract_exprs() {
         let mut input = "
-        struct person1 {
-            char *name;
-            char sex;
-            int age;
-            char *add;
-            char *job;
-        };
+        int main(void) {
+            int a = 0;
+            int *b = &a;
+
+            int c = *b;
+            return c;
+        }
         "
         .to_string();
         preprocessor::remove_comments(&mut input);
         let mut token = lexer::tokenize(&input);
         let mut session = parser::ParseSession::new();
         let a = parser::program(&mut session, &mut token);
-        println!("{:#?}", a);
+
+        codegen::generate_program(a.clone(), &mut codegen::CodeGenStatus::new());
+        ast_visualizer::visualize_program(&a);
     }
 }

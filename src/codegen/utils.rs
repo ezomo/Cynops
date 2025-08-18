@@ -1,4 +1,4 @@
-use crate::ast::*;
+use crate::{ast::*, codegen};
 use std::collections::HashMap;
 
 // CodeGenStatus の定義
@@ -96,7 +96,7 @@ impl NameGenerator {
     }
 
     pub fn value(&mut self) -> String {
-        format!("%{}", self.next())
+        format!("%tmp{}", self.next())
     }
 
     // pub fn lavel(&mut self) -> String {
@@ -167,16 +167,30 @@ pub fn i64toi1(name_i64: String, cgs: &mut CodeGenStatus) -> String {
     name
 }
 
+pub fn load(ty: &Type, data: &str, cgs: &mut CodeGenStatus) -> String {
+    let name = cgs.name_gen.value();
+    println!(
+        "{} = load {}, {}* {}",
+        name,
+        ty.to_llvm_format(),
+        ty.to_llvm_format(),
+        data
+    );
+    name
+}
+
 impl Type {
-    pub fn get_llvm_type(&self) -> String {
+    pub fn to_llvm_format(&self) -> String {
         match self {
             Type::Void => "void".to_string(),
             Type::Int => "i64".to_string(),
             Type::Double => "double".to_string(),
             Type::Char => "i8".to_string(),
-            Type::Pointer(_) => "ptr".to_string(),
+            Type::Pointer(ty) => {
+                format!("{}*", ty.to_llvm_format())
+            }
             Type::Array(arr) => {
-                format!("[{} x {}]", arr.length, &arr.array_of.get_llvm_type())
+                format!("[{} x {}]", arr.length, &arr.array_of.to_llvm_format())
             }
             _ => todo!("未対応の型: {:?}", self),
         }

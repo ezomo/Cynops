@@ -19,10 +19,10 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
             .as_func()
             .unwrap()
             .return_type
-            .get_llvm_type(),
+            .to_llvm_format(),
         function.sig.ident.get_name(),
         args.iter()
-            .map(|x| format!("{} {}", x.1.get_llvm_type(), x.0.get_name()))
+            .map(|x| format!("{} %{}", x.1.to_llvm_format(), x.0.get_name()))
             .collect::<Vec<_>>()
             .join(", "),
     );
@@ -36,7 +36,7 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
         .as_func()
         .unwrap()
         .return_type
-        .get_llvm_type();
+        .to_llvm_format();
     println!("{} = alloca {}", return_ptr, return_type);
 
     cgs.return_value_ptr = Some(return_ptr.clone());
@@ -46,13 +46,13 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
     {
         for (ident, ty) in &args {
             let ptr = cgs.name_gen.value();
-            println!("{} = alloca {}", ptr, ty.get_llvm_type());
+            println!("{} = alloca {}", ptr, ty.to_llvm_format());
             cgs.variables.insert(ident.clone(), ptr);
         }
         for (ident, ty) in &args {
             println!(
-                "store {} {}, ptr {}",
-                ty.get_llvm_type(),
+                "store {} %{}, ptr {}",
+                ty.to_llvm_format(),
                 ident.get_name(),
                 cgs.variables[&ident]
             );
@@ -90,7 +90,7 @@ fn function_proto(function: FunctionProto, cgs: &mut CodeGenStatus) {
             .as_func()
             .unwrap()
             .return_type
-            .get_llvm_type(),
+            .to_llvm_format(),
         function.sig.ident.get_name(),
         function
             .sig
@@ -99,7 +99,7 @@ fn function_proto(function: FunctionProto, cgs: &mut CodeGenStatus) {
             .unwrap()
             .params
             .iter()
-            .map(|x| format!("{}", x.get_llvm_type()))
+            .map(|x| format!("{}", x.to_llvm_format()))
             .collect::<Vec<_>>()
             .join(", "),
     );

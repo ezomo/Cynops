@@ -39,7 +39,7 @@ fn declstmt(declstmt: DeclStmt, cgs: &mut CodeGenStatus) {
 
 fn declare_variable(init: Init, cgs: &mut CodeGenStatus) {
     let var_name = cgs.name_gen.value();
-    let llvm_type = &init.r.ty.get_llvm_type();
+    let llvm_type = &init.r.ty.to_llvm_format();
 
     // 変数を割り当て
     println!("{} = alloca {}", var_name, llvm_type);
@@ -62,9 +62,12 @@ fn initialize_variable(
     match init_data {
         InitData::Expr(typed_expr) => {
             // 単純な式による初期化
-            let value = gen_expr(typed_expr, cgs);
-            let llvm_type = var_type.get_llvm_type();
-            println!("  store {} {}, ptr {}", llvm_type, value, var_name);
+            let value = load(var_type, &gen_expr(typed_expr, cgs), cgs);
+            let llvm_type = var_type.to_llvm_format();
+            println!(
+                "  store {} {}, {}* {}",
+                llvm_type, value, llvm_type, var_name
+            );
         }
         InitData::Compound(compound_list) => {
             match var_type {
@@ -73,10 +76,10 @@ fn initialize_variable(
                     for (index, element) in compound_list.into_iter().enumerate() {
                         let element_ptr = cgs.name_gen.value();
                         let array_type =
-                            format!("[{} x {}]", arr.length, &arr.array_of.get_llvm_type());
+                            format!("[{} x {}]", arr.length, &arr.array_of.to_llvm_format());
                         println!(
-                            "  {} = getelementptr inbounds {}, ptr {}, i64 0, i64 {}",
-                            element_ptr, array_type, var_name, index
+                            "  {} = getelementptr inbounds {}, {}* {}, i64 0, i64 {}",
+                            element_ptr, array_type, array_type, var_name, index
                         );
 
                         initialize_variable(&element_ptr, element, &arr.array_of, cgs);
@@ -118,7 +121,7 @@ fn r#continue(cgs: &mut CodeGenStatus) {
 
 fn r#return(ret: Return, cgs: &mut CodeGenStatus) {
     let rhs = if let Some(value) = ret.value {
-        gen_expr(*value, cgs)
+        load(&value.r#type.clone(), &gen_expr(*value, cgs), cgs)
     } else {
         // voidの場合は0を返す
         //TODO
