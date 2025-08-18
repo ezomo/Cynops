@@ -84,7 +84,7 @@ impl SemaExpr {
 
     pub fn subscript(name: TypedExpr, index: TypedExpr) -> Self {
         SemaExpr::Subscript(Subscript {
-            name: Box::new(name),
+            subject: Box::new(name),
             index: Box::new(index),
         })
     }
@@ -168,7 +168,7 @@ pub struct Call {
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Subscript {
-    pub name: Box<TypedExpr>,
+    pub subject: Box<TypedExpr>,
     pub index: Box<TypedExpr>,
 }
 

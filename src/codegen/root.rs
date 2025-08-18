@@ -69,7 +69,7 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
 
     // return_labelとreturn処理
     println!("{}:", return_label);
-    println!("%val = load {}, ptr %{}", return_ptr, return_type);
+    println!("%val = load {}, ptr %{}", return_type, return_ptr);
     println!("ret {} %val", return_type);
 
     println!("}}");

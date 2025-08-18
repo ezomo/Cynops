@@ -12,7 +12,7 @@ pub fn stmt(stmt: Stmt, cgs: &mut CodeGenStatus) {
         Stmt::Goto(goto) => self::goto(goto, cgs),
         Stmt::Label(label) => self::label(label, cgs),
         Stmt::TypedExprStmt(expr) => {
-            let _ = gen_typed_expr(expr, cgs);
+            let _ = gen_expr(expr, cgs);
         }
     }
 }
@@ -38,11 +38,11 @@ fn declstmt(declstmt: DeclStmt, cgs: &mut CodeGenStatus) {
 }
 
 fn declare_variable(init: Init, cgs: &mut CodeGenStatus) {
-    let var_name = cgs.name_gen.next_with_prefix("var");
+    let var_name = cgs.name_gen.next();
     let llvm_type = &init.r.ty.get_llvm_type();
 
     // 変数を割り当て
-    println!("  %{} = alloca {}", var_name, llvm_type);
+    println!("%{} = alloca {}", var_name, llvm_type);
 
     // 変数名をマップに登録
     cgs.variables.insert(init.r.ident.clone(), var_name.clone());
@@ -62,7 +62,7 @@ fn initialize_variable(
     match init_data {
         InitData::Expr(typed_expr) => {
             // 単純な式による初期化
-            let value = gen_typed_expr(typed_expr, cgs);
+            let value = gen_expr(typed_expr, cgs);
             let llvm_type = var_type.get_llvm_type();
             println!("  store {} %{}, ptr %{}", llvm_type, value, var_name);
         }
@@ -118,9 +118,10 @@ fn r#continue(cgs: &mut CodeGenStatus) {
 
 fn r#return(ret: Return, cgs: &mut CodeGenStatus) {
     let rhs = if let Some(value) = ret.value {
-        gen_typed_expr(*value, cgs)
+        gen_expr(*value, cgs)
     } else {
         // voidの場合は0を返す
+        //TODO
         let name = cgs.name_gen.next();
         println!("%{} = add i64 0, 0", name);
         name
@@ -156,7 +157,7 @@ mod controls {
         let end_label = cgs.next_label("end");
 
         // 条件の評価（TypedExprなのでtodo!()）
-        let cond_result = gen_typed_expr(*if_stmt.cond, cgs); // todo!()で条件式を評価した結果
+        let cond_result = gen_expr(*if_stmt.cond, cgs); // todo!()で条件式を評価した結果
 
         // 条件による分岐
         if if_stmt.else_branch.is_some() {
@@ -200,7 +201,7 @@ mod controls {
 
         // 条件評価ラベル
         println!("{}:", cond_label);
-        let cond_result = gen_typed_expr(*while_stmt.cond, cgs); // todo!()で条件式を評価した結果
+        let cond_result = gen_expr(*while_stmt.cond, cgs); // todo!()で条件式を評価した結果
         println!(
             "  br i1 %{}, label %{}, label %{}",
             cond_result, body_label, end_label
@@ -236,7 +237,7 @@ mod controls {
 
         // 条件評価ラベル
         println!("{}:", cond_label);
-        let cond_result = gen_typed_expr(*do_while_stmt.cond, cgs); // todo!()で条件式を評価した結果
+        let cond_result = gen_expr(*do_while_stmt.cond, cgs); // todo!()で条件式を評価した結果
         println!(
             "  br i1 %{}, label %{}, label %{}",
             cond_result, body_label, end_label
@@ -260,7 +261,7 @@ mod controls {
 
         // 初期化
         if let Some(_init) = for_stmt.init {
-            let _ = gen_typed_expr(*_init, cgs);
+            let _ = gen_expr(*_init, cgs);
         }
 
         // 条件の評価へジャンプ
@@ -269,7 +270,7 @@ mod controls {
         // 条件評価ラベル
         println!("{}:", cond_label);
         if let Some(_cond) = for_stmt.cond {
-            let cond_result = gen_typed_expr(*_cond, cgs); // todo!()で条件式を評価した結果
+            let cond_result = gen_expr(*_cond, cgs); // todo!()で条件式を評価した結果
             println!(
                 "  br i1 %{}, label %{}, label %{}",
                 cond_result, body_label, end_label
@@ -287,7 +288,7 @@ mod controls {
         // ステップラベル
         println!("{}:", step_label);
         if let Some(_step) = for_stmt.step {
-            gen_typed_expr(*_step, cgs);
+            gen_expr(*_step, cgs);
         }
         println!("  br label %{}", cond_label);
 
@@ -305,7 +306,7 @@ mod controls {
         // breakラベルをプッシュ（switchではcontinueは使用不可なので空文字列）
         cgs.break_labels.push(end_label.clone());
 
-        let cond_result = gen_typed_expr(*switch_stmt.cond, cgs);
+        let cond_result = gen_expr(*switch_stmt.cond, cgs);
 
         // switchの開始
         print!("  switch i64 %{}, label %{} [", cond_result, default_label);

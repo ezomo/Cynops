@@ -938,7 +938,7 @@ fn visualize_sema_expr(
 
             print_branch("Array", "", indent + 1, false, &next_prefix);
             visualize_typed_expr(
-                &array_access.name,
+                &array_access.subject,
                 indent + 2,
                 true,
                 extend_prefix(&next_prefix, true),

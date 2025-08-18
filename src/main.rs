@@ -1,8 +1,6 @@
 // mod codegen;
 use std::{env, fs, process};
 
-use ast_visualizer::visualize_program;
-
 mod ast;
 #[allow(dead_code)]
 mod ast_visualizer;
@@ -28,7 +26,7 @@ fn main() {
     let mut session = parser::ParseSession::new();
     let program: ast::Program = parser::program(&mut session, &mut token);
     codegen::generate_program(program.clone(), &mut codegen::CodeGenStatus::new());
-    // println!("{:#?}", program);
+    // ast_visualizer::visualize_program(&program);
 }
 
 #[cfg(test)]

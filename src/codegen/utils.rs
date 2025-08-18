@@ -95,12 +95,6 @@ impl NameGenerator {
         self.counter += 1;
         name
     }
-
-    pub fn next_with_prefix(&mut self, prefix: &str) -> String {
-        let name = format!("{}_{}", prefix, self.counter);
-        self.counter += 1;
-        name
-    }
 }
 
 pub trait ToLLVMIR {
