@@ -11,7 +11,7 @@ pub struct Array {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 
 pub struct Func {
-    pub return_type: Option<Box<Type>>,
+    pub return_type: Box<Type>,
     pub params: Vec<Type>,
 }
 
@@ -53,7 +53,6 @@ impl Type {
     pub fn r#enum(e: Enum) -> Self {
         Type::Enum(e)
     }
-
     /// Type を Rust 風の表記に変換する
     pub fn to_rust_format(&self) -> String {
         match self {
@@ -72,10 +71,7 @@ impl Type {
                         .join(", ")
                 };
 
-                let return_type = match &func.return_type {
-                    Some(ret) => ret.to_rust_format(),
-                    None => "void".to_string(),
-                };
+                let return_type = func.return_type.to_rust_format();
 
                 format!("fn({}) -> {}", params, return_type)
             }
@@ -103,6 +99,51 @@ impl Type {
             Type::Array(arr) => {
                 format!("[{}; {}]", arr.array_of.to_rust_format(), arr.length)
             }
+        }
+    }
+}
+
+impl Type {
+    pub fn as_func(&self) -> Option<&Func> {
+        if let Type::Func(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+    pub fn as_struct(&self) -> Option<&Struct> {
+        if let Type::Struct(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+    pub fn as_union(&self) -> Option<&Union> {
+        if let Type::Union(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+    pub fn as_enum(&self) -> Option<&Enum> {
+        if let Type::Enum(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+    pub fn as_pointer(&self) -> Option<&Box<Type>> {
+        if let Type::Pointer(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+    pub fn as_array(&self) -> Option<&Array> {
+        if let Type::Array(v) = self {
+            Some(v)
+        } else {
+            None
         }
     }
 }

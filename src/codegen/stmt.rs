@@ -39,7 +39,7 @@ fn declstmt(declstmt: DeclStmt, cgs: &mut CodeGenStatus) {
 
 fn declare_variable(init: Init, cgs: &mut CodeGenStatus) {
     let var_name = cgs.name_gen.next_with_prefix("var");
-    let llvm_type = get_llvm_type(&init.r.ty);
+    let llvm_type = &init.r.ty.get_llvm_type();
 
     // 変数を割り当て
     println!("  %{} = alloca {}", var_name, llvm_type);
@@ -63,7 +63,7 @@ fn initialize_variable(
         InitData::Expr(typed_expr) => {
             // 単純な式による初期化
             let value = gen_typed_expr(typed_expr, cgs);
-            let llvm_type = get_llvm_type(var_type);
+            let llvm_type = var_type.get_llvm_type();
             println!("  store {} %{}, ptr %{}", llvm_type, value, var_name);
         }
         InitData::Compound(compound_list) => {
@@ -73,7 +73,7 @@ fn initialize_variable(
                     for (index, element) in compound_list.into_iter().enumerate() {
                         let element_ptr = cgs.name_gen.next();
                         let array_type =
-                            format!("[{} x {}]", arr.length, get_llvm_type(&arr.array_of));
+                            format!("[{} x {}]", arr.length, &arr.array_of.get_llvm_type());
                         println!(
                             "  %{} = getelementptr inbounds {}, ptr %{}, i64 0, i64 {}",
                             element_ptr, array_type, var_name, index
@@ -87,20 +87,6 @@ fn initialize_variable(
                 }
             }
         }
-    }
-}
-
-fn get_llvm_type(ty: &Type) -> String {
-    match ty {
-        Type::Void => "void".to_string(),
-        Type::Int => "i64".to_string(),
-        Type::Double => "double".to_string(),
-        Type::Char => "i8".to_string(),
-        Type::Pointer(_) => "ptr".to_string(),
-        Type::Array(arr) => {
-            format!("[{} x {}]", arr.length, get_llvm_type(&arr.array_of))
-        }
-        _ => todo!("未対応の型: {:?}", ty),
     }
 }
 
@@ -170,7 +156,6 @@ mod controls {
         let end_label = cgs.next_label("end");
 
         // 条件の評価（TypedExprなのでtodo!()）
-        // TODO: 条件式の評価
         let cond_result = gen_typed_expr(*if_stmt.cond, cgs); // todo!()で条件式を評価した結果
 
         // 条件による分岐
@@ -215,7 +200,6 @@ mod controls {
 
         // 条件評価ラベル
         println!("{}:", cond_label);
-        // TODO: 条件式の評価
         let cond_result = gen_typed_expr(*while_stmt.cond, cgs); // todo!()で条件式を評価した結果
         println!(
             "  br i1 %{}, label %{}, label %{}",
@@ -285,7 +269,6 @@ mod controls {
         // 条件評価ラベル
         println!("{}:", cond_label);
         if let Some(_cond) = for_stmt.cond {
-            // TODO: 条件式の評価
             let cond_result = gen_typed_expr(*_cond, cgs); // todo!()で条件式を評価した結果
             println!(
                 "  br i1 %{}, label %{}, label %{}",

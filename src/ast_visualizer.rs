@@ -551,15 +551,14 @@ fn visualize_type(ty: &Type, indent: usize, is_last: bool, prefix: Vec<bool>) {
             print_branch("Function", "", indent, is_last, &prefix);
             let next_prefix = extend_prefix(&prefix, !is_last);
 
-            if let Some(return_type) = &func.return_type {
-                print_branch("Type", "", indent + 1, func.params.is_empty(), &next_prefix);
-                visualize_type(
-                    return_type,
-                    indent + 2,
-                    true,
-                    extend_prefix(&next_prefix, !func.params.is_empty()),
-                );
-            }
+            let return_type = &func.return_type;
+            print_branch("Type", "", indent + 1, func.params.is_empty(), &next_prefix);
+            visualize_type(
+                return_type,
+                indent + 2,
+                true,
+                extend_prefix(&next_prefix, !func.params.is_empty()),
+            );
 
             if !func.params.is_empty() {
                 print_branch("Parameters", "", indent + 1, true, &next_prefix);

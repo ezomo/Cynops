@@ -98,7 +98,7 @@ fn call(mut base_type: Type, tokens: &mut Vec<Token>, parse_session: &mut ParseS
         tokens.remove(0);
 
         base_type = Type::Func(Func {
-            return_type: Some(Box::new(base_type)),
+            return_type: Box::new(base_type),
             params: param_types,
         });
     } else if is_next_token(tokens, Token::LBracket) {

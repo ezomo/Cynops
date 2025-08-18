@@ -2,17 +2,29 @@ use super::*;
 use crate::ast::*;
 
 fn gen_function(function: FunctionDef, cgs: &mut CodeGenStatus) {
-    let name = function.sig.ident.clone();
-    let params = function.param_names.clone();
-    let args: Vec<String> = params.iter().map(|_| cgs.name_gen.next()).collect();
+    let args: Vec<(Ident, Type)> = (0..function.param_names.len())
+        .map(|i| {
+            (
+                function.param_names[i].clone(),
+                function.sig.ty.as_func().unwrap().params[i].clone(),
+            )
+        })
+        .collect();
 
     println!(
-        "define i64 @{}({}) {{",
-        name.get_name(),
+        "define {} @{}({}) {{",
+        function
+            .sig
+            .ty
+            .as_func()
+            .unwrap()
+            .return_type
+            .get_llvm_type(),
+        function.sig.ident.get_name(),
         args.iter()
-            .map(|x| format!("i64 noundef %{}", x))
+            .map(|x| format!("{} %{}", x.1.get_llvm_type(), x.0.get_name()))
             .collect::<Vec<_>>()
-            .join(", ")
+            .join(", "),
     );
 
     // return用の変数とラベルを設定
@@ -24,11 +36,20 @@ fn gen_function(function: FunctionDef, cgs: &mut CodeGenStatus) {
     cgs.return_label = Some(return_label.clone());
 
     // 引数の処理
-    for (i, param_name) in params.iter().enumerate() {
-        let ptr = cgs.name_gen.next();
-        println!("%{} = alloca i64", ptr);
-        println!("store i64 %{}, ptr %{}", args[i], ptr);
-        cgs.variables.insert(param_name.clone(), ptr);
+    {
+        for (ident, ty) in &args {
+            let ptr = cgs.name_gen.next();
+            println!("%{} = alloca {}", ptr, ty.get_llvm_type());
+            cgs.variables.insert(ident.clone(), ptr);
+        }
+        for (ident, ty) in &args {
+            println!(
+                "store {} %{}, ptr %{}",
+                ty.get_llvm_type(),
+                ident.get_name(),
+                cgs.variables[&ident]
+            );
+        }
     }
 
     // 関数本体の処理

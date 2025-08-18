@@ -165,3 +165,19 @@ pub fn i64toi1(name_i64: String, cgs: &mut CodeGenStatus) -> String {
     println!("%{} = icmp ne i64 %{}, 0", name, name_i64);
     name
 }
+
+impl Type {
+    pub fn get_llvm_type(&self) -> String {
+        match self {
+            Type::Void => "void".to_string(),
+            Type::Int => "i64".to_string(),
+            Type::Double => "double".to_string(),
+            Type::Char => "i8".to_string(),
+            Type::Pointer(_) => "ptr".to_string(),
+            Type::Array(arr) => {
+                format!("[{} x {}]", arr.length, &arr.array_of.get_llvm_type())
+            }
+            _ => todo!("未対応の型: {:?}", self),
+        }
+    }
+}

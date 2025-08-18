@@ -146,17 +146,14 @@ fn call(a: crate::ast::expr::Call) -> TypedExpr {
                 }
             }
 
-            match &func_type.return_type {
-                Some(ret_type) => *ret_type.clone(),
-                None => Type::Void,
-            }
+            &func_type.return_type
         }
         _ => {
             panic!("関数型ではありません: {:?}", func.r#type);
         }
     };
 
-    TypedExpr::new(return_type, SemaExpr::call(func, args))
+    TypedExpr::new(*return_type.clone(), SemaExpr::call(func, args))
 }
 
 fn cast(a: crate::ast::expr::Cast) -> TypedExpr {
