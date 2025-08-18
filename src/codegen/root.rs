@@ -1,7 +1,7 @@
 use super::*;
 use crate::ast::*;
 
-fn gen_function(function: FunctionDef, cgs: &mut CodeGenStatus) {
+fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
     let args: Vec<(Ident, Type)> = (0..function.param_names.len())
         .map(|i| {
             (
@@ -30,7 +30,14 @@ fn gen_function(function: FunctionDef, cgs: &mut CodeGenStatus) {
     // return用の変数とラベルを設定
     let return_ptr = cgs.name_gen.next();
     let return_label = "return_label".to_string();
-    println!("%{} = alloca i64", return_ptr);
+    let return_type = function
+        .sig
+        .ty
+        .as_func()
+        .unwrap()
+        .return_type
+        .get_llvm_type();
+    println!("%{} = alloca {}", return_ptr, return_type);
 
     cgs.return_value_ptr = Some(return_ptr.clone());
     cgs.return_label = Some(return_label.clone());
@@ -62,8 +69,8 @@ fn gen_function(function: FunctionDef, cgs: &mut CodeGenStatus) {
 
     // return_labelとreturn処理
     println!("{}:", return_label);
-    println!("%val = load i64, ptr %{}", return_ptr);
-    println!("ret i64 %val");
+    println!("%val = load {}, ptr %{}", return_ptr, return_type);
+    println!("ret {} %val", return_type);
 
     println!("}}");
 
@@ -73,10 +80,35 @@ fn gen_function(function: FunctionDef, cgs: &mut CodeGenStatus) {
     cgs.variables.clear();
 }
 
+#[allow(dead_code)]
+fn function_proto(function: FunctionProto, cgs: &mut CodeGenStatus) {
+    println!(
+        "declare {} @{}({})",
+        function
+            .sig
+            .ty
+            .as_func()
+            .unwrap()
+            .return_type
+            .get_llvm_type(),
+        function.sig.ident.get_name(),
+        function
+            .sig
+            .ty
+            .as_func()
+            .unwrap()
+            .params
+            .iter()
+            .map(|x| format!("{}", x.get_llvm_type()))
+            .collect::<Vec<_>>()
+            .join(", "),
+    );
+}
+
 fn gen_top_level(top_level: TopLevel, cgs: &mut CodeGenStatus) {
     match top_level {
-        TopLevel::FunctionDef(function_def) => gen_function(function_def, cgs),
-        TopLevel::FunctionProto(_) => todo!(), // 関数プロトタイプは無視
+        TopLevel::FunctionDef(function) => function_def(function, cgs),
+        TopLevel::FunctionProto(_function) => return, // 関数プロトタイプは無視
         TopLevel::Stmt(stmt) => super::stmt::stmt(stmt, cgs),
     }
 }
