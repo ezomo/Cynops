@@ -115,12 +115,13 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
         },
         SemaExpr::Assign(assign) => match assign.op {
             AssignOp::Equal => {
-                let rhs = gen_expr(*assign.rhs, cgs);
+                let rhs = load(&typed_expr.r#type, gen_expr(*assign.rhs.clone(), cgs), cgs);
                 let ptr = gen_expr(*assign.lhs, cgs);
                 println!(
-                    "store {} {}, ptr {}",
+                    "store {} {}, {}* {}",
                     typed_expr.r#type.to_llvm_format(),
                     rhs.to_string(),
+                    typed_expr.r#type.to_llvm_format(),
                     ptr.to_string()
                 );
                 rhs
@@ -287,7 +288,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                     // 間接参照演算子 *x
                     let ptr_type = unary.expr.r#type.to_llvm_format();
                     let ptr = gen_expr(*unary.expr, cgs);
-                    let name = cgs.name_gen.register();
+                    let name = cgs.name_gen.variable();
                     println!(
                         "{} = load {}*, {}* {}",
                         name.to_string(),

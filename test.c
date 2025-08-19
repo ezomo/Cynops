@@ -1,10 +1,13 @@
+
+
 int main(void) {
-  int a[4] = {0, 1, 2, 3};
+  int a = 1000;
+  int *b = &a;
 
-  int (*b)[4] = &a;
+  *b = 20;
 
-  int (**c)[4] = &b;
-  (**c)[3] = a[2] + 10;
+  int c;
+  c = *b;
 
-  return a[3];
+  return c;
 }

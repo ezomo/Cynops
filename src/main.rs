@@ -37,10 +37,15 @@ mod tests {
     fn test_extract_exprs() {
         let mut input = "
         int main(void) {
-        int a[4] = {0, 1, 2, 3};
-        int c = a[3] + a[2];
+        int a = 1000;
+        int *b = &a;
 
-        return c;
+        *b = 20;
+
+        int c;
+        c = *b;
+
+        return;
         }
 
         "

@@ -147,17 +147,6 @@ impl NameGenerator {
     }
 }
 
-macro_rules! ir_println {
-    // 引数なしの場合
-    () => {
-        println!()
-    };
-    // フォーマット文字列と引数がある場合
-    ($($arg:tt)*) => {
-        println!($($arg)*)
-    };
-}
-
 pub trait ToLLVMIR {
     fn to_llvmir(&self) -> &str;
 }
