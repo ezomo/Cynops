@@ -3,7 +3,7 @@ use crate::ast::*;
 use crate::sema::Subscript;
 use crate::sema::*; // Explicitly import Subscript to disambiguate
 
-pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
+pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
     match typed_expr.expr {
         SemaExpr::Binary(binary) => match binary.op {
             BinaryOp::Arithmetic(ari) => {
@@ -13,11 +13,11 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
 
                 println!(
                     "{} = {} {} {}, {}",
-                    name,
+                    name.to_string(),
                     ari.to_llvmir(),
                     typed_expr.r#type.to_llvm_format(),
-                    lhs,
-                    rhs
+                    lhs.to_string(),
+                    rhs.to_string()
                 );
                 name
             }
@@ -28,11 +28,11 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
 
                 println!(
                     "{} = {} {} {}, {}",
-                    name,
+                    name.to_string(),
                     com.to_llvmir(),
                     typed_expr.r#type.to_llvm_format(),
-                    lhs,
-                    rhs
+                    lhs.to_string(),
+                    rhs.to_string()
                 );
                 name
             }
@@ -47,24 +47,29 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
 
                 println!(
                     "br i1 {}, label %{}, label %{}",
-                    lhs_bool, true_label, false_label
+                    lhs_bool.to_string(),
+                    true_label.to_string(),
+                    false_label.to_string()
                 );
 
                 // true branch
-                println!("{}:", true_label);
+                println!("{}:", true_label.to_string());
                 let rhs = gen_expr(*binary.rhs, cgs);
-                println!("br label %{}", end_label);
+                println!("br label %{}", end_label.to_string());
 
                 // false branch
-                println!("{}:", false_label);
-                println!("br label %{}", end_label);
+                println!("{}:", false_label.to_string());
+                println!("br label %{}", end_label.to_string());
 
                 // end
-                println!("{}:", end_label);
+                println!("{}:", end_label.to_string());
                 let result = cgs.name_gen.value();
                 println!(
                     "{} = phi i64 [{}, {}], [0, {}]",
-                    result, rhs, true_label, false_label
+                    result.to_string(),
+                    rhs.to_string(),
+                    true_label.to_string(),
+                    false_label.to_string()
                 );
                 result
             }
@@ -79,24 +84,30 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
 
                 println!(
                     "br i1 {}, label %{}, label %{}",
-                    lhs_bool, true_label, false_label
+                    lhs_bool.to_string(),
+                    true_label.to_string(),
+                    false_label.to_string()
                 );
 
                 // false branch
-                println!("{}:", false_label);
+                println!("{}:", false_label.to_string());
                 let rhs = gen_expr(*binary.rhs, cgs);
-                println!("br label %{}", end_label);
+                println!("br label %{}", end_label.to_string());
 
                 // true branch
-                println!("{}:", true_label);
-                println!("br label %{}", end_label);
+                println!("{}:", true_label.to_string());
+                println!("br label %{}", end_label.to_string());
 
                 // end
-                println!("{}:", end_label);
+                println!("{}:", end_label.to_string());
                 let result = cgs.name_gen.value();
                 println!(
                     "{} = phi i64 [{}, {}], [{}, {}]",
-                    result, lhs, true_label, rhs, false_label
+                    result.to_string(),
+                    lhs.to_string(),
+                    true_label.to_string(),
+                    rhs.to_string(),
+                    false_label.to_string()
                 );
                 result
             }
@@ -108,8 +119,8 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
                 println!(
                     "store {} {}, ptr {}",
                     typed_expr.r#type.to_llvm_format(),
-                    rhs,
-                    ptr
+                    rhs.to_string(),
+                    ptr.to_string()
                 );
                 rhs
             }
@@ -119,7 +130,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
                     let ptr = cgs.variables.get(ident).unwrap().clone();
                     let lhs_val = cgs.name_gen.value();
 
-                    println!("{} = load i64, ptr {}", lhs_val, ptr);
+                    println!("{} = load i64, ptr {}", lhs_val.to_string(), ptr);
 
                     let rhs = gen_expr(*assign.rhs, cgs);
                     let result = cgs.name_gen.value();
@@ -140,16 +151,16 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
 
                     println!(
                         "{} = {} {} {}, {}",
-                        result,
+                        result.to_string(),
                         op,
                         typed_expr.r#type.to_llvm_format(),
-                        lhs_val,
-                        rhs
+                        lhs_val.to_string(),
+                        rhs.to_string()
                     );
                     println!(
                         "store {} {}, ptr {}",
                         typed_expr.r#type.to_llvm_format(),
-                        result,
+                        result.to_string(),
                         ptr
                     );
                     result
@@ -158,11 +169,11 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
                 }
             }
         },
-        SemaExpr::NumInt(num) => num.to_string(),
-        SemaExpr::NumFloat(num) => num.to_string(),
+        SemaExpr::NumInt(num) => LLVMValue::new(num, LLVMType::Const),
+        SemaExpr::NumFloat(num) => LLVMValue::new(num, LLVMType::Const),
         SemaExpr::Char(ch) => {
             let name1 = cgs.name_gen.value();
-            println!("{} = add i8 0, {}", name1, ch as u8);
+            println!("{} = add i8 0, {}", name1.to_string(), ch as u8);
             name1
         }
         SemaExpr::String(s) => {
@@ -170,23 +181,23 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
             let name = cgs.name_gen.value();
             println!(
                 "{} = getelementptr inbounds [{}x i8], ptr @{}, i64 0, i64 0",
-                name,
+                name.to_string(),
                 s.len() + 1,
                 global_name
             );
             name
         }
         SemaExpr::Ident(ident) => match typed_expr.r#type {
-            Type::Array(_) => cgs.variables[&ident].clone(),
-            Type::Pointer(_) => cgs.variables[&ident].clone(),
-            _ => cgs.variables[&ident].clone(),
+            Type::Array(_) => LLVMValue::new(cgs.variables[&ident].clone(), LLVMType::Variable),
+            Type::Pointer(_) => LLVMValue::new(cgs.variables[&ident].clone(), LLVMType::Variable),
+            _ => LLVMValue::new(cgs.variables[&ident].clone(), LLVMType::Variable),
         },
         SemaExpr::Call(call) => {
             let name = cgs.name_gen.value();
             let args: Vec<String> = call
                 .args
                 .iter()
-                .map(|arg| format!("i64 noundef {}", gen_expr(*arg.clone(), cgs)))
+                .map(|arg| format!("i64 noundef {}", gen_expr(*arg.clone(), cgs).to_string()))
                 .collect();
 
             let fn_name = match &call.func.r#expr {
@@ -195,7 +206,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
             };
             println!(
                 "{} = call i64 @{}({})",
-                name,
+                name.to_string(),
                 fn_name.get_name(),
                 args.join(", ")
             );
@@ -206,19 +217,23 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
                 UnaryOp::Minus => {
                     let operand = gen_expr(*unary.expr, cgs);
                     let name = cgs.name_gen.value();
-                    println!("{} = sub i64 0, {}", name, operand);
+                    println!("{} = sub i64 0, {}", name.to_string(), operand.to_string());
                     name
                 }
                 UnaryOp::Bang => {
                     let operand = gen_expr(*unary.expr, cgs);
                     let name = cgs.name_gen.value();
-                    println!("{} = icmp eq i64 {}, 0", name, operand);
+                    println!(
+                        "{} = icmp eq i64 {}, 0",
+                        name.to_string(),
+                        operand.to_string()
+                    );
                     i1toi64(name, cgs)
                 }
                 UnaryOp::Tilde => {
                     let operand = gen_expr(*unary.expr, cgs);
                     let name = cgs.name_gen.value();
-                    println!("{} = xor i64 {}, -1", name, operand);
+                    println!("{} = xor i64 {}, -1", name.to_string(), operand.to_string());
                     name
                 }
                 UnaryOp::PlusPlus => {
@@ -226,10 +241,14 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
                     if let SemaExpr::Ident(ident) = &unary.expr.r#expr {
                         let ptr = cgs.variables.get(ident).unwrap().clone();
                         let old_val = cgs.name_gen.value();
-                        println!("{} = load i64, ptr {}", old_val, ptr);
+                        println!("{} = load i64, ptr {}", old_val.to_string(), ptr);
                         let new_val = cgs.name_gen.value();
-                        println!("{} = add i64 {}, 1", new_val, old_val);
-                        println!("store i64 {}, ptr {}", new_val, ptr);
+                        println!(
+                            "{} = add i64 {}, 1",
+                            new_val.to_string(),
+                            old_val.to_string()
+                        );
+                        println!("store i64 {}, ptr {}", new_val.to_string(), ptr);
                         new_val
                     } else {
                         panic!("++ can only be applied to variables");
@@ -240,10 +259,14 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
                     if let SemaExpr::Ident(ident) = &unary.expr.r#expr {
                         let ptr = cgs.variables.get(ident).unwrap().clone();
                         let old_val = cgs.name_gen.value();
-                        println!("{} = load i64, ptr {}", old_val, ptr);
+                        println!("{} = load i64, ptr {}", old_val.to_string(), ptr);
                         let new_val = cgs.name_gen.value();
-                        println!("{} = sub i64 {}, 1", new_val, old_val);
-                        println!("store i64 {}, ptr {}", new_val, ptr);
+                        println!(
+                            "{} = sub i64 {}, 1",
+                            new_val.to_string(),
+                            old_val.to_string()
+                        );
+                        println!("store i64 {}, ptr {}", new_val.to_string(), ptr);
                         new_val
                     } else {
                         panic!("-- can only be applied to variables");
@@ -253,7 +276,8 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
                     // アドレス演算子 &x
                     if let SemaExpr::Ident(ident) = &unary.expr.r#expr {
                         let ptr = cgs.variables.get(ident).unwrap().clone();
-                        ptr // 変数のポインタをそのまま返す
+                        // 変数のポインタをそのまま返す
+                        LLVMValue::new(ptr, LLVMType::Variable)
                     } else {
                         panic!("& can only be applied to lvalues");
                     }
@@ -265,10 +289,10 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
                     let name = cgs.name_gen.value();
                     println!(
                         "{} = load {}*, {}* {}",
-                        name,
+                        name.to_string(),
                         typed_expr.r#type.to_llvm_format(),
                         ptr_type,
-                        ptr
+                        ptr.to_string()
                     );
                     name
                 }
@@ -281,10 +305,14 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
                     if let SemaExpr::Ident(ident) = &postfix.expr.r#expr {
                         let ptr = cgs.variables.get(ident).unwrap().clone();
                         let old_val = cgs.name_gen.value();
-                        println!("{} = load i64, ptr {}", old_val, ptr);
+                        println!("{} = load i64, ptr {}", old_val.to_string(), ptr);
                         let new_val = cgs.name_gen.value();
-                        println!("{} = add i64 {}, 1", new_val, old_val);
-                        println!("store i64 {}, ptr {}", new_val, ptr);
+                        println!(
+                            "{} = add i64 {}, 1",
+                            new_val.to_string(),
+                            old_val.to_string()
+                        );
+                        println!("store i64 {}, ptr {}", new_val.to_string(), ptr);
                         old_val // 後置なので古い値を返す
                     } else {
                         panic!("++ can only be applied to variables");
@@ -295,10 +323,14 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
                     if let SemaExpr::Ident(ident) = &postfix.expr.r#expr {
                         let ptr = cgs.variables.get(ident).unwrap().clone();
                         let old_val = cgs.name_gen.value();
-                        println!("{} = load i64, ptr {}", old_val, ptr);
+                        println!("{} = load i64, ptr {}", old_val.to_string(), ptr);
                         let new_val = cgs.name_gen.value();
-                        println!("{} = sub i64 {}, 1", new_val, old_val);
-                        println!("store i64 {}, ptr {}", new_val, ptr);
+                        println!(
+                            "{} = sub i64 {}, 1",
+                            new_val.to_string(),
+                            old_val.to_string()
+                        );
+                        println!("store i64 {}, ptr {}", new_val.to_string(), ptr);
                         old_val // 後置なので古い値を返す
                     } else {
                         panic!("-- can only be applied to variables");
@@ -316,32 +348,38 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
 
             println!(
                 "br i1 {}, label %{}, label %{}",
-                cond_bool, true_label, false_label
+                cond_bool.to_string(),
+                true_label.to_string(),
+                false_label.to_string()
             );
 
             // true branch
-            println!("{}:", true_label);
+            println!("{}:", true_label.to_string());
             let true_val = gen_expr(*ternary.then_branch, cgs);
-            println!("br label %{}", end_label);
+            println!("br label %{}", end_label.to_string());
 
             // false branch
-            println!("{}:", false_label);
+            println!("{}:", false_label.to_string());
             let false_val = gen_expr(*ternary.else_branch, cgs);
-            println!("br label %{}", end_label);
+            println!("br label %{}", end_label.to_string());
 
             // end
-            println!("{}:", end_label);
+            println!("{}:", end_label.to_string());
             let result = cgs.name_gen.value();
             println!(
                 "{} = phi i64 [{}, {}], [{}, {}]",
-                result, true_val, true_label, false_val, false_label
+                result.to_string(),
+                true_val.to_string(),
+                true_label.to_string(),
+                false_val.to_string(),
+                false_label.to_string()
             );
             result
         }
         SemaExpr::Subscript(subscript) => {
             // TODO
 
-            fn array_access(subscript: Subscript, cgs: &mut CodeGenStatus) -> String {
+            fn array_access(subscript: Subscript, cgs: &mut CodeGenStatus) -> LLVMValue {
                 let inside_type = subscript.subject.r#type.to_llvm_format();
                 let arr_ptr = gen_expr(*subscript.subject, cgs);
                 let index = gen_expr(*subscript.index, cgs);
@@ -349,7 +387,11 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
                 let name = cgs.name_gen.value();
                 println!(
                     "{} = getelementptr inbounds {}, {}* {}, i64 0 ,i64 {}",
-                    name, inside_type, inside_type, arr_ptr, index
+                    name.to_string(),
+                    inside_type,
+                    inside_type,
+                    arr_ptr.to_string(),
+                    index.to_string()
                 );
 
                 name
@@ -366,10 +408,16 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
                     let name = cgs.name_gen.value();
                     println!(
                         "{} = getelementptr inbounds struct, ptr {}, i64 0, i64 {}",
-                        name, base, 0
+                        name.to_string(),
+                        base.to_string(),
+                        0
                     ); // 簡略化のため0番目として扱う
                     let result = cgs.name_gen.value();
-                    println!("{} = load i64, ptr {}", result, name);
+                    println!(
+                        "{} = load i64, ptr {}",
+                        result.to_string(),
+                        name.to_string()
+                    );
                     result
                 }
                 MemberAccessOp::MinusGreater => {
@@ -377,10 +425,16 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
                     let name = cgs.name_gen.value();
                     println!(
                         "{} = getelementptr inbounds struct, ptr {}, i64 0, i64 {}",
-                        name, base, 0
+                        name.to_string(),
+                        base.to_string(),
+                        0
                     ); // 簡略化のため0番目として扱う
                     let result = cgs.name_gen.value();
-                    println!("{} = load i64, ptr {}", result, name);
+                    println!(
+                        "{} = load i64, ptr {}",
+                        result.to_string(),
+                        name.to_string()
+                    );
                     result
                 }
             }
@@ -388,7 +442,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
         SemaExpr::Sizeof(_sizeof) => {
             // sizeof演算子 - 簡略化のため4（intのサイズ）を返す
             let name = cgs.name_gen.value();
-            println!("{} = add i64 0, 4", name);
+            println!("{} = add i64 0, 4", name.to_string());
             name
         }
         SemaExpr::Cast(cast) => {
@@ -399,11 +453,13 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> String {
         }
         SemaExpr::Comma(comma) => {
             // カンマ演算子 - 最後の式の値を返す
-            let mut last_val = "".to_string();
-            for assign in comma.assigns {
-                last_val = gen_expr(assign, cgs);
-            }
-            last_val
+            // let mut last_val = "".to_string();
+            // for assign in comma.assigns {
+            //     last_val = gen_expr(assign, cgs).to_string();
+            // }
+            // last_val
+            // TODO
+            todo!()
         }
     }
 }

@@ -37,17 +37,21 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
         .unwrap()
         .return_type
         .to_llvm_format();
-    println!("{} = alloca {}", return_ptr, return_type);
+    println!(
+        "{} = alloca {}",
+        return_ptr.to_string(),
+        return_type.to_string()
+    );
 
-    cgs.return_value_ptr = Some(return_ptr.clone());
+    cgs.return_value_ptr = Some(return_ptr.clone().to_string());
     cgs.return_label = Some(return_label.clone());
 
     // 引数の処理
     {
         for (ident, ty) in &args {
             let ptr = cgs.name_gen.value();
-            println!("{} = alloca {}", ptr, ty.to_llvm_format());
-            cgs.variables.insert(ident.clone(), ptr);
+            println!("{} = alloca {}", ptr.to_string(), ty.to_llvm_format());
+            cgs.variables.insert(ident.clone(), ptr.to_string());
         }
         for (ident, ty) in &args {
             println!(
@@ -69,7 +73,11 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
 
     // return_labelとreturn処理
     println!("{}:", return_label);
-    println!("%val = load {}, ptr {}", return_type, return_ptr);
+    println!(
+        "%val = load {}, ptr {}",
+        return_type,
+        return_ptr.to_string()
+    );
     println!("ret {} %val", return_type);
 
     println!("}}");

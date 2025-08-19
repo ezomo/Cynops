@@ -85,6 +85,36 @@ pub struct NameGenerator {
     counter: usize,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+
+pub enum LLVMType {
+    Const,
+    Register,
+    Variable,
+    Label,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LLVMValue {
+    pub variable: String,
+    pub ty: LLVMType,
+}
+
+impl LLVMValue {
+    pub fn new<T: ToString>(variable: T, ty: LLVMType) -> Self {
+        Self {
+            variable: variable.to_string(),
+            ty,
+        }
+    }
+}
+
+impl ToString for LLVMValue {
+    fn to_string(&self) -> String {
+        self.variable.clone()
+    }
+}
+
 impl NameGenerator {
     pub fn new() -> Self {
         Self { counter: 0 }
@@ -95,13 +125,23 @@ impl NameGenerator {
         self.counter
     }
 
-    pub fn value(&mut self) -> String {
-        format!("%tmp{}", self.next())
+    pub fn value(&mut self) -> LLVMValue {
+        LLVMValue {
+            variable: format!("%tmp{}", self.next()),
+            ty: LLVMType::Const,
+        }
     }
+}
 
-    // pub fn lavel(&mut self) -> String {
-    //     format!("{}", self.next())
-    // }
+macro_rules! ir_println {
+    // 引数なしの場合
+    () => {
+        println!()
+    };
+    // フォーマット文字列と引数がある場合
+    ($($arg:tt)*) => {
+        println!($($arg)*)
+    };
 }
 
 pub trait ToLLVMIR {
@@ -155,23 +195,31 @@ impl ToLLVMIR for UnaryOp {
     }
 }
 
-pub fn i1toi64(name_i1: String, cgs: &mut CodeGenStatus) -> String {
+pub fn i1toi64(name_i1: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
     let name = cgs.name_gen.value();
-    println!("{} = zext i1 {} to i64", name, name_i1);
+    println!(
+        "{} = zext i1 {} to i64",
+        name.to_string(),
+        name_i1.to_string()
+    );
     name
 }
 
-pub fn i64toi1(name_i64: String, cgs: &mut CodeGenStatus) -> String {
+pub fn i64toi1(name_i64: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
     let name = cgs.name_gen.value();
-    println!("{} = icmp ne i64 {}, 0", name, name_i64);
+    println!(
+        "{} = icmp ne i64 {}, 0",
+        name.to_string(),
+        name_i64.to_string()
+    );
     name
 }
 
-pub fn load(ty: &Type, data: &str, cgs: &mut CodeGenStatus) -> String {
+pub fn load(ty: &Type, data: &str, cgs: &mut CodeGenStatus) -> LLVMValue {
     let name = cgs.name_gen.value();
     println!(
         "{} = load {}, {}* {}",
-        name,
+        name.to_string(),
         ty.to_llvm_format(),
         ty.to_llvm_format(),
         data

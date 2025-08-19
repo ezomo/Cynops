@@ -42,14 +42,15 @@ fn declare_variable(init: Init, cgs: &mut CodeGenStatus) {
     let llvm_type = &init.r.ty.to_llvm_format();
 
     // 変数を割り当て
-    println!("{} = alloca {}", var_name, llvm_type);
+    println!("{} = alloca {}", var_name.to_string(), llvm_type);
 
     // 変数名をマップに登録
-    cgs.variables.insert(init.r.ident.clone(), var_name.clone());
+    cgs.variables
+        .insert(init.r.ident.clone(), var_name.clone().to_string());
 
     // 初期化子がある場合は初期化
     if let Some(init_data) = init.l {
-        initialize_variable(&var_name, init_data, &init.r.ty, cgs);
+        initialize_variable(&var_name.to_string(), init_data, &init.r.ty, cgs);
     }
 }
 
@@ -66,7 +67,10 @@ fn initialize_variable(
             let llvm_type = var_type.to_llvm_format();
             println!(
                 "  store {} {}, {}* {}",
-                llvm_type, value, llvm_type, var_name
+                llvm_type,
+                value.to_string(),
+                llvm_type,
+                var_name
             );
         }
         InitData::Compound(compound_list) => {
@@ -79,10 +83,14 @@ fn initialize_variable(
                             format!("[{} x {}]", arr.length, &arr.array_of.to_llvm_format());
                         println!(
                             "  {} = getelementptr inbounds {}, {}* {}, i64 0, i64 {}",
-                            element_ptr, array_type, array_type, var_name, index
+                            element_ptr.to_string(),
+                            array_type,
+                            array_type,
+                            var_name,
+                            index
                         );
 
-                        initialize_variable(&element_ptr, element, &arr.array_of, cgs);
+                        initialize_variable(&element_ptr.to_string(), element, &arr.array_of, cgs);
                     }
                 }
                 _ => {
@@ -121,18 +129,22 @@ fn r#continue(cgs: &mut CodeGenStatus) {
 
 fn r#return(ret: Return, cgs: &mut CodeGenStatus) {
     let rhs = if let Some(value) = ret.value {
-        load(&value.r#type.clone(), &gen_expr(*value, cgs), cgs)
+        load(
+            &value.r#type.clone(),
+            &gen_expr(*value, cgs).to_string(),
+            cgs,
+        )
     } else {
         // voidの場合は0を返す
         //TODO
         let name = cgs.name_gen.value();
-        println!("{} = add i64 0, 0", name);
+        println!("{} = add i64 0, 0", name.to_string());
         name
     };
 
     // return値をreturn_value_ptrに保存
     if let Some(ref return_ptr) = cgs.return_value_ptr {
-        println!("store i64 {}, ptr {}", rhs, return_ptr);
+        println!("store i64 {}, ptr {}", rhs.to_string(), return_ptr);
     }
 
     // return_labelにジャンプ
@@ -166,12 +178,16 @@ mod controls {
         if if_stmt.else_branch.is_some() {
             println!(
                 "  br i1 {}, label %{}, label %{}",
-                cond_result, then_label, else_label
+                cond_result.to_string(),
+                then_label,
+                else_label
             );
         } else {
             println!(
                 "  br i1 {}, label %{}, label %{}",
-                cond_result, then_label, end_label
+                cond_result.to_string(),
+                then_label,
+                end_label
             );
         }
 
@@ -207,7 +223,9 @@ mod controls {
         let cond_result = gen_expr(*while_stmt.cond, cgs); // todo!()で条件式を評価した結果
         println!(
             "  br i1 {}, label %{}, label %{}",
-            cond_result, body_label, end_label
+            cond_result.to_string(),
+            body_label,
+            end_label
         );
 
         // 本体ラベル
@@ -243,7 +261,9 @@ mod controls {
         let cond_result = gen_expr(*do_while_stmt.cond, cgs); // todo!()で条件式を評価した結果
         println!(
             "  br i1 {}, label %{}, label %{}",
-            cond_result, body_label, end_label
+            cond_result.to_string(),
+            body_label,
+            end_label
         );
 
         // 終了ラベル
@@ -276,7 +296,9 @@ mod controls {
             let cond_result = gen_expr(*_cond, cgs); // todo!()で条件式を評価した結果
             println!(
                 "  br i1 {}, label %{}, label %{}",
-                cond_result, body_label, end_label
+                cond_result.to_string(),
+                body_label,
+                end_label
             );
         } else {
             // 条件なし（無限ループ）
@@ -312,7 +334,11 @@ mod controls {
         let cond_result = gen_expr(*switch_stmt.cond, cgs);
 
         // switchの開始
-        print!("  switch i64 {}, label %{} [", cond_result, default_label);
+        print!(
+            "  switch i64 {}, label %{} [",
+            cond_result.to_string(),
+            default_label
+        );
 
         let mut case_labels = Vec::new();
         let mut has_default = false;
