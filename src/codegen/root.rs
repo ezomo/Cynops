@@ -28,7 +28,7 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
     );
 
     // return用の変数とラベルを設定
-    let return_ptr = cgs.name_gen.value();
+    let return_ptr = cgs.name_gen.register();
     let return_label = "return_label".to_string();
     let return_type = function
         .sig
@@ -49,7 +49,7 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
     // 引数の処理
     {
         for (ident, ty) in &args {
-            let ptr = cgs.name_gen.value();
+            let ptr = cgs.name_gen.register();
             println!("{} = alloca {}", ptr.to_string(), ty.to_llvm_format());
             cgs.variables.insert(ident.clone(), ptr.to_string());
         }

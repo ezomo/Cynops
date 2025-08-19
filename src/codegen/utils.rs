@@ -125,10 +125,24 @@ impl NameGenerator {
         self.counter
     }
 
-    pub fn value(&mut self) -> LLVMValue {
+    pub fn r#const(&mut self) -> LLVMValue {
         LLVMValue {
             variable: format!("%tmp{}", self.next()),
             ty: LLVMType::Const,
+        }
+    }
+
+    pub fn register(&mut self) -> LLVMValue {
+        LLVMValue {
+            variable: format!("%tmp{}", self.next()),
+            ty: LLVMType::Register,
+        }
+    }
+
+    pub fn variable(&mut self) -> LLVMValue {
+        LLVMValue {
+            variable: format!("%tmp{}", self.next()),
+            ty: LLVMType::Variable,
         }
     }
 }
@@ -196,7 +210,7 @@ impl ToLLVMIR for UnaryOp {
 }
 
 pub fn i1toi64(name_i1: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
-    let name = cgs.name_gen.value();
+    let name = cgs.name_gen.register();
     println!(
         "{} = zext i1 {} to i64",
         name.to_string(),
@@ -206,7 +220,7 @@ pub fn i1toi64(name_i1: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
 }
 
 pub fn i64toi1(name_i64: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
-    let name = cgs.name_gen.value();
+    let name = cgs.name_gen.register();
     println!(
         "{} = icmp ne i64 {}, 0",
         name.to_string(),
@@ -215,16 +229,22 @@ pub fn i64toi1(name_i64: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
     name
 }
 
-pub fn load(ty: &Type, data: &str, cgs: &mut CodeGenStatus) -> LLVMValue {
-    let name = cgs.name_gen.value();
-    println!(
-        "{} = load {}, {}* {}",
-        name.to_string(),
-        ty.to_llvm_format(),
-        ty.to_llvm_format(),
-        data
-    );
-    name
+pub fn load(ty: &Type, data: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
+    match data.ty {
+        LLVMType::Variable => {
+            let name = cgs.name_gen.register();
+            println!(
+                "{} = load {}, {}* {}",
+                name.to_string(),
+                ty.to_llvm_format(),
+                ty.to_llvm_format(),
+                data.to_string()
+            );
+            name
+        }
+
+        _ => data,
+    }
 }
 
 impl Type {

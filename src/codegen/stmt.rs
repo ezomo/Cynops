@@ -38,7 +38,7 @@ fn declstmt(declstmt: DeclStmt, cgs: &mut CodeGenStatus) {
 }
 
 fn declare_variable(init: Init, cgs: &mut CodeGenStatus) {
-    let var_name = cgs.name_gen.value();
+    let var_name = cgs.name_gen.register();
     let llvm_type = &init.r.ty.to_llvm_format();
 
     // 変数を割り当て
@@ -78,7 +78,7 @@ fn initialize_variable(
                 Type::Array(arr) => {
                     // 配列の初期化 {1, 2, 3}
                     for (index, element) in compound_list.into_iter().enumerate() {
-                        let element_ptr = cgs.name_gen.value();
+                        let element_ptr = cgs.name_gen.register();
                         let array_type =
                             format!("[{} x {}]", arr.length, &arr.array_of.to_llvm_format());
                         println!(
@@ -129,15 +129,11 @@ fn r#continue(cgs: &mut CodeGenStatus) {
 
 fn r#return(ret: Return, cgs: &mut CodeGenStatus) {
     let rhs = if let Some(value) = ret.value {
-        load(
-            &value.r#type.clone(),
-            &gen_expr(*value, cgs).to_string(),
-            cgs,
-        )
+        load(&value.r#type.clone(), gen_expr(*value, cgs), cgs)
     } else {
         // voidの場合は0を返す
         //TODO
-        let name = cgs.name_gen.value();
+        let name = cgs.name_gen.register();
         println!("{} = add i64 0, 0", name.to_string());
         name
     };

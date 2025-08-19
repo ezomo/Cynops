@@ -37,12 +37,12 @@ mod tests {
     fn test_extract_exprs() {
         let mut input = "
         int main(void) {
-            int a = 0;
-            int *b = &a;
+        int a[4] = {0, 1, 2, 3};
+        int c = a[3] + a[2];
 
-            int c = *b;
-            return c;
+        return c;
         }
+
         "
         .to_string();
         preprocessor::remove_comments(&mut input);
