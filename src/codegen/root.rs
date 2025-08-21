@@ -55,9 +55,10 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
         }
         for (ident, ty) in &args {
             println!(
-                "store {} %{}, ptr {}",
+                "store {} %{}, {}* {}",
                 ty.to_llvm_format(),
                 ident.get_name(),
+                ty.to_llvm_format(),
                 cgs.variables[&ident]
             );
         }

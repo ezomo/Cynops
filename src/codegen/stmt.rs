@@ -128,19 +128,20 @@ fn r#continue(cgs: &mut CodeGenStatus) {
 }
 
 fn r#return(ret: Return, cgs: &mut CodeGenStatus) {
-    let rhs = if let Some(value) = ret.value {
-        load(&value.r#type.clone(), gen_expr(*value, cgs), cgs)
-    } else {
-        // voidの場合は0を返す
-        //TODO
-        let name = cgs.name_gen.register();
-        println!("{} = add i64 0, 0", name.to_string());
-        name
-    };
+    if let Some(expr) = ret.value {
+        let ty = expr.r#type.clone();
+        let val = load(&ty, gen_expr(*expr, cgs), cgs);
 
-    // return値をreturn_value_ptrに保存
-    if let Some(ref return_ptr) = cgs.return_value_ptr {
-        println!("store i64 {}, ptr {}", rhs.to_string(), return_ptr);
+        // return値をreturn_value_ptrに保存
+        if let Some(ref return_ptr) = cgs.return_value_ptr {
+            println!(
+                "store {} {}, {}* {}",
+                ty.to_llvm_format(),
+                val.to_string(),
+                ty.to_llvm_format(),
+                return_ptr
+            );
+        }
     }
 
     // return_labelにジャンプ

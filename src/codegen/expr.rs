@@ -212,13 +212,16 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                 SemaExpr::Ident(idn) => idn.clone(),
                 _ => panic!("Function call target is not an identifier"),
             };
+
+            let return_type = &call.func.r#type.as_func().unwrap().return_type;
             println!(
-                "{} = call i64 @{}({})",
+                "{} = call {} @{}({})",
                 name.to_string(),
+                return_type.to_llvm_format(),
                 fn_name.get_name(),
                 args.join(", ")
             );
-            name
+            wrap(&return_type, name, cgs)
         }
         SemaExpr::Unary(unary) => {
             match unary.op {
