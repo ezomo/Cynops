@@ -236,6 +236,26 @@ pub fn load(ty: &Type, data: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
     }
 }
 
+pub fn wrap(ty: &Type, data: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
+    match data.ty {
+        LLVMType::Variable => data,
+        _ => {
+            let name = cgs.name_gen.variable();
+            println!("{} = alloca {}", name.to_string(), ty.to_llvm_format());
+
+            println!(
+                "store {} {}, {}* {}",
+                ty.to_llvm_format(),
+                data.to_string(),
+                ty.to_llvm_format(),
+                name.to_string()
+            );
+
+            name
+        }
+    }
+}
+
 impl Type {
     pub fn to_llvm_format(&self) -> String {
         match self {

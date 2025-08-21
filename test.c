@@ -1,13 +1,18 @@
 
+// int swap(int *x, int *y) {
+//     int e = 0;
+//     e = *y;
+//     *y = *x;
+//     *x = e;
+
+//     return 0;
+// }
+
+// int add(int x, int y) { return x + y; }
 
 int main(void) {
-  int a = 1000;
-  int *b = &a;
+    int a = 100;
+    // int b = 50;
 
-  *b = 20;
-
-  int c;
-  c = *b;
-
-  return c;
+    return *(&a);
 }

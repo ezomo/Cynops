@@ -281,49 +281,21 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                     }
                 }
                 UnaryOp::Ampersand => {
-                    let ty = unary.expr.r#type.to_llvm_format();
-                    let val = gen_expr(*unary.expr, cgs);
+                    let ty = unary.expr.r#type.clone();
+                    let val = wrap(&ty, gen_expr(*unary.expr, cgs), cgs);
 
                     // println!("{:?}", val);
-                    match val.ty {
-                        LLVMType::Variable => {
-                            let name = cgs.name_gen.variable();
-                            println!("{} = alloca {}*", name.to_string(), ty);
+                    let name = cgs.name_gen.variable();
+                    println!("{} = alloca {}*", name.to_string(), ty.to_llvm_format());
 
-                            println!(
-                                "store {}* {}, {}** {}",
-                                ty,
-                                val.to_string(),
-                                ty,
-                                name.to_string()
-                            );
-                            name
-                        }
-                        _ => {
-                            let name = cgs.name_gen.register();
-                            println!("{} = alloca {}", name.to_string(), ty);
-
-                            println!(
-                                "store {} {}, {}* {}",
-                                ty,
-                                val.to_string(),
-                                ty,
-                                name.to_string()
-                            );
-
-                            let name2 = cgs.name_gen.variable();
-
-                            println!("{} = alloca {}", name2.to_string(), ty);
-                            println!(
-                                "store {}* {}, {}** {}",
-                                ty,
-                                name.to_string(),
-                                ty,
-                                name2.to_string()
-                            );
-                            name2
-                        }
-                    }
+                    println!(
+                        "store {}* {}, {}** {}",
+                        ty.to_llvm_format(),
+                        val.to_string(),
+                        ty.to_llvm_format(),
+                        name.to_string()
+                    );
+                    name
                 }
                 UnaryOp::Asterisk => {
                     // 間接参照演算子 *x
