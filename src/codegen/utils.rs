@@ -1,4 +1,4 @@
-use crate::ast::*;
+use crate::{ast::*, sema::TypedExpr};
 use std::collections::HashMap;
 
 // CodeGenStatus の定義
@@ -191,24 +191,18 @@ impl ToLLVMIR for UnaryOp {
     }
 }
 
-pub fn i1toi64(name_i1: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
-    let name = cgs.name_gen.register();
-    println!(
-        "{} = zext i1 {} to i64",
-        name.to_string(),
-        name_i1.to_string()
-    );
-    name
-}
+impl LLVMValue {
+    pub fn i1toi64(self: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
+        let name = cgs.name_gen.register();
+        println!("{} = zext i1 {} to i64", name.to_string(), self.to_string());
+        name
+    }
 
-pub fn i64toi1(name_i64: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
-    let name = cgs.name_gen.register();
-    println!(
-        "{} = icmp ne i64 {}, 0",
-        name.to_string(),
-        name_i64.to_string()
-    );
-    name
+    pub fn i64toi1(&self, cgs: &mut CodeGenStatus) -> LLVMValue {
+        let name = cgs.name_gen.register();
+        println!("{} = icmp ne i64 {}, 0", name.to_string(), self.to_string());
+        name
+    }
 }
 
 pub fn load(ty: &Type, data: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
@@ -227,6 +221,14 @@ pub fn load(ty: &Type, data: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
 
         _ => data,
     }
+}
+
+pub fn new_load(
+    fnc: impl Fn(TypedExpr, &mut CodeGenStatus) -> LLVMValue,
+    expr: TypedExpr,
+    cgs: &mut CodeGenStatus,
+) -> LLVMValue {
+    load(&expr.r#type.clone(), fnc(expr, cgs), cgs)
 }
 
 pub fn wrap(ty: &Type, data: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
