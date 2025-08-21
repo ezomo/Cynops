@@ -63,7 +63,7 @@ fn initialize_variable(
     match init_data {
         InitData::Expr(typed_expr) => {
             // 単純な式による初期化
-            let value = gen_expr(typed_expr, cgs);
+            let value = load(&typed_expr.r#type.clone(), gen_expr(typed_expr, cgs), cgs);
             let llvm_type = var_type.to_llvm_format();
             println!(
                 "  store {} {}, {}* {}",
