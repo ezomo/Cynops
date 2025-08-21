@@ -39,10 +39,10 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
             }
             BinaryOp::Logical(Logical::AmpersandAmpersand) => {
                 // 短絡評価: lhs && rhs
-                let lhs_bool = gen_expr(*binary.lhs, cgs).i1toi64(cgs);
-                let true_label = cgs.name_gen.register();
-                let false_label = cgs.name_gen.register();
-                let end_label = cgs.name_gen.register();
+                let lhs_bool = gen_expr(*binary.lhs, cgs).i64toi1(cgs);
+                let true_label = cgs.name_gen.label();
+                let false_label = cgs.name_gen.label();
+                let end_label = cgs.name_gen.label();
 
                 println!(
                     "br i1 {}, label %{}, label %{}",
@@ -64,7 +64,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                 println!("{}:", end_label.to_string());
                 let result = cgs.name_gen.register();
                 println!(
-                    "{} = phi i64 [{}, {}], [0, {}]",
+                    "{} = phi i64 [{}, %{}], [0, %{}]",
                     result.to_string(),
                     rhs.to_string(),
                     true_label.to_string(),
@@ -355,12 +355,12 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
             }
         }
         SemaExpr::Ternary(ternary) => {
-            let cond = gen_expr(*ternary.cond, cgs);
+            let cond = new_load(gen_expr, *ternary.cond, cgs);
             let cond_bool = cond.i64toi1(cgs);
 
-            let true_label = cgs.name_gen.register();
-            let false_label = cgs.name_gen.register();
-            let end_label = cgs.name_gen.register();
+            let true_label = cgs.name_gen.label();
+            let false_label = cgs.name_gen.label();
+            let end_label = cgs.name_gen.label();
 
             println!(
                 "br i1 {}, label %{}, label %{}",
@@ -383,7 +383,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
             println!("{}:", end_label.to_string());
             let result = cgs.name_gen.register();
             println!(
-                "{} = phi i64 [{}, {}], [{}, {}]",
+                "{} = phi i64 [{}, %{}], [{}, %{}]",
                 result.to_string(),
                 true_val.to_string(),
                 true_label.to_string(),

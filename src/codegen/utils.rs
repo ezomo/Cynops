@@ -91,7 +91,7 @@ pub enum LLVMType {
     Const,
     Register,
     Variable,
-    // Label,
+    Label,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -136,6 +136,13 @@ impl NameGenerator {
         LLVMValue {
             variable: format!("%tmp{}", self.next()),
             ty: LLVMType::Variable,
+        }
+    }
+
+    pub fn label(&mut self) -> LLVMValue {
+        LLVMValue {
+            variable: format!("label_{}", self.next()),
+            ty: LLVMType::Label,
         }
     }
 }
