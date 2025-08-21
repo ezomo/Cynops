@@ -23,8 +23,8 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                 name
             }
             BinaryOp::Comparison(com) => {
-                let lhs = gen_expr(*binary.lhs, cgs);
-                let rhs = gen_expr(*binary.rhs, cgs);
+                let lhs = new_load(gen_expr, *binary.lhs, cgs);
+                let rhs = new_load(gen_expr, *binary.rhs, cgs);
                 let name = cgs.name_gen.register();
 
                 println!(
@@ -35,7 +35,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                     lhs.to_string(),
                     rhs.to_string()
                 );
-                name
+                name.i1toi64(cgs)
             }
             BinaryOp::Logical(Logical::AmpersandAmpersand) => {
                 // 短絡評価: lhs && rhs
@@ -393,12 +393,10 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
             result
         }
         SemaExpr::Subscript(subscript) => {
-            // TODO
-
             fn array_access(subscript: Subscript, cgs: &mut CodeGenStatus) -> LLVMValue {
                 let inside_type = subscript.subject.r#type.to_llvm_format();
                 let arr_ptr = gen_expr(*subscript.subject, cgs);
-                let index = gen_expr(*subscript.index, cgs);
+                let index = new_load(gen_expr, *subscript.index, cgs);
 
                 let name = cgs.name_gen.variable();
                 println!(
