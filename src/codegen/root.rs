@@ -89,7 +89,7 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
 }
 
 #[allow(dead_code)]
-fn function_proto(function: FunctionProto, cgs: &mut CodeGenStatus) {
+fn function_proto(function: FunctionProto, _cgs: &mut CodeGenStatus) {
     println!(
         "declare {} @{}({})",
         function

@@ -468,13 +468,11 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
         }
         SemaExpr::Comma(comma) => {
             // カンマ演算子 - 最後の式の値を返す
-            // let mut last_val = "".to_string();
-            // for assign in comma.assigns {
-            //     last_val = gen_expr(assign, cgs).to_string();
-            // }
-            // last_val
-            // TODO
-            todo!()
+            let mut last_val = gen_expr(comma.assigns[0].clone(), cgs);
+            for i in 1..comma.assigns.len() {
+                last_val = gen_expr(comma.assigns[i].clone(), cgs);
+            }
+            last_val
         }
     }
 }

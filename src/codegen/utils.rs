@@ -1,4 +1,4 @@
-use crate::{ast::*, codegen};
+use crate::ast::*;
 use std::collections::HashMap;
 
 // CodeGenStatus の定義
@@ -91,7 +91,7 @@ pub enum LLVMType {
     Const,
     Register,
     Variable,
-    Label,
+    // Label,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -123,13 +123,6 @@ impl NameGenerator {
     fn next(&mut self) -> usize {
         self.counter += 1;
         self.counter
-    }
-
-    pub fn r#const(&mut self) -> LLVMValue {
-        LLVMValue {
-            variable: format!("%tmp{}", self.next()),
-            ty: LLVMType::Const,
-        }
     }
 
     pub fn register(&mut self) -> LLVMValue {
@@ -216,17 +209,6 @@ pub fn i64toi1(name_i64: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
         name_i64.to_string()
     );
     name
-}
-
-impl Type {
-    pub fn is_last(&self) -> bool {
-        match self {
-            Self::Char => true,
-            Self::Double => true,
-            Self::Int => true,
-            _ => false,
-        }
-    }
 }
 
 pub fn load(ty: &Type, data: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
