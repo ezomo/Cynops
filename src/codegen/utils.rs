@@ -218,6 +218,17 @@ pub fn i64toi1(name_i64: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
     name
 }
 
+impl Type {
+    pub fn is_last(&self) -> bool {
+        match self {
+            Self::Char => true,
+            Self::Double => true,
+            Self::Int => true,
+            _ => false,
+        }
+    }
+}
+
 pub fn load(ty: &Type, data: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
     match data.ty {
         LLVMType::Variable => {

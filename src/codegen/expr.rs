@@ -201,9 +201,9 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                 .iter()
                 .map(|arg| {
                     format!(
-                        "{}* {}",
-                        typed_expr.r#type.to_llvm_format(),
-                        gen_expr(*arg.clone(), cgs).to_string()
+                        "{} {}",
+                        arg.r#type.to_llvm_format(),
+                        load(&arg.r#type, gen_expr(*arg.clone(), cgs), cgs).to_string()
                     )
                 })
                 .collect();
