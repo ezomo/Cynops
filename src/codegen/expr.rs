@@ -199,9 +199,15 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
             let args: Vec<String> = call
                 .args
                 .iter()
-                .map(|arg| format!("i64 noundef {}", gen_expr(*arg.clone(), cgs).to_string()))
+                .map(|arg| {
+                    format!(
+                        "{}* {}",
+                        typed_expr.r#type.to_llvm_format(),
+                        gen_expr(*arg.clone(), cgs).to_string()
+                    )
+                })
                 .collect();
-
+            // TODO
             let fn_name = match &call.func.r#expr {
                 SemaExpr::Ident(idn) => idn.clone(),
                 _ => panic!("Function call target is not an identifier"),
@@ -275,13 +281,48 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                     }
                 }
                 UnaryOp::Ampersand => {
-                    // アドレス演算子 &x
-                    if let SemaExpr::Ident(ident) = &unary.expr.r#expr {
-                        let ptr = cgs.variables.get(ident).unwrap().clone();
-                        // 変数のポインタをそのまま返す
-                        LLVMValue::new(ptr, LLVMType::Variable)
-                    } else {
-                        panic!("& can only be applied to lvalues");
+                    let ty = unary.expr.r#type.to_llvm_format();
+                    let val = gen_expr(*unary.expr, cgs);
+
+                    // println!("{:?}", val);
+                    match val.ty {
+                        LLVMType::Variable => {
+                            let name = cgs.name_gen.variable();
+                            println!("{} = alloca {}*", name.to_string(), ty);
+
+                            println!(
+                                "store {}* {}, {}** {}",
+                                ty,
+                                val.to_string(),
+                                ty,
+                                name.to_string()
+                            );
+                            name
+                        }
+                        _ => {
+                            let name = cgs.name_gen.register();
+                            println!("{} = alloca {}", name.to_string(), ty);
+
+                            println!(
+                                "store {} {}, {}* {}",
+                                ty,
+                                val.to_string(),
+                                ty,
+                                name.to_string()
+                            );
+
+                            let name2 = cgs.name_gen.variable();
+
+                            println!("{} = alloca {}", name2.to_string(), ty);
+                            println!(
+                                "store {}* {}, {}** {}",
+                                ty,
+                                name.to_string(),
+                                ty,
+                                name2.to_string()
+                            );
+                            name2
+                        }
                     }
                 }
                 UnaryOp::Asterisk => {
