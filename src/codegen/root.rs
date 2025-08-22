@@ -117,7 +117,7 @@ fn function_proto(function: FunctionProto, _cgs: &mut CodeGenStatus) {
 fn gen_top_level(top_level: TopLevel, cgs: &mut CodeGenStatus) {
     match top_level {
         TopLevel::FunctionDef(function) => function_def(function, cgs),
-        TopLevel::FunctionProto(_function) => return, // 関数プロトタイプは無視
+        TopLevel::FunctionProto(function) => function_proto(function, cgs), // 関数プロトタイプは無視
         TopLevel::Stmt(stmt) => super::stmt::stmt(stmt, cgs),
     }
 }

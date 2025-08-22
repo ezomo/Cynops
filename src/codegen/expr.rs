@@ -204,7 +204,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                         load(&arg.r#type, gen_expr(*arg.clone(), cgs), cgs).to_string()
                     )
                 })
-                .collect();
+                .collect::<Vec<String>>();
             // TODO
             let fn_name = match &call.func.r#expr {
                 SemaExpr::Ident(idn) => idn.clone(),
@@ -213,8 +213,17 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
 
             let return_type = &call.func.r#type.as_func().unwrap().return_type;
             println!(
-                "{} = call {} @{}({})",
+                "{} = call {} ({}) @{}({})",
                 name.to_string(),
+                call.func
+                    .r#type
+                    .as_func()
+                    .unwrap()
+                    .params
+                    .iter()
+                    .map(|x| x.to_llvm_format())
+                    .collect::<Vec<String>>()
+                    .join(","),
                 return_type.to_llvm_format(),
                 fn_name.get_name(),
                 args.join(", ")
