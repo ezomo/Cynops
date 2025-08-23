@@ -193,7 +193,6 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
             _ => LLVMValue::new(cgs.variables[&ident].clone(), LLVMType::Variable),
         },
         SemaExpr::Call(call) => {
-            let name = cgs.name_gen.register();
             let args: Vec<String> = call
                 .args
                 .iter()
@@ -212,22 +211,30 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
             };
 
             let return_type = &call.func.r#type.as_func().unwrap().return_type;
-            println!(
-                "{} = call {} ({}) @{}({})",
-                name.to_string(),
-                call.func
-                    .r#type
-                    .as_func()
-                    .unwrap()
-                    .params
-                    .iter()
-                    .map(|x| x.to_llvm_format())
-                    .collect::<Vec<String>>()
-                    .join(","),
-                return_type.to_llvm_format(),
-                fn_name.get_name(),
-                args.join(", ")
-            );
+            let name = match **return_type {
+                Type::Void => {
+                    let name = cgs.name_gen.void();
+                    println!(
+                        "call {} @{}({})",
+                        call.func.r#type.to_llvm_format(),
+                        fn_name.get_name(),
+                        args.join(", ")
+                    );
+                    name
+                }
+                _ => {
+                    let name = cgs.name_gen.register();
+                    println!(
+                        "{} = call {} @{}({})",
+                        name.to_string(),
+                        call.func.r#type.to_llvm_format(),
+                        fn_name.get_name(),
+                        args.join(", ")
+                    );
+                    name
+                }
+            };
+
             wrap(&return_type, name, cgs)
         }
         SemaExpr::Unary(unary) => {

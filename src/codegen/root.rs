@@ -27,26 +27,6 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
             .join(", "),
     );
 
-    // return用の変数とラベルを設定
-    let return_ptr = cgs.name_gen.register();
-    let return_label = "return_label".to_string();
-    let return_type = function
-        .sig
-        .ty
-        .as_func()
-        .unwrap()
-        .return_type
-        .to_llvm_format();
-    println!(
-        "{} = alloca {}",
-        return_ptr.to_string(),
-        return_type.to_string()
-    );
-
-    cgs.return_value_ptr = Some(return_ptr.clone().to_string());
-    cgs.return_label = Some(return_label.clone());
-
-    // 引数の処理
     {
         for (ident, ty) in &args {
             let ptr = cgs.name_gen.register();
@@ -64,9 +44,30 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
         }
     }
 
+    // return用の変数とラベルを設定
+
+    let return_type = function.sig.ty.as_func().unwrap().return_type.clone();
+    let return_label = "return_label".to_string();
+    let return_ptr = cgs.name_gen.register();
+
+    if !return_type.is_void() {
+        println!(
+            "{} = alloca {}",
+            return_ptr.to_string(),
+            return_type.to_llvm_format()
+        );
+        cgs.return_value_ptr = Some(return_ptr.clone().to_string());
+    }
+
+    cgs.return_label = Some(return_label.clone());
+
+    // 引数の処理
+
     // 関数本体の処理
-    for stmt in function.body.into_vec() {
-        super::stmt::stmt(*stmt, cgs);
+    {
+        for stmt in function.body.into_vec() {
+            super::stmt::stmt(*stmt, cgs);
+        }
     }
 
     // 常にreturn_labelにジャンプ（return文がない場合のため）
@@ -74,12 +75,17 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
 
     // return_labelとreturn処理
     println!("{}:", return_label);
-    println!(
-        "%val = load {}, ptr {}",
-        return_type,
-        return_ptr.to_string()
-    );
-    println!("ret {} %val", return_type);
+
+    if !return_type.is_void() {
+        println!(
+            "%val = load {}, ptr {}",
+            return_type.to_llvm_format(),
+            return_ptr.to_string()
+        );
+        println!("ret {} %val", return_type.to_llvm_format());
+    } else {
+        println!("ret void");
+    }
 
     println!("}}");
 

@@ -25,8 +25,8 @@ fn main() {
     let mut token = lexer::tokenize(&input);
     let mut session = parser::ParseSession::new();
     let program: ast::Program = parser::program(&mut session, &mut token);
-    codegen::generate_program(program.clone(), &mut codegen::CodeGenStatus::new());
     // ast_visualizer::visualize_program(&program);
+    codegen::generate_program(program.clone(), &mut codegen::CodeGenStatus::new());
 }
 
 #[cfg(test)]

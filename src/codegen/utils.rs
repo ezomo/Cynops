@@ -92,6 +92,7 @@ pub enum LLVMType {
     Register,
     Variable,
     Label,
+    Void,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -129,6 +130,13 @@ impl NameGenerator {
         LLVMValue {
             variable: format!("%tmp{}", self.next()),
             ty: LLVMType::Register,
+        }
+    }
+
+    pub fn void(&mut self) -> LLVMValue {
+        LLVMValue {
+            variable: "void".to_string(),
+            ty: LLVMType::Void,
         }
     }
 
@@ -241,6 +249,7 @@ pub fn new_load(
 pub fn wrap(ty: &Type, data: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
     match data.ty {
         LLVMType::Variable => data,
+        LLVMType::Void => data,
         _ => {
             let name = cgs.name_gen.variable();
             println!("{} = alloca {}", name.to_string(), ty.to_llvm_format());
@@ -259,6 +268,10 @@ pub fn wrap(ty: &Type, data: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
 }
 
 impl Type {
+    pub fn is_void(&self) -> bool {
+        matches!(self, Type::Void)
+    }
+
     pub fn to_llvm_format(&self) -> String {
         match self {
             Type::Void => "void".to_string(),
@@ -270,6 +283,18 @@ impl Type {
             }
             Type::Array(arr) => {
                 format!("[{} x {}]", arr.length, &arr.array_of.to_llvm_format())
+            }
+            Type::Func(func) => {
+                format!(
+                    "{} ({})",
+                    func.return_type.to_llvm_format(),
+                    func.params
+                        .iter()
+                        .filter(|x| !x.is_void())
+                        .map(|x| x.to_llvm_format())
+                        .collect::<Vec<String>>()
+                        .join(","),
+                )
             }
             _ => todo!("未対応の型: {:?}", self),
         }
