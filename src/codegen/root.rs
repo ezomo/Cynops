@@ -12,7 +12,7 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
         .collect();
 
     println!(
-        "define {} @{}({}) {{",
+        "define {} {}({}) {{",
         function
             .sig
             .ty
@@ -20,7 +20,7 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
             .unwrap()
             .return_type
             .to_llvm_format(),
-        function.sig.ident.get_name(),
+        function.sig.ident.get_fnc_name(),
         args.iter()
             .map(|x| format!("{} %{}", x.1.to_llvm_format(), x.0.get_name()))
             .collect::<Vec<_>>()

@@ -190,7 +190,10 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
         SemaExpr::Ident(ident) => match typed_expr.r#type {
             Type::Array(_) => LLVMValue::new(cgs.variables[&ident].clone(), LLVMType::Variable),
             Type::Pointer(_) => LLVMValue::new(cgs.variables[&ident].clone(), LLVMType::Variable),
-            _ => LLVMValue::new(cgs.variables[&ident].clone(), LLVMType::Variable),
+            _ => LLVMValue::new(
+                cgs.variables.get(&ident).unwrap_or(&ident.get_fnc_name()),
+                LLVMType::Variable,
+            ),
         },
         SemaExpr::Call(call) => {
             let args: Vec<String> = call
@@ -205,19 +208,16 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                 })
                 .collect::<Vec<String>>();
             // TODO
-            let fn_name = match &call.func.r#expr {
-                SemaExpr::Ident(idn) => idn.clone(),
-                _ => panic!("Function call target is not an identifier"),
-            };
+            let fn_name = gen_expr(*call.func.clone(), cgs);
 
             let return_type = &call.func.r#type.as_func().unwrap().return_type;
             let name = match **return_type {
                 Type::Void => {
                     let name = cgs.name_gen.void();
                     println!(
-                        "call {} @{}({})",
+                        "call {} {}({})",
                         call.func.r#type.to_llvm_format(),
-                        fn_name.get_name(),
+                        fn_name.to_string(),
                         args.join(", ")
                     );
                     name
@@ -225,10 +225,10 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                 _ => {
                     let name = cgs.name_gen.register();
                     println!(
-                        "{} = call {} @{}({})",
+                        "{} = call {} {}({})",
                         name.to_string(),
                         call.func.r#type.to_llvm_format(),
-                        fn_name.get_name(),
+                        fn_name.to_string(),
                         args.join(", ")
                     );
                     name

@@ -163,6 +163,10 @@ impl Ident {
     pub fn get_name(&self) -> &str {
         &self.name
     }
+
+    pub fn get_fnc_name(&self) -> String {
+        format!("@{}", &self.name)
+    }
 }
 
 impl ToLLVMIR for Arithmetic {
