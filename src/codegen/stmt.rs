@@ -82,7 +82,7 @@ fn initialize_variable(
                 Type::Array(arr) => {
                     // 配列の初期化 {1, 2, 3}
                     for (index, element) in compound_list.into_iter().enumerate() {
-                        let element_ptr = cgs.name_gen.register();
+                        let element_ptr = cgs.name_gen.variable();
                         let array_type =
                             format!("[{} x {}]", arr.length, &arr.array_of.to_llvm_format());
                         println!(

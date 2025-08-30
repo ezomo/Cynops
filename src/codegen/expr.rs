@@ -177,15 +177,35 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
             name1
         }
         SemaExpr::String(s) => {
-            let global_name = cgs.get_or_create_string_literal(&s);
-            let name = cgs.name_gen.register();
+            let var_name = cgs.name_gen.variable();
             println!(
-                "{} = getelementptr inbounds [{}x i8], ptr @{}, i64 0, i64 0",
-                name.to_string(),
-                s.len() + 1,
-                global_name
+                "{} = alloca {}",
+                var_name.to_string(),
+                typed_expr.r#type.to_llvm_format()
             );
-            name
+            let arr = typed_expr.r#type.as_array().unwrap();
+            for i in 0..arr.length {
+                let element_ptr = cgs.name_gen.register();
+                let array_type = format!("[{} x {}]", arr.length, &arr.array_of.to_llvm_format());
+                println!(
+                    "  {} = getelementptr inbounds {}, {}* {}, i64 0, i64 {}",
+                    element_ptr.to_string(),
+                    array_type,
+                    array_type,
+                    var_name.to_string(),
+                    i
+                );
+
+                println!(
+                    "  store {} {}, {}* {}",
+                    arr.array_of.to_llvm_format(),
+                    s[i] as u8,
+                    arr.array_of.to_llvm_format(),
+                    element_ptr.to_string()
+                );
+            }
+
+            var_name
         }
         SemaExpr::Ident(ident) => match typed_expr.r#type {
             Type::Array(_) => LLVMValue::new(cgs.variables[&ident].clone(), LLVMType::Variable),

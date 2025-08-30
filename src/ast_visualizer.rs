@@ -774,10 +774,16 @@ fn visualize_sema_expr(
             print_branch("Number", &n.to_string(), indent, is_last, &prefix);
         }
         SemaExpr::Char(c) => {
-            print_branch("Character", &format!("'{}'", c), indent, is_last, &prefix);
+            print_branch("Character", &format!("'{:?}'", c), indent, is_last, &prefix);
         }
         SemaExpr::String(c) => {
-            print_branch("String", &format!("\"{}\"", c), indent, is_last, &prefix);
+            print_branch(
+                "String",
+                &format!("\"{:?}\"", c.iter().collect::<String>()),
+                indent,
+                is_last,
+                &prefix,
+            );
         }
         SemaExpr::Ident(name) => {
             print_branch("Identifier", &name.name, indent, is_last, &prefix);

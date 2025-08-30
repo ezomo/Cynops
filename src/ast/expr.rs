@@ -120,7 +120,7 @@ pub enum Expr {
     Binary(Binary),
     Call(Call),
     Char(char),
-    String(String),
+    String(Vec<char>),
     Variable(Variable),
     NumInt(usize),
     NumFloat(OrderedFloat<f64>),
@@ -146,7 +146,7 @@ impl Expr {
         Expr::Char(c)
     }
 
-    pub fn string(string: String) -> Self {
+    pub fn string(string: Vec<char>) -> Self {
         Expr::String(string)
     }
 

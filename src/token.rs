@@ -5,7 +5,7 @@ pub enum Token {
     NumInt(usize),               // e.g., 123
     NumFloat(OrderedFloat<f64>), // e.g., 123
     Char(char),                  // e.g., 'a'
-    String(String),
+    String(Vec<char>),
 
     //other symbols
     Question, // '?'

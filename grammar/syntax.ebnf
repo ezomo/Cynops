@@ -59,7 +59,7 @@ enum_def          = "enum" [ident] "{" { enum_member } "}" ";" ;
 enum_member       = ident [ "=" num ] { "," ident [ "=" num ] } ;
 
 // 型
-type = "int" | "double" | "char" | "void" | "struct" ident | "union" ident | "enum" ident ;
+type = "int" | "double" | "char" | "void" | "struct" ident | "union" ident | "enum" ident |"...";
 
 type_name = type [abstract_declarator] ;
 

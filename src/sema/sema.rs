@@ -9,7 +9,7 @@ pub enum SemaExpr {
     Binary(Binary),
     Call(Call),
     Char(char),
-    String(String),
+    String(Vec<char>),
     Ident(Ident),
     NumInt(usize),
     NumFloat(OrderedFloat<f64>),
@@ -36,7 +36,7 @@ impl SemaExpr {
         SemaExpr::Char(c)
     }
 
-    pub fn string(string: String) -> Self {
+    pub fn string(string: Vec<char>) -> Self {
         SemaExpr::String(string)
     }
 

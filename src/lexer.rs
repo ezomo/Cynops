@@ -1,6 +1,34 @@
 use crate::token::{self, Keyword};
 use token::Token;
 
+fn parse_c_string_literal(s: &str) -> Vec<char> {
+    let mut result = Vec::new();
+    let mut chars = s.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            // エスケープ文字
+            if let Some(next) = chars.next() {
+                let esc_char = match next {
+                    'n' => '\n',
+                    't' => '\t',
+                    'r' => '\r',
+                    '0' => '\0',
+                    '\\' => '\\',
+                    '\'' => '\'',
+                    '\"' => '\"',
+                    _ => next, // 不明なエスケープはそのまま
+                };
+                result.push(esc_char);
+            }
+        } else {
+            result.push(c);
+        }
+    }
+
+    result
+}
+
 pub fn tokenize(input: &str) -> Vec<Token> {
     let mut tokens = Vec::new();
 
@@ -52,7 +80,7 @@ pub fn tokenize(input: &str) -> Vec<Token> {
             if input.starts_with('\'') {
                 tokens.push(Token::Char(input.chars().nth(1).unwrap()));
                 if input.chars().nth(2).unwrap() != '\'' {
-                    panic!("error")
+                    panic!("error_{}", input)
                 }
                 input = &input[3..];
                 continue;
@@ -80,7 +108,7 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                     panic!("unterminated string literal");
                 }
 
-                let content: String = input[1..end].to_string();
+                let content = parse_c_string_literal(&input[1..end]);
                 tokens.push(Token::String(content));
                 input = &input[end + 1..];
                 continue;
