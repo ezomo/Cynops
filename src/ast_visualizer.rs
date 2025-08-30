@@ -525,6 +525,7 @@ fn visualize_member_decl(member: &MemberDecl, indent: usize, is_last: bool, pref
 fn visualize_type(ty: &Type, indent: usize, is_last: bool, prefix: Vec<bool>) {
     match ty {
         Type::Void => print_branch("Void", "", indent, is_last, &prefix),
+        Type::DotDotDot => print_branch("...", "", indent, is_last, &prefix),
         Type::Int => print_branch("Int", "", indent, is_last, &prefix),
         Type::Double => print_branch("Double", "", indent, is_last, &prefix),
         Type::Char => print_branch("Char", "", indent, is_last, &prefix),

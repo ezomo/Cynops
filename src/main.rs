@@ -1,10 +1,9 @@
-// mod codegen;
+mod codegen;
 use std::{env, fs, process};
 
 mod ast;
 #[allow(dead_code)]
 mod ast_visualizer;
-mod codegen;
 mod const_eval;
 mod lexer;
 mod parser;
@@ -14,22 +13,40 @@ mod test_cases;
 mod token;
 mod typelib;
 use normalize_line_endings::normalized;
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    if args.len() != 2 {
-        eprintln!("引数の個数が正しくありません");
+    if args.len() != 3 {
+        eprintln!("使い方: {} <入力ファイル> <ast|codegen>", args[0]);
         process::exit(1);
     }
-    let mut input = fs::read_to_string(&args[1]).unwrap();
+
+    let filename = &args[1];
+    let mode = &args[2];
+
+    let mut input = fs::read_to_string(filename).unwrap();
     input = String::from_iter(normalized(input.chars()));
+
     preprocessor::remove_comments(&mut input);
     preprocessor::unescape_char_literals(&mut input);
+
     let mut token = lexer::tokenize(&input);
     let mut session = parser::ParseSession::new();
     let program: ast::Program = parser::program(&mut session, &mut token);
-    // ast_visualizer::visualize_program(&program);
-    codegen::generate_program(program.clone(), &mut codegen::CodeGenStatus::new());
+
+    match mode.as_str() {
+        "ast" => {
+            ast_visualizer::visualize_program(&program);
+        }
+        "codegen" => {
+            codegen::generate_program(program.clone(), &mut codegen::CodeGenStatus::new());
+        }
+        _ => {
+            eprintln!("不明なモード: {}", mode);
+            process::exit(1);
+        }
+    }
 }
 
 #[cfg(test)]

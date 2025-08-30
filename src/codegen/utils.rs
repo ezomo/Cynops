@@ -279,6 +279,7 @@ impl Type {
     pub fn to_llvm_format(&self) -> String {
         match self {
             Type::Void => "void".to_string(),
+            Type::DotDotDot => "...".to_string(),
             Type::Int => "i64".to_string(),
             Type::Double => "double".to_string(),
             Type::Char => "i8".to_string(),

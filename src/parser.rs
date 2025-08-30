@@ -61,6 +61,7 @@ impl ParseSession {
             Token::Keyword(Keyword::Int)
             | Token::Keyword(Keyword::Char)
             | Token::Keyword(Keyword::Void)
+            | Token::DotDotDot
             | Token::Keyword(Keyword::Double) => true,
             Token::Ident(ident) => {
                 let ident = Ident {
@@ -100,6 +101,7 @@ impl ParseSession {
     pub fn cast(&self, token: &Token) -> Option<Type> {
         match token {
             Token::Keyword(Keyword::Int) => Some(Type::Int),
+            Token::DotDotDot => Some(Type::DotDotDot),
             Token::Keyword(Keyword::Void) => Some(Type::Void),
             Token::Keyword(Keyword::Char) => Some(Type::Char),
             Token::Keyword(Keyword::Double) => Some(Type::Double),
@@ -1064,6 +1066,7 @@ fn is_next_type(_parse_session: &ParseSession, tokens: &[Token]) -> bool {
             | Token::Keyword(Keyword::Double)
             | Token::Keyword(Keyword::Char)
             | Token::Keyword(Keyword::Void)
+            | Token::DotDotDot
     ) || next == &Token::r#struct()
         || next == &Token::r#union()
         || next == &Token::r#enum()

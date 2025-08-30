@@ -35,6 +35,7 @@ pub enum Type {
     Int,
     Double,
     Char,
+    DotDotDot,
     Func(Func),
     Struct(Struct),
     Union(Union),
@@ -56,6 +57,7 @@ impl Type {
     /// Type を Rust 風の表記に変換する
     pub fn to_rust_format(&self) -> String {
         match self {
+            Type::DotDotDot => "...".to_string(),
             Type::Void => "void".to_string(),
             Type::Int => "int".to_string(),
             Type::Double => "double".to_string(),

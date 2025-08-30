@@ -69,6 +69,7 @@ pub enum Token {
     //struct
     MinusGreater, //->
     Dot,          //.
+    DotDotDot,    //...
 
     // Keywords
     Keyword(Keyword), // e.g., int, return
@@ -135,7 +136,7 @@ impl Keyword {
 }
 
 impl Token {
-    pub const SYMBOLS: [(&str, Self); 45] = [
+    pub const SYMBOLS: [(&str, Self); 46] = [
         ("?", Self::Question),
         (":", Self::Colon),
         ("+", Self::Plus),
@@ -181,6 +182,7 @@ impl Token {
         (",", Self::Comma),
         (".", Self::Dot),
         ("->", Self::MinusGreater),
+        ("...", Self::DotDotDot),
     ];
 
     pub fn classify(input: &str) -> Option<Self> {

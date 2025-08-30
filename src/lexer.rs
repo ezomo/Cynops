@@ -110,5 +110,5 @@ pub fn tokenize(input: &str) -> Vec<Token> {
 }
 #[test]
 fn test_tokenize() {
-    println!("{:?}", tokenize("int main(void) { int *a = 0; }"));
+    println!("{:?}", tokenize("int main(...) { int *a = 0; }"));
 }

@@ -121,32 +121,36 @@ fn call(a: crate::ast::expr::Call) -> TypedExpr {
     // 関数型チェックと引数型チェック
     let return_type = match &func.r#type {
         Type::Func(func_type) => {
-            // パラメータ型の検証（配列構文禁止）
-            for param in &func_type.params {
-                if let Err(err) = check_function_parameter_type(param) {
-                    panic!("関数パラメータエラー: {}", err);
+            if func_type.params[0] == Type::Void {
+                &func_type.return_type
+            } else {
+                for param in &func_type.params {
+                    if let Err(err) = check_function_parameter_type(param) {
+                        panic!("関数パラメータエラー: {}", err);
+                    }
                 }
-            }
 
-            // 引数と仮引数の型チェック
-            if args.len() != func_type.params.len()
-                && (func_type.params.len() == 0 && func_type.params[0] != Type::Void)
-            {
-                panic!(
-                    "引数の個数が一致しません: expected {}, got {},{:?}",
-                    func_type.params.len(),
-                    args.len(),
-                    func_type.params
-                );
-            }
-
-            for (i, (arg, param_type)) in args.iter().zip(&func_type.params).enumerate() {
-                if let Err(err) = check_assignment_compatibility(param_type, &arg.r#type) {
-                    panic!("第{}引数の型エラー: {}", i + 1, err);
+                if (args.len() != func_type.params.len())
+                    && (func_type.params.last().unwrap() != &Type::DotDotDot)
+                {
+                    panic!(
+                        "引数の個数が一致しません: expected {}, got {},{:?}",
+                        func_type.params.len(),
+                        args.len(),
+                        func_type.params
+                    );
                 }
-            }
 
-            &func_type.return_type
+                for (i, (arg, param_type)) in args.iter().zip(&func_type.params).enumerate() {
+                    if param_type == &Type::DotDotDot {
+                        break;
+                    }
+                    if let Err(err) = check_assignment_compatibility(param_type, &arg.r#type) {
+                        panic!("第{}引数の型エラー: {}", i + 1, err);
+                    }
+                }
+                &func_type.return_type
+            }
         }
         _ => {
             panic!("関数型ではありません: {:?}", func.r#type);
