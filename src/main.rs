@@ -13,6 +13,7 @@ mod sema;
 mod test_cases;
 mod token;
 mod typelib;
+use normalize_line_endings::normalized;
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -21,7 +22,9 @@ fn main() {
         process::exit(1);
     }
     let mut input = fs::read_to_string(&args[1]).unwrap();
+    input = String::from_iter(normalized(input.chars()));
     preprocessor::remove_comments(&mut input);
+    preprocessor::unescape_char_literals(&mut input);
     let mut token = lexer::tokenize(&input);
     let mut session = parser::ParseSession::new();
     let program: ast::Program = parser::program(&mut session, &mut token);
@@ -36,21 +39,20 @@ mod tests {
     #[test]
     fn test_extract_exprs() {
         let mut input = "
-        int main(void) {
-        int a = 1000;
-        int *b = &a;
+            int printf(char *, char*);
 
-        *b = 20;
+            int main(void){
+                char input1[4] = {'%','s','\n','\0'};
+                char input2[50] = {'N','o','w',' ','i','t',' ','h','o','l','d','s',' ','t','h','e',' ','p','o','w','e','r',' ','t','o',' ','d','e','m','o','n','s','t','r','a','t','e',' ','i','t','s',' ','m','i','g','h','t','.','\n','\0'};
 
-        int c;
-        c = *b;
-
-        return;
-        }
+                printf(&input1[0],&input2[0]);
+            }
 
         "
         .to_string();
         preprocessor::remove_comments(&mut input);
+        preprocessor::unescape_char_literals(&mut input);
+
         let mut token = lexer::tokenize(&input);
         let mut session = parser::ParseSession::new();
         let a = parser::program(&mut session, &mut token);
