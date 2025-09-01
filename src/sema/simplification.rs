@@ -3,7 +3,9 @@ use crate::ast::*;
 pub fn program(program: &mut Program) {
     for top_level in program.items.iter_mut() {
         match top_level {
-            TopLevel::FunctionDef(this) => block(&mut this.body),
+            TopLevel::FunctionDef(this) => {
+                block(&mut this.body);
+            }
             TopLevel::FunctionProto(_) => {}
             TopLevel::Stmt(this) => stmt(this),
         }
@@ -16,21 +18,161 @@ fn block(block: &mut Block) {
     }
 }
 
-fn stmt(stmt: &mut Stmt) {
-    match stmt {
+fn stmt(stmt_: &mut Stmt) {
+    match stmt_ {
         Stmt::ExprStmt(expr) => {
-            // Box<Expr> で所有権を取り出す場合
             let expr_value = std::mem::replace(expr, Expr::NumInt(0));
             let new_expr = _expr(expr_value);
             *expr = new_expr;
         }
-        Stmt::DeclStmt(_) => {}
-        Stmt::Control(_) => {}
-        Stmt::Return(_) => {}
+        Stmt::DeclStmt(decl_stmt) => {
+            decl_stmt_simplify(decl_stmt);
+        }
+        Stmt::Control(control) => {
+            control_simplify(control);
+        }
+        Stmt::Return(ret) => {
+            if let Some(value) = &mut ret.value {
+                let expr_value = std::mem::replace(value.as_mut(), Expr::NumInt(0));
+                let new_expr = _expr(expr_value);
+                **value = new_expr;
+            }
+        }
         Stmt::Goto(_) => {}
-        Stmt::Label(_) => {}
-        Stmt::Block(this) => block(this),
-        _ => {}
+        Stmt::Label(label) => {
+            stmt(&mut label.stmt);
+        }
+        Stmt::Block(this) => {
+            block(this);
+        }
+        Stmt::Break | Stmt::Continue => {}
+    }
+}
+
+fn decl_stmt_simplify(decl_stmt: &mut DeclStmt) {
+    match decl_stmt {
+        DeclStmt::InitVec(inits) => {
+            for init in inits {
+                if let Some(init_data) = &mut init.l {
+                    init_data_simplify(init_data);
+                }
+            }
+        }
+        DeclStmt::Struct(_) => {
+            // 構造体のメンバーに初期化式があれば処理（通常のCでは稀）
+        }
+        DeclStmt::Union(_) => {}
+        DeclStmt::Enum(_) => {
+            // enumの値部分に式があれば処理（通常は定数だが）
+        }
+        DeclStmt::Typedef(_) => {}
+    }
+}
+
+fn init_data_simplify(init_data: &mut InitData) {
+    match init_data {
+        InitData::Expr(expr) => {
+            let expr_value = std::mem::replace(expr, Expr::NumInt(0));
+            let new_expr = _expr(expr_value);
+            *expr = new_expr;
+        }
+        InitData::Compound(compound) => {
+            for data in compound {
+                init_data_simplify(data);
+            }
+        }
+    }
+}
+
+fn control_simplify(control: &mut Control) {
+    match control {
+        Control::If(if_stmt) => {
+            // 条件式を簡略化
+            let cond_value = std::mem::replace(if_stmt.cond.as_mut(), Expr::NumInt(0));
+            let new_cond = _expr(cond_value);
+            *if_stmt.cond = new_cond;
+
+            // then分岐を簡略化
+            stmt(&mut if_stmt.then_branch);
+
+            // else分岐があれば簡略化
+            if let Some(else_branch) = &mut if_stmt.else_branch {
+                stmt(else_branch);
+            }
+        }
+        Control::While(while_stmt) => {
+            // 条件式を簡略化
+            let cond_value = std::mem::replace(while_stmt.cond.as_mut(), Expr::NumInt(0));
+            let new_cond = _expr(cond_value);
+            *while_stmt.cond = new_cond;
+
+            // 本体を簡略化
+            stmt(&mut while_stmt.body);
+        }
+        Control::DoWhile(do_while_stmt) => {
+            // 本体を簡略化
+            stmt(&mut do_while_stmt.body);
+
+            // 条件式を簡略化
+            let cond_value = std::mem::replace(do_while_stmt.cond.as_mut(), Expr::NumInt(0));
+            let new_cond = _expr(cond_value);
+            *do_while_stmt.cond = new_cond;
+        }
+        Control::For(for_stmt) => {
+            // 初期化式があれば簡略化
+            if let Some(init) = &mut for_stmt.init {
+                let init_value = std::mem::replace(init.as_mut(), Expr::NumInt(0));
+                let new_init = _expr(init_value);
+                **init = new_init;
+            }
+
+            // 条件式があれば簡略化
+            if let Some(cond) = &mut for_stmt.cond {
+                let cond_value = std::mem::replace(cond.as_mut(), Expr::NumInt(0));
+                let new_cond = _expr(cond_value);
+                **cond = new_cond;
+            }
+
+            // ステップ式があれば簡略化
+            if let Some(step) = &mut for_stmt.step {
+                let step_value = std::mem::replace(step.as_mut(), Expr::NumInt(0));
+                let new_step = _expr(step_value);
+                **step = new_step;
+            }
+
+            // 本体を簡略化
+            stmt(&mut for_stmt.body);
+        }
+        Control::Switch(switch_stmt) => {
+            // 条件式を簡略化
+            let cond_value = std::mem::replace(switch_stmt.cond.as_mut(), Expr::NumInt(0));
+            let new_cond = _expr(cond_value);
+            *switch_stmt.cond = new_cond;
+
+            // 各caseを簡略化
+            for case in &mut switch_stmt.cases {
+                match case {
+                    SwitchCase::Case(case_stmt) => {
+                        // case定数式を簡略化
+                        let const_expr_value =
+                            std::mem::replace(&mut case_stmt.const_expr, Expr::NumInt(0));
+                        let new_const_expr = _expr(const_expr_value);
+                        case_stmt.const_expr = new_const_expr;
+
+                        // case内の文を簡略化
+                        for stmt_box in &mut case_stmt.stmts {
+                            stmt(stmt_box);
+                        }
+                    }
+                    SwitchCase::Default(default_stmt) => {
+                        // default内の文を簡略化
+                        for stmt_box in &mut default_stmt.stmts {
+                            stmt(stmt_box);
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -57,17 +199,19 @@ fn _expr(expr: Expr) -> Expr {
 }
 
 fn postfix(postfix: Postfix) -> Expr {
+    let simplified_expr = Box::new(_expr(*postfix.expr));
+
     Expr::comma(vec![
         *Expr::assign(
             AssignOp::Equal,
-            postfix.expr.clone(),
+            simplified_expr.clone(),
             Expr::binary(
                 if postfix.op == PostfixOp::plus_plus() {
                     BinaryOp::plus()
                 } else {
                     BinaryOp::minus()
                 },
-                postfix.expr.clone(),
+                simplified_expr.clone(),
                 Box::new(Expr::NumInt(1)),
             ),
         ),
@@ -77,7 +221,7 @@ fn postfix(postfix: Postfix) -> Expr {
             } else {
                 BinaryOp::plus()
             },
-            postfix.expr,
+            simplified_expr,
             Box::new(Expr::NumInt(1)),
         ),
     ])
@@ -93,35 +237,42 @@ fn unary(unary: Unary) -> Expr {
                 rhs: Box::new(_expr(target)),
             })
         }
-        UnaryOp::MinusMinus | UnaryOp::PlusPlus => *Expr::assign(
-            AssignOp::equal(),
-            unary.expr.clone(),
-            Expr::binary(
-                if unary.op == UnaryOp::plus_plus() {
-                    BinaryOp::plus()
-                } else {
-                    BinaryOp::minus()
-                },
-                unary.expr,
-                Box::new(Expr::NumInt(1)),
-            ),
-        ),
-        _ => *Expr::unary(unary.op, Box::new(_expr(*unary.expr))),
+        UnaryOp::MinusMinus | UnaryOp::PlusPlus => {
+            let simplified_expr = Box::new(_expr(*unary.expr));
+
+            *Expr::assign(
+                AssignOp::equal(),
+                simplified_expr.clone(),
+                Expr::binary(
+                    if unary.op == UnaryOp::PlusPlus {
+                        BinaryOp::plus()
+                    } else {
+                        BinaryOp::minus()
+                    },
+                    simplified_expr,
+                    Box::new(Expr::NumInt(1)),
+                ),
+            )
+        }
+        _ => {
+            let simplified_expr = Box::new(_expr(*unary.expr));
+            *Expr::unary(unary.op, simplified_expr)
+        }
     }
 }
 
 fn assign(assign: Assign) -> Expr {
+    let simplified_lhs = Box::new(_expr(*assign.lhs));
+    let simplified_rhs = Box::new(_expr(*assign.rhs));
+
     if assign.op == AssignOp::Equal {
-        return *Expr::assign(assign.op, assign.lhs, Box::new(_expr(*assign.rhs)));
+        return *Expr::assign(assign.op, simplified_lhs, simplified_rhs);
     }
 
-    let lhs = assign.lhs;
-    let rhs_expr = *assign.rhs; // Boxから所有権を直接取り出す
-    let rhs_expr = _expr(rhs_expr); // 再帰的に書き換え
-
-    let assign = Expr::assign(
+    // 複合代入演算子を基本的な代入に変換
+    let assign_expr = Expr::assign(
         AssignOp::equal(),
-        lhs.clone(),
+        simplified_lhs.clone(),
         Expr::binary(
             match assign.op {
                 AssignOp::PlusEqual => BinaryOp::plus(),
@@ -136,12 +287,12 @@ fn assign(assign: Assign) -> Expr {
                 AssignOp::AmpersandEqual => BinaryOp::ampersand(),
                 AssignOp::Equal => unreachable!(),
             },
-            lhs,
-            Box::new(rhs_expr),
+            simplified_lhs,
+            simplified_rhs,
         ),
     );
 
-    *assign
+    *assign_expr
 }
 
 fn binary(binary: Binary) -> Expr {
