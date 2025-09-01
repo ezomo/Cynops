@@ -7,6 +7,7 @@ use crate::ast::Typedef;
 use crate::ast::*;
 use crate::typelib;
 #[derive(Debug)]
+
 pub struct ParseSession {
     pub typedef_stack: Vec<HashMap<Ident, Type>>,
     pub struct_stack: Vec<HashMap<Ident, Type>>,
@@ -1183,4 +1184,9 @@ fn get_ident(tokens: &[Token]) -> Ident {
     } else {
         panic!("Expected identifier, found {:?}", tokens);
     }
+}
+
+#[test]
+fn test() {
+    let _ = program(&mut ParseSession::new(), &mut Vec::new());
 }

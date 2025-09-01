@@ -333,10 +333,7 @@ fn sizeof(a: crate::ast::expr::Sizeof) -> TypedExpr {
 
 fn string_lit(s: Vec<char>) -> TypedExpr {
     TypedExpr::new(
-        Type::Array(Array {
-            array_of: Box::new(Type::Char),
-            length: s.len(),
-        }), // 文字列リテラルはchar [n]型
+        Type::Array(Array::new(Type::Char, s.len())), // 文字列リテラルはchar [n]型
         SemaExpr::string(s),
     )
 }

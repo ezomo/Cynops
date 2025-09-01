@@ -536,7 +536,7 @@ fn visualize_type(ty: &Type, indent: usize, is_last: bool, prefix: Vec<bool>) {
         Type::Array(array) => {
             print_branch(
                 "Array",
-                &format!("length: {}", array.length),
+                &format!("length: {}", array.length.unwrap()),
                 indent,
                 is_last,
                 &prefix,

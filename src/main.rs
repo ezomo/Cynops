@@ -42,6 +42,10 @@ fn main() {
         "codegen" => {
             codegen::generate_program(program.clone(), &mut codegen::CodeGenStatus::new());
         }
+        "both" => {
+            ast_visualizer::visualize_program(&program);
+            codegen::generate_program(program.clone(), &mut codegen::CodeGenStatus::new());
+        }
         _ => {
             eprintln!("不明なモード: {}", mode);
             process::exit(1);

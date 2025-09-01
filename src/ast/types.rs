@@ -5,7 +5,16 @@ use super::Struct;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Array {
     pub array_of: Box<Type>,
-    pub length: usize,
+    pub length: Option<usize>,
+}
+
+impl Array {
+    pub fn new(array_of: Type, length: usize) -> Self {
+        Self {
+            array_of: Box::new(array_of),
+            length: Some(length),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -99,7 +108,7 @@ impl Type {
                 format!("*{}", inner.to_rust_format())
             }
             Type::Array(arr) => {
-                format!("[{}; {}]", arr.array_of.to_rust_format(), arr.length)
+                format!("[{}; {:?}]", arr.array_of.to_rust_format(), arr.length)
             }
         }
     }

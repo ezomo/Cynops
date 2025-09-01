@@ -108,6 +108,16 @@ pub enum InitData {
     Compound(Vec<InitData>), // 構造体・配列初期化子 {1, 2}
 }
 
+impl InitData {
+    pub fn as_compound(&self) -> Option<&Vec<InitData>> {
+        if let Self::Compound(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Init {
     pub r: MemberDecl,
@@ -115,15 +125,27 @@ pub struct Init {
 }
 
 impl Init {
-    pub fn new(r: MemberDecl, l: Option<InitData>) -> Self {
+    pub fn new(mut r: MemberDecl, l: Option<InitData>) -> Self {
         // Option<InitData>に中身が存在する場合は型が一致しているかチェック
         if let Some(ref init_data) = l {
+            Self::guess(&mut r, init_data);
             if let Err(err) = Self::check_init_data_compatibility(&r.ty, init_data) {
                 panic!("初期化子の型チェックエラー: {}", err);
             }
         }
 
         Init { r, l }
+    }
+
+    fn guess(r: &mut MemberDecl, l: &InitData) {
+        match &mut r.ty {
+            Type::Array(a) => {
+                if a.length.is_none() {
+                    a.length = Some(l.as_compound().unwrap().len());
+                }
+            }
+            _ => {}
+        }
     }
 
     /// InitDataの型チェックを行う関数
@@ -147,11 +169,11 @@ impl Init {
             // 配列の複合初期化子
             (Type::Array(array_type), InitData::Compound(compound_list)) => {
                 // 配列のサイズチェック（部分初期化は許可）
-                if compound_list.len() > array_type.length {
+                if compound_list.len() > array_type.length.unwrap() {
                     return Err(format!(
                         "初期化子の要素数が配列サイズを超えています: {} > {}",
                         compound_list.len(),
-                        array_type.length
+                        array_type.length.unwrap()
                     ));
                 }
 

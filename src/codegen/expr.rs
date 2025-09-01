@@ -198,9 +198,13 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                 typed_expr.r#type.to_llvm_format()
             );
             let arr = typed_expr.r#type.as_array().unwrap();
-            for i in 0..arr.length {
+            for i in 0..arr.length.unwrap() {
                 let element_ptr = cgs.name_gen.register();
-                let array_type = format!("[{} x {}]", arr.length, &arr.array_of.to_llvm_format());
+                let array_type = format!(
+                    "[{} x {}]",
+                    arr.length.unwrap(),
+                    &arr.array_of.to_llvm_format()
+                );
                 println!(
                     "  {} = getelementptr inbounds {}, {}* {}, i64 0, i64 {}",
                     element_ptr.to_string(),

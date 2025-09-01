@@ -103,25 +103,33 @@ fn call(mut base_type: Type, tokens: &mut Vec<Token>, parse_session: &mut ParseS
         });
     } else if is_next_token(tokens, Token::LBracket) {
         tokens.remove(0);
-        let mut array_sizes = vec![];
+        let mut array_sizes: Vec<Option<usize>> = vec![];
 
-        array_sizes.push(
-            expr(parse_session, tokens)
-                .to_typed_expr()
-                .eval_const()
-                .clone()
-                .unwrap() as usize,
-        );
-        tokens.remove(0);
-        while is_next_token(tokens, Token::LBracket) {
-            tokens.remove(0);
-            array_sizes.push(
+        array_sizes.push(if !is_next_token(tokens, Token::RBracket) {
+            Some(
                 expr(parse_session, tokens)
                     .to_typed_expr()
                     .eval_const()
                     .clone()
                     .unwrap() as usize,
-            );
+            )
+        } else {
+            None
+        });
+        tokens.remove(0);
+        while is_next_token(tokens, Token::LBracket) {
+            tokens.remove(0);
+            array_sizes.push(if !is_next_token(tokens, Token::LBracket) {
+                Some(
+                    expr(parse_session, tokens)
+                        .to_typed_expr()
+                        .eval_const()
+                        .clone()
+                        .unwrap() as usize,
+                )
+            } else {
+                None
+            });
             tokens.remove(0);
         }
 

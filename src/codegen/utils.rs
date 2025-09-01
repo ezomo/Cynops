@@ -287,7 +287,11 @@ impl Type {
                 format!("{}*", ty.to_llvm_format())
             }
             Type::Array(arr) => {
-                format!("[{} x {}]", arr.length, &arr.array_of.to_llvm_format())
+                format!(
+                    "[{} x {}]",
+                    arr.length.unwrap(),
+                    &arr.array_of.to_llvm_format()
+                )
             }
             Type::Func(func) => {
                 format!(
