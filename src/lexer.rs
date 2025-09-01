@@ -17,7 +17,21 @@ fn parse_c_string_literal(s: &str) -> Vec<char> {
                     '\\' => '\\',
                     '\'' => '\'',
                     '\"' => '\"',
-                    _ => next, // 不明なエスケープはそのまま
+                    'x' => {
+                        // \xNN の処理
+                        let mut hex = String::new();
+                        while let Some(&c) = chars.peek() {
+                            if c.is_ascii_hexdigit() {
+                                hex.push(c);
+                                chars.next(); // 消費
+                            } else {
+                                break;
+                            }
+                        }
+                        let val = u32::from_str_radix(&hex, 16).expect("invalid hex escape");
+                        std::char::from_u32(val).expect("invalid codepoint")
+                    }
+                    other => other, // 未知のエスケープ → そのまま
                 };
                 result.push(esc_char);
             }
@@ -37,6 +51,7 @@ pub fn tokenize(input: &str) -> Vec<Token> {
         syms.sort_by(|a, b| b.len().cmp(&a.len())); // 長い記号優先
         syms
     };
+
     let mut input = input.trim();
     while !input.is_empty() {
         input = input.trim_start();
@@ -78,11 +93,30 @@ pub fn tokenize(input: &str) -> Vec<Token> {
 
             // 文字リテラル
             if input.starts_with('\'') {
-                tokens.push(Token::Char(input.chars().nth(1).unwrap()));
-                if input.chars().nth(2).unwrap() != '\'' {
-                    panic!("error_{}", input)
+                let mut end = 1;
+                let mut escaped = false;
+
+                while end < input.len() {
+                    let c = input.chars().nth(end).unwrap();
+
+                    if escaped {
+                        escaped = false;
+                    } else if c == '\\' {
+                        escaped = true;
+                    } else if c == '\'' {
+                        break;
+                    }
+
+                    end += 1;
                 }
-                input = &input[3..];
+
+                if end >= input.len() || input.chars().nth(end).unwrap() != '\'' {
+                    panic!("unterminated string literal");
+                }
+
+                let content = parse_c_string_literal(&input[1..end]);
+                tokens.push(Token::Char(content[0]));
+                input = &input[end + 1..];
                 continue;
             }
 
@@ -136,7 +170,11 @@ pub fn tokenize(input: &str) -> Vec<Token> {
 
     tokens
 }
+
 #[test]
 fn test_tokenize() {
-    println!("{:?}", tokenize("int main(...) { int *a = 0; }"));
+    println!(
+        "{:?}",
+        tokenize("int main() { char c = '\\x41'; char d = '\\n'; char e = 'a'; }")
+    );
 }

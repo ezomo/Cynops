@@ -1,3 +1,5 @@
+use ordered_float::OrderedFloat;
+
 use super::*;
 use crate::ast::*;
 use crate::sema::Subscript;
@@ -170,7 +172,19 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
             }
         },
         SemaExpr::NumInt(num) => LLVMValue::new(num, LLVMType::Const),
-        SemaExpr::NumFloat(num) => LLVMValue::new(num, LLVMType::Const),
+        SemaExpr::NumFloat(num) => {
+            fn format_float(x: OrderedFloat<f64>) -> String {
+                let s = x.0.to_string();
+                if s.contains('.') || s.contains('e') || s.contains('E') {
+                    // すでに小数点 or 指数表記が含まれていればそのまま
+                    s
+                } else {
+                    // 整数だった場合だけ .0 を追加
+                    format!("{}.0", s)
+                }
+            }
+            LLVMValue::new(format_float(num), LLVMType::Const)
+        }
         SemaExpr::Char(ch) => {
             let name1 = cgs.name_gen.register();
             println!("{} = add i8 0, {}", name1.to_string(), ch as u8);
