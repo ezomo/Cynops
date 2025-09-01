@@ -33,10 +33,12 @@ fn main() {
 
     let mut token = lexer::tokenize(&input);
     let mut session = parser::ParseSession::new();
-    let program: ast::Program = parser::program(&mut session, &mut token);
+    let mut program: ast::Program = parser::program(&mut session, &mut token);
 
     match mode.as_str() {
         "ast" => {
+            ast_visualizer::visualize_program(&program);
+            sema::simplification::program(&mut program);
             ast_visualizer::visualize_program(&program);
         }
         "codegen" => {

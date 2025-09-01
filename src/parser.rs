@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use crate::ast::{Enum, EnumMember};
 use crate::token::{Keyword, Token};
@@ -173,26 +173,6 @@ impl ParseSession {
         }
     }
 
-    // fn get_variable(&self, name: &Ident) -> Option<Type> {
-    //     for scope in self.variable_stack.iter().rev() {
-    //         if let Some(ty) = scope.get(name) {
-    //             return Some(ty.clone());
-    //         }
-    //     }
-    //     None
-    // }
-
-    // fn get_function(&self, name: &Ident) -> Option<Type> {
-    //     self.function_map.get(name).cloned()
-    // }
-
-    // fn get_var_fn(&self, name: &Ident) -> Option<Type> {
-    //     if let Some(ty) = self.get_variable(name) {
-    //         return Some(ty);
-    //     }
-    //     self.get_function(name)
-    // }
-
     fn register_function(&mut self, name: Ident) {
         self.function_map.insert(name);
     }
@@ -219,7 +199,7 @@ pub fn program(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Pr
                 _parse_session.push_scope();
 
                 match sig.0.ty.clone() {
-                    Type::Func(a) => {
+                    Type::Func(_) => {
                         (0..sig.1.len())
                             .for_each(|i| _parse_session.register_variable(sig.1[i].clone()));
                     }
