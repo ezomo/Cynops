@@ -1,4 +1,4 @@
-mod codegen;
+// mod codegen;
 use std::{env, fs, process};
 
 mod ast;
@@ -40,11 +40,11 @@ fn main() {
             ast_visualizer::visualize_program(&program);
         }
         "codegen" => {
-            codegen::generate_program(program.clone(), &mut codegen::CodeGenStatus::new());
+            // codegen::generate_program(program.clone(), &mut codegen::CodeGenStatus::new());
         }
         "both" => {
             ast_visualizer::visualize_program(&program);
-            codegen::generate_program(program.clone(), &mut codegen::CodeGenStatus::new());
+            // codegen::generate_program(program.clone(), &mut codegen::CodeGenStatus::new());
         }
         _ => {
             eprintln!("不明なモード: {}", mode);
@@ -78,7 +78,7 @@ mod tests {
         let mut session = parser::ParseSession::new();
         let a = parser::program(&mut session, &mut token);
 
-        codegen::generate_program(a.clone(), &mut codegen::CodeGenStatus::new());
+        // codegen::generate_program(a.clone(), &mut codegen::CodeGenStatus::new());
         ast_visualizer::visualize_program(&a);
     }
 }

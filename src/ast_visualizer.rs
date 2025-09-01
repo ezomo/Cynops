@@ -115,7 +115,7 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
         Stmt::Return(ret) => {
             if let Some(expr) = &ret.value {
                 print_branch("Return", "", indent, is_last, &prefix);
-                visualize_typed_expr(expr, indent + 1, true, extend_prefix(&prefix, !is_last));
+                visualize_expr(expr, indent + 1, true, extend_prefix(&prefix, !is_last));
             } else {
                 print_branch("Return", "(void)", indent, is_last, &prefix);
             }
@@ -241,9 +241,9 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 );
             }
         },
-        Stmt::TypedExprStmt(expr) => {
+        Stmt::ExprStmt(expr) => {
             print_branch("ExprStmt", "", indent, is_last, &prefix);
-            visualize_typed_expr(expr, indent + 1, true, extend_prefix(&prefix, !is_last));
+            visualize_expr(expr, indent + 1, true, extend_prefix(&prefix, !is_last));
         }
         Stmt::Control(control) => match control {
             Control::If(if_stmt) => {
@@ -251,7 +251,7 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 let next_prefix = extend_prefix(&prefix, !is_last);
 
                 print_branch("Condition", "", indent + 1, false, &next_prefix);
-                visualize_typed_expr(
+                visualize_expr(
                     &if_stmt.cond,
                     indent + 2,
                     true,
@@ -287,7 +287,7 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 let next_prefix = extend_prefix(&prefix, !is_last);
 
                 print_branch("Condition", "", indent + 1, false, &next_prefix);
-                visualize_typed_expr(
+                visualize_expr(
                     &while_stmt.cond,
                     indent + 2,
                     true,
@@ -323,7 +323,7 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 if let Some(init) = &for_stmt.init {
                     remaining_items -= 1;
                     print_branch("Init", "", indent + 1, remaining_items == 0, &next_prefix);
-                    visualize_typed_expr(
+                    visualize_expr(
                         init,
                         indent + 2,
                         true,
@@ -339,7 +339,7 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                         remaining_items == 0,
                         &next_prefix,
                     );
-                    visualize_typed_expr(
+                    visualize_expr(
                         cond,
                         indent + 2,
                         true,
@@ -349,7 +349,7 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 if let Some(step) = &for_stmt.step {
                     remaining_items -= 1;
                     print_branch("Step", "", indent + 1, remaining_items == 0, &next_prefix);
-                    visualize_typed_expr(
+                    visualize_expr(
                         step,
                         indent + 2,
                         true,
@@ -377,7 +377,7 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                 );
 
                 print_branch("Condition", "", indent + 1, true, &next_prefix);
-                visualize_typed_expr(
+                visualize_expr(
                     &do_while_stmt.cond,
                     indent + 2,
                     true,
@@ -395,7 +395,7 @@ fn visualize_stmt(stmt: &Stmt, indent: usize, is_last: bool, prefix: Vec<bool>) 
                     switch_stmt.cases.is_empty(),
                     &next_prefix,
                 );
-                visualize_typed_expr(
+                visualize_expr(
                     &switch_stmt.cond,
                     indent + 2,
                     true,
@@ -1059,4 +1059,264 @@ fn extend_prefix(prefix: &[bool], has_more: bool) -> Vec<bool> {
     let mut new = prefix.to_vec();
     new.push(has_more);
     new
+}
+
+fn visualize_expr(expr: &Expr, indent: usize, is_last: bool, prefix: Vec<bool>) {
+    match expr {
+        Expr::Comma(c) => {
+            print_branch("Comma", "", indent, is_last, &prefix);
+            let new_prefix = extend_prefix(&prefix, !is_last);
+
+            for (i, expr) in c.assigns.iter().enumerate() {
+                let is_last_expr = i == c.assigns.len() - 1;
+                visualize_expr(expr, indent + 1, is_last_expr, new_prefix.clone());
+            }
+        }
+        Expr::NumInt(n) => {
+            print_branch("Number", &n.to_string(), indent, is_last, &prefix);
+        }
+        Expr::NumFloat(n) => {
+            print_branch("Number", &n.to_string(), indent, is_last, &prefix);
+        }
+        Expr::Char(c) => {
+            print_branch("Character", &format!("'{}'", c), indent, is_last, &prefix);
+        }
+        Expr::String(c) => {
+            print_branch("String", &format!("\"{:?}\"", c), indent, is_last, &prefix);
+        }
+        Expr::Ident(name) => {
+            print_branch("Identifier", &name.name, indent, is_last, &prefix);
+        }
+        Expr::Binary(binary) => {
+            print_branch(
+                "Binary",
+                &format!("{:?}", binary.op),
+                indent,
+                is_last,
+                &prefix,
+            );
+            let new_prefix = extend_prefix(&prefix, !is_last);
+
+            print_branch("Left", "", indent + 1, false, &new_prefix);
+            visualize_expr(
+                &binary.lhs,
+                indent + 2,
+                true,
+                extend_prefix(&new_prefix, true),
+            );
+
+            print_branch("Right", "", indent + 1, true, &new_prefix);
+            visualize_expr(
+                &binary.rhs,
+                indent + 2,
+                true,
+                extend_prefix(&new_prefix, false),
+            );
+        }
+        Expr::Unary(unary) => {
+            print_branch(
+                "Unary",
+                &format!("{:?}", unary.op),
+                indent,
+                is_last,
+                &prefix,
+            );
+            print_branch(
+                "Operand",
+                "",
+                indent + 1,
+                true,
+                &extend_prefix(&prefix, !is_last),
+            );
+            visualize_expr(
+                &unary.expr,
+                indent + 2,
+                true,
+                extend_prefix(&extend_prefix(&prefix, !is_last), false),
+            );
+        }
+        Expr::Postfix(postfix) => {
+            print_branch(
+                "Postfix",
+                &format!("{:?}", postfix.op),
+                indent,
+                is_last,
+                &prefix,
+            );
+            print_branch(
+                "Operand",
+                "",
+                indent + 1,
+                true,
+                &extend_prefix(&prefix, !is_last),
+            );
+            visualize_expr(
+                &postfix.expr,
+                indent + 2,
+                true,
+                extend_prefix(&extend_prefix(&prefix, !is_last), false),
+            );
+        }
+        Expr::Call(call) => {
+            print_branch("FunctionCall", "", indent, is_last, &prefix);
+            let next_prefix = extend_prefix(&prefix, !is_last);
+
+            print_branch("Function", "", indent + 1, false, &next_prefix);
+            visualize_expr(
+                &call.func,
+                indent + 2,
+                true,
+                extend_prefix(&next_prefix, true),
+            );
+
+            if !call.args.is_empty() {
+                print_branch("Arguments", "", indent + 1, true, &next_prefix);
+                for (i, arg) in call.args.iter().enumerate() {
+                    let last = i == call.args.len() - 1;
+                    visualize_expr(
+                        arg,
+                        indent + 2,
+                        last,
+                        extend_prefix(&extend_prefix(&next_prefix, false), false),
+                    );
+                }
+            } else {
+                print_branch("Arguments", "(empty)", indent + 1, true, &next_prefix);
+            }
+        }
+        Expr::Assign(assign) => {
+            print_branch(
+                "Assignment",
+                &format!("{:?}", assign.op),
+                indent,
+                is_last,
+                &prefix,
+            );
+            let new_prefix = extend_prefix(&prefix, !is_last);
+
+            print_branch("Left", "", indent + 1, false, &new_prefix);
+            visualize_expr(
+                &assign.lhs,
+                indent + 2,
+                true,
+                extend_prefix(&new_prefix, true),
+            );
+
+            print_branch("Right", "", indent + 1, true, &new_prefix);
+            visualize_expr(
+                &assign.rhs,
+                indent + 2,
+                true,
+                extend_prefix(&new_prefix, false),
+            );
+        }
+        Expr::Ternary(ternary) => {
+            print_branch("Ternary", "", indent, is_last, &prefix);
+            let new_prefix = extend_prefix(&prefix, !is_last);
+
+            print_branch("Condition", "", indent + 1, false, &new_prefix);
+            visualize_expr(
+                &ternary.cond,
+                indent + 2,
+                true,
+                extend_prefix(&new_prefix, true),
+            );
+
+            print_branch("Then", "", indent + 1, false, &new_prefix);
+            visualize_expr(
+                &ternary.then_branch,
+                indent + 2,
+                true,
+                extend_prefix(&new_prefix, true),
+            );
+
+            print_branch("Else", "", indent + 1, true, &new_prefix);
+            visualize_expr(
+                &ternary.else_branch,
+                indent + 2,
+                true,
+                extend_prefix(&new_prefix, false),
+            );
+        }
+        Expr::Subscript(array_access) => {
+            print_branch("ArrayAccess", "", indent, is_last, &prefix);
+            let next_prefix = extend_prefix(&prefix, !is_last);
+
+            print_branch("Array", "", indent + 1, false, &next_prefix);
+            visualize_expr(
+                &array_access.name,
+                indent + 2,
+                true,
+                extend_prefix(&next_prefix, true),
+            );
+
+            print_branch("Index", "", indent + 1, true, &next_prefix);
+            visualize_expr(
+                &array_access.index,
+                indent + 2,
+                true,
+                extend_prefix(&next_prefix, false),
+            );
+        }
+        Expr::MemberAccess(member_access) => {
+            print_branch(
+                "MemberAccess",
+                &format!("{:?}", member_access.kind),
+                indent,
+                is_last,
+                &prefix,
+            );
+            let next_prefix = extend_prefix(&prefix, !is_last);
+
+            print_branch("Base", "", indent + 1, false, &next_prefix);
+            visualize_expr(
+                &member_access.base,
+                indent + 2,
+                true,
+                extend_prefix(&next_prefix, true),
+            );
+
+            print_branch("Member", "", indent + 1, true, &next_prefix);
+            let member_expr = Expr::Ident(member_access.member.clone());
+            visualize_expr(
+                &member_expr,
+                indent + 2,
+                true,
+                extend_prefix(&next_prefix, false),
+            );
+        }
+        Expr::Sizeof(sizeof) => {
+            print_branch("Sizeof", "", indent, is_last, &prefix);
+            let next_prefix = extend_prefix(&prefix, !is_last);
+
+            match sizeof {
+                Sizeof::Type(ty) => {
+                    print_branch("Type", &format!("{:?}", ty), indent + 1, true, &next_prefix);
+                }
+                Sizeof::Expr(expr) => {
+                    print_branch("Expression", "", indent + 1, true, &next_prefix);
+                    visualize_expr(expr, indent + 2, true, extend_prefix(&next_prefix, false));
+                }
+            }
+        }
+        Expr::Cast(cast) => {
+            print_branch("Cast", "", indent, is_last, &prefix);
+            let next_prefix = extend_prefix(&prefix, !is_last);
+
+            print_branch(
+                "Type",
+                &format!("{:?}", cast.r#type),
+                indent + 1,
+                false,
+                &next_prefix,
+            );
+            print_branch("Expression", "", indent + 1, true, &next_prefix);
+            visualize_expr(
+                &cast.expr,
+                indent + 2,
+                true,
+                extend_prefix(&next_prefix, false),
+            );
+        }
+    }
 }

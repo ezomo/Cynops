@@ -17,7 +17,7 @@ pub fn entry(exper: Expr) -> TypedExpr {
         Expr::Cast(a) => cast(a),
         Expr::Char(a) => char_lit(a),
         Expr::Comma(a) => comma(a),
-        Expr::Variable(a) => variable(a),
+        Expr::Ident(a) => todo!(), //variable(a),
         Expr::MemberAccess(a) => memberaccess(a),
         Expr::NumFloat(a) => num_float(a),
         Expr::NumInt(a) => num_int(a),
@@ -185,10 +185,10 @@ fn comma(a: crate::ast::expr::Comma) -> TypedExpr {
     TypedExpr::new(result_type, SemaExpr::comma(assigns))
 }
 
-fn variable(a: crate::ast::expr::Variable) -> TypedExpr {
-    let var_type = *a.r#type;
-    TypedExpr::new(var_type, SemaExpr::ident(a.ident))
-}
+// fn variable(a: crate::ast::expr::) -> TypedExpr {
+//     let var_type = *a.r#type;
+//     TypedExpr::new(var_type, SemaExpr::ident(a.ident))
+// }
 
 fn memberaccess(a: crate::ast::expr::MemberAccess) -> TypedExpr {
     let base = entry(*a.base);

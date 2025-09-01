@@ -1006,7 +1006,7 @@ fn primary(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Expr {
     } else {
         // 変数か関数のはず
         let ident = consume_ident(tokens);
-        Expr::variable(ident.clone(), _parse_session.get_var_fn(&ident).unwrap())
+        Expr::ident(ident.clone())
     }
 }
 

@@ -109,19 +109,13 @@ pub struct Comma {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct Variable {
-    pub ident: Ident,
-    pub r#type: Box<Type>,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Expr {
     Assign(Assign),
     Binary(Binary),
     Call(Call),
     Char(char),
     String(Vec<char>),
-    Variable(Variable),
+    Ident(Ident),
     NumInt(usize),
     NumFloat(OrderedFloat<f64>),
     Postfix(Postfix),
@@ -150,11 +144,8 @@ impl Expr {
         Expr::String(string)
     }
 
-    pub fn variable(name: Ident, r#type: Type) -> Self {
-        Expr::Variable(Variable {
-            ident: name,
-            r#type: Box::new(r#type),
-        })
+    pub fn ident(name: Ident) -> Self {
+        Expr::Ident(name)
     }
 
     pub fn unary(op: UnaryOp, expr: Box<Expr>) -> Box<Self> {

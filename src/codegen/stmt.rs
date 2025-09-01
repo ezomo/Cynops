@@ -11,7 +11,7 @@ pub fn stmt(stmt: Stmt, cgs: &mut CodeGenStatus) {
         Stmt::Return(ret) => r#return(ret, cgs),
         Stmt::Goto(goto) => self::goto(goto, cgs),
         Stmt::Label(label) => self::label(label, cgs),
-        Stmt::TypedExprStmt(expr) => {
+        Stmt::ExprStmt(expr) => {
             let _ = new_load(gen_expr, expr, cgs);
         }
     }
