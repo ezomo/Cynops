@@ -108,16 +108,6 @@ pub enum InitData {
     Compound(Vec<InitData>), // 構造体・配列初期化子 {1, 2}
 }
 
-impl InitData {
-    pub fn as_compound(&self) -> Option<&Vec<InitData>> {
-        if let Self::Compound(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-}
-
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Init {
     pub r: MemberDecl,

@@ -39,21 +39,20 @@ fn _expr(expr: Expr) -> Expr {
         Expr::Assign(this) => assign(this),
         Expr::Unary(this) => unary(this),
         Expr::Postfix(this) => postfix(this),
-        Expr::Binary(this) => {}
-        Expr::Call(this) => {}
-        Expr::Char(this) => {}
-        Expr::String(this) => {}
-        Expr::Ident(this) => {}
-        Expr::NumInt(this) => {}
-        Expr::NumFloat(this) => {}
-        Expr::Postfix(this) => {}
-        Expr::Subscript(this) => {}
-        Expr::MemberAccess(this) => {}
-        Expr::Ternary(this) => {}
-        Expr::Unary(this) => {}
-        Expr::Sizeof(this) => {}
-        Expr::Cast(this) => {}
-        Expr::Comma(this) => {}
+        Expr::Binary(this) => binary(this),
+        Expr::Call(this) => call(this),
+        Expr::Subscript(this) => subscript(this),
+        Expr::MemberAccess(this) => member_access(this),
+        Expr::Ternary(this) => ternary(this),
+        Expr::Sizeof(this) => sizeof(this),
+        Expr::Cast(this) => cast(this),
+        Expr::Comma(this) => comma(this),
+        // 以下は変換不要なのでそのまま返す
+        Expr::Char(this) => Expr::Char(this),
+        Expr::String(this) => Expr::String(this),
+        Expr::Ident(this) => Expr::Ident(this),
+        Expr::NumInt(this) => Expr::NumInt(this),
+        Expr::NumFloat(this) => Expr::NumFloat(this),
     }
 }
 
@@ -91,7 +90,7 @@ fn unary(unary: Unary) -> Expr {
             Expr::Binary(Binary {
                 lhs: Box::new(Expr::NumInt(0)),
                 op: BinaryOp::minus(),
-                rhs: Box::new(target),
+                rhs: Box::new(_expr(target)),
             })
         }
         UnaryOp::MinusMinus | UnaryOp::PlusPlus => *Expr::assign(
@@ -107,7 +106,7 @@ fn unary(unary: Unary) -> Expr {
                 Box::new(Expr::NumInt(1)),
             ),
         ),
-        _ => Expr::Unary(unary),
+        _ => *Expr::unary(unary.op, Box::new(_expr(*unary.expr))),
     }
 }
 
@@ -117,7 +116,7 @@ fn assign(assign: Assign) -> Expr {
     }
 
     let lhs = assign.lhs;
-    let rhs_expr = *assign.rhs; // Box から所有権を直接取り出す
+    let rhs_expr = *assign.rhs; // Boxから所有権を直接取り出す
     let rhs_expr = _expr(rhs_expr); // 再帰的に書き換え
 
     let assign = Expr::assign(
@@ -138,9 +137,63 @@ fn assign(assign: Assign) -> Expr {
                 AssignOp::Equal => unreachable!(),
             },
             lhs,
-            Box::new(_expr(rhs_expr)),
+            Box::new(rhs_expr),
         ),
     );
 
     *assign
+}
+
+fn binary(binary: Binary) -> Expr {
+    *Expr::binary(
+        binary.op,
+        Box::new(_expr(*binary.lhs)),
+        Box::new(_expr(*binary.rhs)),
+    )
+}
+
+fn call(call: Call) -> Expr {
+    Expr::call(
+        _expr(*call.func),
+        call.args
+            .into_iter()
+            .map(|arg| Box::new(_expr(*arg)))
+            .collect(),
+    )
+}
+
+fn subscript(subscript: Subscript) -> Expr {
+    Expr::subscript(_expr(*subscript.name), _expr(*subscript.index))
+}
+
+fn member_access(member_access: MemberAccess) -> Expr {
+    Expr::member_access(
+        _expr(*member_access.base),
+        member_access.member,
+        member_access.kind,
+    )
+}
+
+fn ternary(ternary: Ternary) -> Expr {
+    *Expr::ternary(
+        Box::new(_expr(*ternary.cond)),
+        _expr(*ternary.then_branch),
+        _expr(*ternary.else_branch),
+    )
+}
+
+fn sizeof(sizeof: Sizeof) -> Expr {
+    let new_sizeof = match sizeof {
+        Sizeof::Type(ty) => Sizeof::Type(ty),
+        Sizeof::Expr(expr) => Sizeof::Expr(Box::new(_expr(*expr))),
+    };
+    *Expr::sizeof(new_sizeof)
+}
+
+fn cast(cast: Cast) -> Expr {
+    *Expr::cast(*cast.r#type, _expr(*cast.expr))
+}
+
+fn comma(comma: Comma) -> Expr {
+    Expr::comma(comma.assigns.into_iter().map(_expr).collect())
 }
