@@ -1,7 +1,97 @@
-use crate::ast::Ident;
-use crate::ast::Type;
-use crate::ast::op::*;
+use super::{AssignOp, BinaryOp, Ident, UnaryOp};
+use crate::ast::{MemberAccessOp, Type};
 use ordered_float::OrderedFloat;
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+pub struct PostfixChain {
+    pub base: TypedExpr,              // primary に相当する基の式
+    pub suffixes: Vec<PostfixSuffix>, // 後置操作の連続
+}
+
+impl PostfixChain {
+    pub fn new(base: TypedExpr, suffixes: Vec<PostfixSuffix>) -> Self {
+        PostfixChain { base, suffixes }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+pub enum PostfixSuffix {
+    ArrayAcsess(TypedExpr),              // [ expr ]
+    ArgList(Vec<Box<TypedExpr>>),        // ( arg_list )
+    MemberAccess(MemberAccessOp, Ident), // . ident または -> ident
+}
+
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+pub struct Unary {
+    pub op: UnaryOp,
+    pub expr: Box<TypedExpr>,
+}
+
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+pub struct Binary {
+    pub op: BinaryOp,
+    pub lhs: Box<TypedExpr>,
+    pub rhs: Box<TypedExpr>,
+}
+
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+pub struct Ternary {
+    pub cond: Box<TypedExpr>,
+    pub then_branch: Box<TypedExpr>,
+    pub else_branch: Box<TypedExpr>,
+}
+
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+
+pub struct Assign {
+    pub op: AssignOp,
+    pub lhs: Box<TypedExpr>,
+    pub rhs: Box<TypedExpr>,
+}
+
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+pub struct Call {
+    pub func: Box<TypedExpr>,
+    pub args: Vec<Box<TypedExpr>>,
+}
+
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+pub struct Subscript {
+    pub subject: Box<TypedExpr>,
+    pub index: Box<TypedExpr>,
+}
+
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+pub struct MemberAccess {
+    pub base: Box<TypedExpr>, // 左側 (構造体 or ポインタ)
+    pub member: Ident,        // アクセスされるメンバ名
+    pub kind: MemberAccessOp, // . or ->
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub enum Sizeof {
+    Type(Type),
+    TypedExpr(Box<TypedExpr>),
+}
+
+impl Sizeof {
+    pub fn r#type(ty: Type) -> Self {
+        Self::Type(ty)
+    }
+    pub fn r#expr(expr: TypedExpr) -> Self {
+        Self::TypedExpr(Box::new(expr))
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub struct Cast {
+    pub r#type: Box<Type>,
+    pub expr: Box<TypedExpr>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub struct Comma {
+    pub assigns: Vec<TypedExpr>,
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum SemaExpr {
@@ -9,11 +99,9 @@ pub enum SemaExpr {
     Binary(Binary),
     Call(Call),
     Char(char),
-    String(Vec<char>),
     Ident(Ident),
     NumInt(usize),
     NumFloat(OrderedFloat<f64>),
-    Postfix(Postfix),
     Subscript(Subscript),
     MemberAccess(MemberAccess),
     Ternary(Ternary),
@@ -22,7 +110,6 @@ pub enum SemaExpr {
     Cast(Cast),
     Comma(Comma),
 }
-
 impl SemaExpr {
     pub fn num_int(n: usize) -> Self {
         SemaExpr::NumInt(n)
@@ -36,23 +123,12 @@ impl SemaExpr {
         SemaExpr::Char(c)
     }
 
-    pub fn string(string: Vec<char>) -> Self {
-        SemaExpr::String(string)
-    }
-
     pub fn ident(name: Ident) -> Self {
         SemaExpr::Ident(name)
     }
 
     pub fn unary(op: UnaryOp, expr: Box<TypedExpr>) -> Box<Self> {
         Box::new(SemaExpr::Unary(Unary { op, expr }))
-    }
-
-    pub fn postfix(op: PostfixOp, expr: TypedExpr) -> Self {
-        SemaExpr::Postfix(Postfix {
-            op,
-            expr: Box::new(expr),
-        })
     }
 
     pub fn binary(op: BinaryOp, lhs: Box<TypedExpr>, rhs: Box<TypedExpr>) -> Box<Self> {
@@ -81,7 +157,6 @@ impl SemaExpr {
             args,
         })
     }
-
     pub fn subscript(name: TypedExpr, index: TypedExpr) -> Self {
         SemaExpr::Subscript(Subscript {
             subject: Box::new(name),
@@ -111,89 +186,6 @@ impl SemaExpr {
     pub fn comma(assigns: Vec<TypedExpr>) -> Self {
         SemaExpr::Comma(Comma { assigns })
     }
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub struct Postfix {
-    pub expr: Box<TypedExpr>,
-    pub op: PostfixOp,
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub struct PostfixChain {
-    pub base: TypedExpr,              // primary に相当する基の式
-    pub suffixes: Vec<PostfixSuffix>, // 後置操作の連続
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub enum PostfixSuffix {
-    ArrayAcsess(TypedExpr),              // [ expr ]
-    ArgList(Vec<Box<TypedExpr>>),        // ( arg_list )
-    PostfixOp(PostfixOp),                // ++, --
-    MemberAccess(MemberAccessOp, Ident), // . ident または -> ident
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub struct Unary {
-    pub op: UnaryOp,
-    pub expr: Box<TypedExpr>,
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub struct Binary {
-    pub op: BinaryOp,
-    pub lhs: Box<TypedExpr>,
-    pub rhs: Box<TypedExpr>,
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub struct Ternary {
-    pub cond: Box<TypedExpr>,
-    pub then_branch: Box<TypedExpr>,
-    pub else_branch: Box<TypedExpr>,
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub struct Assign {
-    pub op: AssignOp,
-    pub lhs: Box<TypedExpr>,
-    pub rhs: Box<TypedExpr>,
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub struct Call {
-    pub func: Box<TypedExpr>,
-    pub args: Vec<Box<TypedExpr>>,
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub struct Subscript {
-    pub subject: Box<TypedExpr>,
-    pub index: Box<TypedExpr>,
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub struct MemberAccess {
-    pub base: Box<TypedExpr>, // 左側 (構造体 or ポインタ)
-    pub member: Ident,        // アクセスされるメンバ名
-    pub kind: MemberAccessOp, // . or ->
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub enum Sizeof {
-    Type(Type),
-    Expr(Box<TypedExpr>),
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct Cast {
-    pub r#type: Box<Type>,
-    pub expr: Box<TypedExpr>,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct Comma {
-    pub assigns: Vec<TypedExpr>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]

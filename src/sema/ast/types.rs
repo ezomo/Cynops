@@ -1,18 +1,18 @@
-use crate::ast::{Enum, Expr, Union};
+use crate::ast::{Enum, Union};
 
 use super::Struct;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Array {
     pub array_of: Box<Type>,
-    pub length: Option<Box<Expr>>,
+    pub length: Option<usize>,
 }
 
 impl Array {
-    pub fn new(array_of: Type, length: Option<Expr>) -> Self {
+    pub fn new(array_of: Type, length: usize) -> Self {
         Self {
             array_of: Box::new(array_of),
-            length: length.map(Box::new),
+            length: Some(length),
         }
     }
 }

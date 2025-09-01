@@ -1,20 +1,19 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::ast::{Enum, EnumMember};
 use crate::token::{Keyword, Token};
 
-use crate::ast::Typedef;
 use crate::ast::*;
 use crate::typelib;
 #[derive(Debug)]
 
 pub struct ParseSession {
-    pub typedef_stack: Vec<HashMap<Ident, Type>>,
-    pub struct_stack: Vec<HashMap<Ident, Type>>,
-    pub union_stack: Vec<HashMap<Ident, Type>>,
-    pub enum_stack: Vec<HashMap<Ident, Type>>,
-    pub variable_stack: Vec<HashMap<Ident, Type>>,
-    pub function_map: HashMap<Ident, Type>,
+    pub typedef_stack: Vec<HashSet<Ident>>,
+    pub struct_stack: Vec<HashSet<Ident>>,
+    pub union_stack: Vec<HashSet<Ident>>,
+    pub enum_stack: Vec<HashSet<Ident>>,
+    pub variable_stack: Vec<HashSet<Ident>>,
+    pub function_map: HashSet<Ident>,
 }
 
 impl ParseSession {
@@ -25,17 +24,17 @@ impl ParseSession {
             union_stack: Vec::new(),
             enum_stack: Vec::new(),
             variable_stack: Vec::new(),
-            function_map: HashMap::new(),
+            function_map: HashSet::new(),
         }
     }
 
     // 新しいスコープを開始
     pub fn push_scope(&mut self) {
-        self.typedef_stack.push(HashMap::new());
-        self.struct_stack.push(HashMap::new());
-        self.union_stack.push(HashMap::new());
-        self.enum_stack.push(HashMap::new());
-        self.variable_stack.push(HashMap::new());
+        self.typedef_stack.push(HashSet::new());
+        self.struct_stack.push(HashSet::new());
+        self.union_stack.push(HashSet::new());
+        self.enum_stack.push(HashSet::new());
+        self.variable_stack.push(HashSet::new());
     }
 
     // 現在のスコープを終了
@@ -70,25 +69,25 @@ impl ParseSession {
                 };
                 // typedef_stackから下向きに検索
                 for scope in self.typedef_stack.iter().rev() {
-                    if scope.contains_key(&ident) {
+                    if scope.contains(&ident) {
                         return true;
                     }
                 }
                 // struct_stackから下向きに検索
                 for scope in self.struct_stack.iter().rev() {
-                    if scope.contains_key(&ident) {
+                    if scope.contains(&ident) {
                         return true;
                     }
                 }
                 // union_stackから下向きに検索
                 for scope in self.union_stack.iter().rev() {
-                    if scope.contains_key(&ident) {
+                    if scope.contains(&ident) {
                         return true;
                     }
                 }
                 // enum_stackから下向きに検索
                 for scope in self.enum_stack.iter().rev() {
-                    if scope.contains_key(&ident) {
+                    if scope.contains(&ident) {
                         return true;
                     }
                 }
@@ -112,26 +111,26 @@ impl ParseSession {
                 };
                 // typedef_stackから下向きに検索
                 for scope in self.typedef_stack.iter().rev() {
-                    if let Some(type_) = scope.get(&ident) {
-                        return Some(type_.clone());
+                    if let Some(ident) = scope.get(&ident) {
+                        return Some(Type::Typedef(ident.clone()));
                     }
                 }
                 // struct_stackから下向きに検索
                 for scope in self.struct_stack.iter().rev() {
-                    if let Some(type_) = scope.get(&ident) {
-                        return Some(type_.clone());
+                    if let Some(ident) = scope.get(&ident) {
+                        return Some(Type::Typedef(ident.clone()));
                     }
                 }
                 // union_stackから下向きに検索
                 for scope in self.union_stack.iter().rev() {
-                    if let Some(type_) = scope.get(&ident) {
-                        return Some(type_.clone());
+                    if let Some(ident) = scope.get(&ident) {
+                        return Some(Type::Typedef(ident.clone()));
                     }
                 }
                 // enum_stackから下向きに検索
                 for scope in self.enum_stack.iter().rev() {
-                    if let Some(type_) = scope.get(&ident) {
-                        return Some(type_.clone());
+                    if let Some(ident) = scope.get(&ident) {
+                        return Some(Type::Typedef(ident.clone()));
                     }
                 }
                 None
@@ -141,61 +140,61 @@ impl ParseSession {
     }
 
     // typedef名を現在のスコープに登録
-    fn register_typedef(&mut self, name: Ident, ty: Type) {
+    fn register_typedef(&mut self, name: Ident) {
         if let Some(current_scope) = self.typedef_stack.last_mut() {
-            current_scope.insert(name, ty);
+            current_scope.insert(name);
         }
     }
 
     // struct名を現在のスコープに登録
-    fn register_struct(&mut self, name: Ident, members: Type) {
+    fn register_struct(&mut self, name: Ident) {
         if let Some(current_scope) = self.struct_stack.last_mut() {
-            current_scope.insert(name, members);
+            current_scope.insert(name);
         }
     }
 
     // union名を現在のスコープに登録
-    fn register_union(&mut self, name: Ident, members: Type) {
+    fn register_union(&mut self, name: Ident) {
         if let Some(current_scope) = self.union_stack.last_mut() {
-            current_scope.insert(name, members);
+            current_scope.insert(name);
         }
     }
 
     // enum名を現在のスコープに登録
-    fn register_enum(&mut self, name: Ident, variants: Type) {
+    fn register_enum(&mut self, name: Ident) {
         if let Some(current_scope) = self.enum_stack.last_mut() {
-            current_scope.insert(name, variants);
+            current_scope.insert(name);
         }
     }
 
-    fn register_variable(&mut self, name: Ident, variants: Type) {
+    fn register_variable(&mut self, name: Ident) {
         if let Some(current_scope) = self.variable_stack.last_mut() {
-            current_scope.insert(name, variants);
+            current_scope.insert(name);
         }
     }
 
-    fn get_variable(&self, name: &Ident) -> Option<Type> {
-        for scope in self.variable_stack.iter().rev() {
-            if let Some(ty) = scope.get(name) {
-                return Some(ty.clone());
-            }
-        }
-        None
-    }
+    // fn get_variable(&self, name: &Ident) -> Option<Type> {
+    //     for scope in self.variable_stack.iter().rev() {
+    //         if let Some(ty) = scope.get(name) {
+    //             return Some(ty.clone());
+    //         }
+    //     }
+    //     None
+    // }
 
-    fn get_function(&self, name: &Ident) -> Option<Type> {
-        self.function_map.get(name).cloned()
-    }
+    // fn get_function(&self, name: &Ident) -> Option<Type> {
+    //     self.function_map.get(name).cloned()
+    // }
 
-    fn get_var_fn(&self, name: &Ident) -> Option<Type> {
-        if let Some(ty) = self.get_variable(name) {
-            return Some(ty);
-        }
-        self.get_function(name)
-    }
+    // fn get_var_fn(&self, name: &Ident) -> Option<Type> {
+    //     if let Some(ty) = self.get_variable(name) {
+    //         return Some(ty);
+    //     }
+    //     self.get_function(name)
+    // }
 
-    fn register_function(&mut self, name: Ident, variants: Type) {
-        self.function_map.insert(name, variants);
+    fn register_function(&mut self, name: Ident) {
+        self.function_map.insert(name);
     }
 }
 
@@ -214,16 +213,15 @@ pub fn program(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Pr
         {
             let sig = function_sig(_parse_session, tokens);
 
-            _parse_session.register_function(sig.0.ident.clone(), sig.0.ty.clone());
+            _parse_session.register_function(sig.0.ident.clone());
 
             if consume(Token::LBrace, tokens) {
                 _parse_session.push_scope();
 
                 match sig.0.ty.clone() {
                     Type::Func(a) => {
-                        (0..sig.1.len()).for_each(|i| {
-                            _parse_session.register_variable(sig.1[i].clone(), a.params[i].clone())
-                        });
+                        (0..sig.1.len())
+                            .for_each(|i| _parse_session.register_variable(sig.1[i].clone()));
                     }
                     _ => panic!(),
                 };
@@ -457,7 +455,7 @@ fn init(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Init {
     Init::new(
         {
             let (types, ident) = typelib::consume_and_extract_idents(_parse_session, tokens);
-            _parse_session.register_variable(ident[0].clone(), types.clone());
+            _parse_session.register_variable(ident[0].clone());
             MemberDecl::new(ident[0].clone(), types)
         },
         {
@@ -479,7 +477,7 @@ fn init_data(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Init
         }
         InitData::Compound(elements)
     } else {
-        InitData::Expr(assign(_parse_session, tokens).to_typed_expr())
+        InitData::Expr(*assign(_parse_session, tokens))
     }
 }
 
@@ -489,10 +487,7 @@ fn typedef_stmt(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> T
         consume(Token::r#struct(), tokens);
         let st = struct_def(_parse_session, tokens);
         if st.ident.is_some() {
-            _parse_session.register_struct(
-                st.ident.as_ref().unwrap().clone(),
-                Type::r#struct(st.clone()),
-            );
+            _parse_session.register_struct(st.ident.as_ref().unwrap().clone());
         }
         ident = consume_ident(tokens);
         Type::r#struct(st)
@@ -500,8 +495,7 @@ fn typedef_stmt(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> T
         consume(Token::r#union(), tokens);
         let un = union_def(_parse_session, tokens);
         if un.ident.is_some() {
-            _parse_session
-                .register_union(un.ident.as_ref().unwrap().clone(), Type::union(un.clone()));
+            _parse_session.register_union(un.ident.as_ref().unwrap().clone());
         }
         ident = consume_ident(tokens);
         Type::union(un)
@@ -509,8 +503,7 @@ fn typedef_stmt(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> T
         consume(Token::r#enum(), tokens);
         let en = enum_def(_parse_session, tokens);
         if en.ident.is_some() {
-            _parse_session
-                .register_enum(en.ident.as_ref().unwrap().clone(), Type::r#enum(en.clone()));
+            _parse_session.register_enum(en.ident.as_ref().unwrap().clone());
         }
         ident = consume_ident(tokens);
         Type::r#enum(en)
@@ -519,7 +512,7 @@ fn typedef_stmt(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> T
         ident = i[0].clone();
         t
     };
-    _parse_session.register_typedef(ident.clone(), ty.clone());
+    _parse_session.register_typedef(ident.clone());
     Typedef::new(ident, ty)
 }
 
@@ -544,7 +537,7 @@ fn struct_def(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Str
     });
 
     if idn.is_some() {
-        _parse_session.register_struct(idn.unwrap(), Type::r#struct(st.clone()));
+        _parse_session.register_struct(idn.unwrap());
     }
     st
 }
@@ -570,14 +563,14 @@ fn union_def(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Unio
     });
 
     if idn.is_some() {
-        _parse_session.register_struct(idn.unwrap(), Type::r#union(un.clone()));
+        _parse_session.register_struct(idn.unwrap());
     }
     un
 }
 
 fn decl_member(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> MemberDecl {
     let (types, ident) = typelib::consume_and_extract_idents(_parse_session, tokens);
-    _parse_session.register_variable(ident[0].clone(), types.clone());
+    _parse_session.register_variable(ident[0].clone());
     MemberDecl::new(ident[0].clone(), types)
 }
 
@@ -614,7 +607,7 @@ fn enum_def(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Enum 
     });
 
     if idn.is_some() {
-        _parse_session.register_struct(idn.unwrap(), Type::r#enum(em.clone()));
+        _parse_session.register_struct(idn.unwrap());
     }
     em
 }

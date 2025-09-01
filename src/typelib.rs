@@ -1,4 +1,4 @@
-use crate::ast::{Array, Func, Ident, Type};
+use crate::ast::{Array, Expr, Func, Ident, Type, expr};
 use crate::parser::ParseSession;
 use crate::parser::expr;
 use crate::token::Token;
@@ -103,16 +103,10 @@ fn call(mut base_type: Type, tokens: &mut Vec<Token>, parse_session: &mut ParseS
         });
     } else if is_next_token(tokens, Token::LBracket) {
         tokens.remove(0);
-        let mut array_sizes: Vec<Option<usize>> = vec![];
+        let mut array_sizes: Vec<Option<Expr>> = vec![];
 
         array_sizes.push(if !is_next_token(tokens, Token::RBracket) {
-            Some(
-                expr(parse_session, tokens)
-                    .to_typed_expr()
-                    .eval_const()
-                    .clone()
-                    .unwrap() as usize,
-            )
+            Some(expr(parse_session, tokens))
         } else {
             None
         });
@@ -120,13 +114,7 @@ fn call(mut base_type: Type, tokens: &mut Vec<Token>, parse_session: &mut ParseS
         while is_next_token(tokens, Token::LBracket) {
             tokens.remove(0);
             array_sizes.push(if !is_next_token(tokens, Token::LBracket) {
-                Some(
-                    expr(parse_session, tokens)
-                        .to_typed_expr()
-                        .eval_const()
-                        .clone()
-                        .unwrap() as usize,
-                )
+                Some(expr(parse_session, tokens))
             } else {
                 None
             });
@@ -134,10 +122,7 @@ fn call(mut base_type: Type, tokens: &mut Vec<Token>, parse_session: &mut ParseS
         }
 
         for size in array_sizes.into_iter().rev() {
-            base_type = Type::Array(Array {
-                array_of: Box::new(base_type),
-                length: size,
-            });
+            base_type = Type::Array(Array::new(base_type, size));
         }
     } else {
         return base_type;

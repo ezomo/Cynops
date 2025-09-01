@@ -1,5 +1,5 @@
 use crate::ast::*;
-use crate::sema::TypedExpr;
+use crate::sema::ast::TypedExpr;
 
 pub fn visualize_program(program: &Program) {
     println!("Program");
@@ -491,7 +491,7 @@ fn visualize_init(init: &Init, indent: usize, is_last: bool, prefix: Vec<bool>) 
 fn visualize_init_data(init_data: &InitData, indent: usize, is_last: bool, prefix: Vec<bool>) {
     match init_data {
         InitData::Expr(expr) => {
-            visualize_typed_expr(expr, indent, is_last, prefix);
+            visualize_expr(expr, indent, is_last, prefix);
         }
         InitData::Compound(list) => {
             if list.is_empty() {
@@ -523,153 +523,7 @@ fn visualize_member_decl(member: &MemberDecl, indent: usize, is_last: bool, pref
 }
 
 fn visualize_type(ty: &Type, indent: usize, is_last: bool, prefix: Vec<bool>) {
-    match ty {
-        Type::Void => print_branch("Void", "", indent, is_last, &prefix),
-        Type::DotDotDot => print_branch("...", "", indent, is_last, &prefix),
-        Type::Int => print_branch("Int", "", indent, is_last, &prefix),
-        Type::Double => print_branch("Double", "", indent, is_last, &prefix),
-        Type::Char => print_branch("Char", "", indent, is_last, &prefix),
-        Type::Pointer(inner) => {
-            print_branch("Pointer", "", indent, is_last, &prefix);
-            visualize_type(inner, indent + 1, true, extend_prefix(&prefix, !is_last));
-        }
-        Type::Array(array) => {
-            print_branch(
-                "Array",
-                &format!("length: {}", array.length.unwrap()),
-                indent,
-                is_last,
-                &prefix,
-            );
-            visualize_type(
-                &array.array_of,
-                indent + 1,
-                true,
-                extend_prefix(&prefix, !is_last),
-            );
-        }
-        Type::Func(func) => {
-            print_branch("Function", "", indent, is_last, &prefix);
-            let next_prefix = extend_prefix(&prefix, !is_last);
-
-            let return_type = &func.return_type;
-            print_branch("Type", "", indent + 1, func.params.is_empty(), &next_prefix);
-            visualize_type(
-                return_type,
-                indent + 2,
-                true,
-                extend_prefix(&next_prefix, !func.params.is_empty()),
-            );
-
-            if !func.params.is_empty() {
-                print_branch("Parameters", "", indent + 1, true, &next_prefix);
-                for (i, param) in func.params.iter().enumerate() {
-                    let is_last_param = i == func.params.len() - 1;
-                    visualize_type(
-                        param,
-                        indent + 2,
-                        is_last_param,
-                        extend_prefix(&next_prefix, false),
-                    );
-                }
-            }
-        }
-        Type::Struct(struct_decl) => {
-            print_branch(
-                "Struct",
-                &format!(
-                    "{}",
-                    struct_decl
-                        .ident
-                        .as_ref()
-                        .map(|n| n.name.as_str())
-                        .unwrap_or("anonymous")
-                ),
-                indent,
-                is_last,
-                &prefix,
-            );
-
-            if !struct_decl.member.is_empty() {
-                let next_prefix = extend_prefix(&prefix, !is_last);
-                print_branch("Members", "", indent + 1, true, &next_prefix);
-                for (i, member) in struct_decl.member.iter().enumerate() {
-                    let is_last_member = i == struct_decl.member.len() - 1;
-                    visualize_member_decl(
-                        member,
-                        indent + 2,
-                        is_last_member,
-                        extend_prefix(&next_prefix, false),
-                    );
-                }
-            }
-        }
-        Type::Union(union_decl) => {
-            print_branch(
-                "Union",
-                &format!(
-                    "{}",
-                    union_decl
-                        .ident
-                        .as_ref()
-                        .map(|n| n.name.as_str())
-                        .unwrap_or("anonymous")
-                ),
-                indent,
-                is_last,
-                &prefix,
-            );
-
-            if !union_decl.member.is_empty() {
-                let next_prefix = extend_prefix(&prefix, !is_last);
-                print_branch("Members", "", indent + 1, true, &next_prefix);
-                for (i, member) in union_decl.member.iter().enumerate() {
-                    let is_last_member = i == union_decl.member.len() - 1;
-                    visualize_member_decl(
-                        member,
-                        indent + 2,
-                        is_last_member,
-                        extend_prefix(&next_prefix, false),
-                    );
-                }
-            }
-        }
-        Type::Enum(enum_decl) => {
-            print_branch(
-                "Enum",
-                &format!(
-                    "{}",
-                    enum_decl
-                        .ident
-                        .as_ref()
-                        .map(|n| n.name.as_str())
-                        .unwrap_or("anonymous")
-                ),
-                indent,
-                is_last,
-                &prefix,
-            );
-
-            if !enum_decl.variants.is_empty() {
-                let next_prefix = extend_prefix(&prefix, !is_last);
-                print_branch("Variants", "", indent + 1, true, &next_prefix);
-                for (i, variant) in enum_decl.variants.iter().enumerate() {
-                    let is_last_variant = i == enum_decl.variants.len() - 1;
-                    let variant_info = match &variant.value {
-                        Some(value) => format!("{} = {}", variant.ident.name, value),
-                        None => variant.ident.name.clone(),
-                    };
-                    print_branch(
-                        "Variant",
-                        &variant_info,
-                        indent + 2,
-                        is_last_variant,
-                        &extend_prefix(&next_prefix, false),
-                    );
-                }
-            }
-        }
-    }
+    print_branch(&ty.to_rust_format(), "", indent, is_last, &prefix)
 }
 
 fn visualize_switch_case(case: &SwitchCase, indent: usize, is_last: bool, prefix: Vec<bool>) {
@@ -750,12 +604,12 @@ fn visualize_typed_expr(typed_expr: &TypedExpr, indent: usize, is_last: bool, pr
 }
 
 fn visualize_sema_expr(
-    expr: &crate::sema::SemaExpr,
+    expr: &crate::sema::ast::SemaExpr,
     indent: usize,
     is_last: bool,
     prefix: Vec<bool>,
 ) {
-    use crate::sema::SemaExpr;
+    use crate::sema::ast::SemaExpr;
 
     match expr {
         SemaExpr::Comma(c) => {
@@ -775,15 +629,6 @@ fn visualize_sema_expr(
         }
         SemaExpr::Char(c) => {
             print_branch("Character", &format!("'{:?}'", c), indent, is_last, &prefix);
-        }
-        SemaExpr::String(c) => {
-            print_branch(
-                "String",
-                &format!("\"{:?}\"", c.iter().collect::<String>()),
-                indent,
-                is_last,
-                &prefix,
-            );
         }
         SemaExpr::Ident(name) => {
             print_branch("Identifier", &name.name, indent, is_last, &prefix);
@@ -831,28 +676,6 @@ fn visualize_sema_expr(
             );
             visualize_typed_expr(
                 &unary.expr,
-                indent + 2,
-                true,
-                extend_prefix(&extend_prefix(&prefix, !is_last), false),
-            );
-        }
-        SemaExpr::Postfix(postfix) => {
-            print_branch(
-                "Postfix",
-                &format!("{:?}", postfix.op),
-                indent,
-                is_last,
-                &prefix,
-            );
-            print_branch(
-                "Operand",
-                "",
-                indent + 1,
-                true,
-                &extend_prefix(&prefix, !is_last),
-            );
-            visualize_typed_expr(
-                &postfix.expr,
                 indent + 2,
                 true,
                 extend_prefix(&extend_prefix(&prefix, !is_last), false),
@@ -994,10 +817,10 @@ fn visualize_sema_expr(
             let next_prefix = extend_prefix(&prefix, !is_last);
 
             match sizeof {
-                crate::sema::Sizeof::Type(ty) => {
+                crate::sema::ast::Sizeof::Type(ty) => {
                     print_branch("Type", &format!("{:?}", ty), indent + 1, true, &next_prefix);
                 }
-                crate::sema::Sizeof::Expr(expr) => {
+                crate::sema::ast::Sizeof::TypedExpr(expr) => {
                     print_branch("Expression", "", indent + 1, true, &next_prefix);
                     visualize_typed_expr(
                         expr,

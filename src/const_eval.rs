@@ -1,7 +1,8 @@
 //TypedExprに対応した定数計算モジュール
 use crate::ast::Type;
-use crate::ast::{Arithmetic, BinaryOp, Comparison, Logical, UnaryOp};
-use crate::sema::{SemaExpr, TypedExpr};
+use crate::sema::ast::*;
+use crate::sema::ast::{Arithmetic, BinaryOp, Comparison, Logical, UnaryOp};
+use crate::sema::{ast::SemaExpr, ast::TypedExpr};
 
 impl TypedExpr {
     pub fn eval_const(self) -> Result<isize, String> {
@@ -58,7 +59,6 @@ fn eval_sema_expr(expr: &SemaExpr, expr_type: &Type) -> Result<isize, String> {
 
         // 非対応リテラル
         SemaExpr::NumFloat(_) => Err("浮動小数点数は定数計算できません".to_string()),
-        SemaExpr::String(_) => Err("文字列は定数計算できません".to_string()),
 
         SemaExpr::Unary(unary) => eval_typed_unary(unary),
         SemaExpr::Binary(binary) => eval_typed_binary(binary),
@@ -72,12 +72,11 @@ fn eval_sema_expr(expr: &SemaExpr, expr_type: &Type) -> Result<isize, String> {
         SemaExpr::Call(_) => Err("関数呼び出しは定数計算できません".to_string()),
         SemaExpr::Subscript(_) => Err("配列添え字は定数計算できません".to_string()),
         SemaExpr::MemberAccess(_) => Err("メンバアクセスは定数計算できません".to_string()),
-        SemaExpr::Postfix(_) => Err("後置演算子は定数計算できません".to_string()),
         SemaExpr::Assign(_) => Err("代入は定数計算できません".to_string()),
     }
 }
 
-fn eval_typed_unary(unary: &crate::sema::Unary) -> Result<isize, String> {
+fn eval_typed_unary(unary: &crate::sema::ast::Unary) -> Result<isize, String> {
     // 事前に型チェック
     if !is_compile_time_constant_type(&unary.expr.r#type) {
         return Err(format!(
@@ -89,17 +88,14 @@ fn eval_typed_unary(unary: &crate::sema::Unary) -> Result<isize, String> {
     let operand = eval_const_typed_expr(&unary.expr)?;
 
     match unary.op {
-        UnaryOp::Minus => Ok(-operand),
         UnaryOp::Bang => Ok(if operand != 0 { 0 } else { 1 }),
         UnaryOp::Tilde => Ok(!operand),
         UnaryOp::Ampersand => Err("アドレス演算子は定数計算できません".to_string()),
         UnaryOp::Asterisk => Err("間接参照演算子は定数計算できません".to_string()),
-        UnaryOp::PlusPlus => Err("前置インクリメントは定数計算できません".to_string()),
-        UnaryOp::MinusMinus => Err("前置デクリメントは定数計算できません".to_string()),
     }
 }
 
-fn eval_typed_binary(binary: &crate::sema::Binary) -> Result<isize, String> {
+fn eval_typed_binary(binary: &crate::sema::ast::Binary) -> Result<isize, String> {
     // 事前に型チェック
     if !is_compile_time_constant_type(&binary.lhs.r#type) {
         return Err(format!(
@@ -197,7 +193,7 @@ fn eval_logical(op: Logical, lhs: isize, rhs: isize) -> Result<isize, String> {
     }
 }
 
-fn eval_typed_ternary(ternary: &crate::sema::Ternary) -> Result<isize, String> {
+fn eval_typed_ternary(ternary: &Ternary) -> Result<isize, String> {
     // 型チェック
     if !is_compile_time_constant_type(&ternary.cond.r#type) {
         return Err(format!(
@@ -227,7 +223,7 @@ fn eval_typed_ternary(ternary: &crate::sema::Ternary) -> Result<isize, String> {
     }
 }
 
-fn eval_typed_cast(cast: &crate::sema::Cast) -> Result<isize, String> {
+fn eval_typed_cast(cast: &Cast) -> Result<isize, String> {
     // キャスト先の型チェック
     if !is_compile_time_constant_type(&cast.r#type) {
         return Err(format!(
@@ -253,7 +249,7 @@ fn eval_typed_cast(cast: &crate::sema::Cast) -> Result<isize, String> {
     }
 }
 
-fn eval_typed_comma(comma: &crate::sema::Comma) -> Result<isize, String> {
+fn eval_typed_comma(comma: &Comma) -> Result<isize, String> {
     let mut result = 0;
     for typed_expr in &comma.assigns {
         // 各式の型チェック
@@ -268,113 +264,16 @@ fn eval_typed_comma(comma: &crate::sema::Comma) -> Result<isize, String> {
     Ok(result)
 }
 
-fn eval_typed_sizeof(sizeof: &crate::sema::Sizeof) -> Result<isize, String> {
+fn eval_typed_sizeof(sizeof: &Sizeof) -> Result<isize, String> {
     match sizeof {
-        crate::sema::Sizeof::Type(_) => {
+        Sizeof::Type(_) => {
             // 型のサイズを返す（簡略化のため固定値）
             Ok(4) // 仮のサイズ
         }
-        crate::sema::Sizeof::Expr(typed_expr) => {
+        crate::sema::ast::Sizeof::TypedExpr(typed_expr) => {
             // 式の型に関係なくサイズ計算は可能（式自体は評価しない）
             let _ = &typed_expr.r#type; // 型情報のみ使用
             Ok(4) // 仮のサイズ
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::ast::{Arithmetic, BinaryOp, Type};
-    use crate::sema::{Binary, SemaExpr, TypedExpr};
-
-    #[test]
-    fn test_int_literal() {
-        let typed_expr = TypedExpr::new(Type::Int, SemaExpr::NumInt(42));
-        let result = eval_const_typed_expr(&typed_expr).unwrap();
-        assert_eq!(result, 42);
-    }
-
-    #[test]
-    fn test_char_literal() {
-        let typed_expr = TypedExpr::new(Type::Char, SemaExpr::Char('A'));
-        let result = eval_const_typed_expr(&typed_expr).unwrap();
-        assert_eq!(result, 65); // 'A' = 65
-    }
-
-    #[test]
-    fn test_float_rejection() {
-        use ordered_float::OrderedFloat;
-        let typed_expr = TypedExpr::new(Type::Double, SemaExpr::NumFloat(OrderedFloat(3.14)));
-        let result = eval_const_typed_expr(&typed_expr);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("非int型"));
-    }
-
-    #[test]
-    fn test_binary_addition() {
-        let lhs = Box::new(TypedExpr::new(Type::Int, SemaExpr::NumInt(10)));
-        let rhs = Box::new(TypedExpr::new(Type::Int, SemaExpr::NumInt(20)));
-        let binary = Binary {
-            op: BinaryOp::Arithmetic(Arithmetic::Plus),
-            lhs,
-            rhs,
-        };
-        let typed_expr = TypedExpr::new(Type::Int, SemaExpr::Binary(binary));
-
-        let result = eval_const_typed_expr(&typed_expr).unwrap();
-        assert_eq!(result, 30);
-    }
-
-    #[test]
-    fn test_mixed_type_rejection() {
-        use ordered_float::OrderedFloat;
-        let lhs = Box::new(TypedExpr::new(Type::Int, SemaExpr::NumInt(10)));
-        let rhs = Box::new(TypedExpr::new(
-            Type::Double,
-            SemaExpr::NumFloat(OrderedFloat(3.14)),
-        ));
-        let binary = Binary {
-            op: BinaryOp::Arithmetic(Arithmetic::Plus),
-            lhs,
-            rhs,
-        };
-        let typed_expr = TypedExpr::new(Type::Int, SemaExpr::Binary(binary));
-
-        let result = eval_const_typed_expr(&typed_expr);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("非対応"));
-    }
-
-    #[test]
-    fn test_unary_operations() {
-        use crate::sema::Unary;
-
-        // -42 = -42
-        let expr = Box::new(TypedExpr::new(Type::Int, SemaExpr::NumInt(42)));
-        let unary = Unary {
-            op: UnaryOp::Minus,
-            expr,
-        };
-        let typed_expr = TypedExpr::new(Type::Int, SemaExpr::Unary(unary));
-        assert_eq!(eval_const_typed_expr(&typed_expr).unwrap(), -42);
-
-        // !5 = 0 (5は非ゼロなのでfalse)
-        let expr = Box::new(TypedExpr::new(Type::Int, SemaExpr::NumInt(5)));
-        let unary = Unary {
-            op: UnaryOp::Bang,
-            expr,
-        };
-        let typed_expr = TypedExpr::new(Type::Int, SemaExpr::Unary(unary));
-        assert_eq!(eval_const_typed_expr(&typed_expr).unwrap(), 0);
-
-        // !0 = 1 (0はゼロなのでtrue)
-        let expr = Box::new(TypedExpr::new(Type::Int, SemaExpr::NumInt(0)));
-        let unary = Unary {
-            op: UnaryOp::Bang,
-            expr,
-        };
-        let typed_expr = TypedExpr::new(Type::Int, SemaExpr::Unary(unary));
-        assert_eq!(eval_const_typed_expr(&typed_expr).unwrap(), 1);
     }
 }

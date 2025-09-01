@@ -1,4 +1,4 @@
-use crate::ast::Expr;
+use super::TypedExpr;
 
 use super::{
     Block, Ident, Typedef,
@@ -104,7 +104,7 @@ pub struct FunctionDef {
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum InitData {
-    Expr(Expr),
+    Expr(TypedExpr),
     Compound(Vec<InitData>), // 構造体・配列初期化子 {1, 2}
 }
 
@@ -125,7 +125,18 @@ pub struct Init {
 }
 
 impl Init {
-    pub fn new(r: MemberDecl, l: Option<InitData>) -> Self {
+    pub fn new(mut r: MemberDecl, l: Option<InitData>) -> Self {
         Init { r, l }
+    }
+
+    fn guess(r: &mut MemberDecl, l: &InitData) {
+        match &mut r.ty {
+            Type::Array(a) => {
+                if a.length.is_none() {
+                    a.length = Some(l.as_compound().unwrap().len());
+                }
+            }
+            _ => {}
+        }
     }
 }
