@@ -37,13 +37,54 @@ fn stmt(stmt: &mut Stmt) {
 fn _expr(expr: Expr) -> Expr {
     match expr {
         Expr::Assign(this) => assign(this),
-        Expr::Unary(u) => unary(u),
-        other => other, // そのまま返す
+        Expr::Unary(this) => unary(this),
+        Expr::Postfix(this) => postfix(this),
+        Expr::Binary(this) => {}
+        Expr::Call(this) => {}
+        Expr::Char(this) => {}
+        Expr::String(this) => {}
+        Expr::Ident(this) => {}
+        Expr::NumInt(this) => {}
+        Expr::NumFloat(this) => {}
+        Expr::Postfix(this) => {}
+        Expr::Subscript(this) => {}
+        Expr::MemberAccess(this) => {}
+        Expr::Ternary(this) => {}
+        Expr::Unary(this) => {}
+        Expr::Sizeof(this) => {}
+        Expr::Cast(this) => {}
+        Expr::Comma(this) => {}
     }
 }
 
+fn postfix(postfix: Postfix) -> Expr {
+    Expr::comma(vec![
+        *Expr::assign(
+            AssignOp::Equal,
+            postfix.expr.clone(),
+            Expr::binary(
+                if postfix.op == PostfixOp::plus_plus() {
+                    BinaryOp::plus()
+                } else {
+                    BinaryOp::minus()
+                },
+                postfix.expr.clone(),
+                Box::new(Expr::NumInt(1)),
+            ),
+        ),
+        *Expr::binary(
+            if postfix.op == PostfixOp::plus_plus() {
+                BinaryOp::minus()
+            } else {
+                BinaryOp::plus()
+            },
+            postfix.expr,
+            Box::new(Expr::NumInt(1)),
+        ),
+    ])
+}
+
 fn unary(unary: Unary) -> Expr {
-    print!("here");
     match unary.op {
         UnaryOp::Minus => {
             let target = *unary.expr;
