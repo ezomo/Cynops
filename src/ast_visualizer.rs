@@ -630,8 +630,11 @@ fn visualize_sema_expr(
         SemaExpr::Char(c) => {
             print_branch("Character", &format!("'{:?}'", c), indent, is_last, &prefix);
         }
+        SemaExpr::String(c) => {
+            print_branch("Sting", &format!("'{:?}'", c), indent, is_last, &prefix);
+        }
         SemaExpr::Ident(name) => {
-            print_branch("Identifier", &name.name, indent, is_last, &prefix);
+            print_branch("Identifier", &name.name.name, indent, is_last, &prefix);
         }
         SemaExpr::Binary(binary) => {
             print_branch(
@@ -801,16 +804,18 @@ fn visualize_sema_expr(
             );
 
             print_branch("Member", "", indent + 1, true, &next_prefix);
-            let member_expr = TypedExpr::new(
-                crate::ast::Type::Void, // Placeholder type for member identifier
-                SemaExpr::Ident(member_access.member.clone()),
-            );
-            visualize_typed_expr(
-                &member_expr,
-                indent + 2,
-                true,
-                extend_prefix(&next_prefix, false),
-            );
+            // let member_expr = TypedExpr::new(
+            //     crate::ast::Type::Void, // Placeholder type for member identifier
+            //     SemaExpr::Ident(member_access.member.clone()),
+            // );
+            // visualize_typed_expr(
+            //     &member_expr,
+            //     indent + 2,
+            //     true,
+            //     extend_prefix(&next_prefix, false),
+            // );
+
+            todo!()
         }
         SemaExpr::Sizeof(sizeof) => {
             print_branch("Sizeof", "", indent, is_last, &prefix);

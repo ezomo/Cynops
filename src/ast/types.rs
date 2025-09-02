@@ -116,51 +116,6 @@ impl Type {
     }
 }
 
-impl Type {
-    pub fn as_func(&self) -> Option<&Func> {
-        if let Type::Func(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-    pub fn as_struct(&self) -> Option<&Struct> {
-        if let Type::Struct(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-    pub fn as_union(&self) -> Option<&Union> {
-        if let Type::Union(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-    pub fn as_enum(&self) -> Option<&Enum> {
-        if let Type::Enum(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-    pub fn as_pointer(&self) -> Option<&Box<Type>> {
-        if let Type::Pointer(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-    pub fn as_array(&self) -> Option<&Array> {
-        if let Type::Array(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-}
-
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct FunctionSig {
     pub ty: Type,

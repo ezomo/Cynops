@@ -40,6 +40,9 @@ fn main() {
             ast_visualizer::visualize_program(&program);
             sema::simplification::program(&mut program);
             ast_visualizer::visualize_program(&program);
+            let mut session = sema::ast::Session::new();
+            let new_pragram = sema::convert::program(&program, &mut session);
+            println!("{:#?}", new_pragram);
         }
         "codegen" => {
             // codegen::generate_program(program.clone(), &mut codegen::CodeGenStatus::new());

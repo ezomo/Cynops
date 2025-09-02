@@ -1,4 +1,4 @@
-use super::{DeclStmt, Ident, SemaExpr};
+use super::{DeclStmt, Ident, TypedExpr};
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Block {
     pub statements: Vec<Box<Stmt>>,
@@ -11,14 +11,14 @@ impl Block {
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct If {
-    pub cond: Box<SemaExpr>,    // 条件は式
+    pub cond: Box<TypedExpr>,   // 条件は式
     pub then_branch: Box<Stmt>, // ブロックや文
     pub else_branch: Option<Box<Stmt>>,
 }
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Case {
-    pub const_expr: SemaExpr,
+    pub const_expr: TypedExpr,
     pub stmts: Vec<Box<Stmt>>,
 }
 
@@ -35,11 +35,11 @@ pub enum SwitchCase {
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Switch {
-    pub cond: Box<SemaExpr>,
+    pub cond: Box<TypedExpr>,
     pub cases: Vec<SwitchCase>,
 }
 impl SwitchCase {
-    pub fn case(expr: SemaExpr, stmts: Vec<Box<Stmt>>) -> Self {
+    pub fn case(expr: TypedExpr, stmts: Vec<Box<Stmt>>) -> Self {
         SwitchCase::Case(Case {
             const_expr: expr,
             stmts,
@@ -53,27 +53,27 @@ impl SwitchCase {
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct While {
-    pub cond: Box<SemaExpr>,
+    pub cond: Box<TypedExpr>,
     pub body: Box<Stmt>,
 }
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct DoWhile {
     pub body: Box<Stmt>,
-    pub cond: Box<SemaExpr>, // 条件は式
+    pub cond: Box<TypedExpr>, // 条件は式
 }
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct For {
-    pub init: Option<Box<SemaExpr>>, // 式（文じゃない）← int i = 0; はNG
-    pub cond: Option<Box<SemaExpr>>, // 式
-    pub step: Option<Box<SemaExpr>>, // 式（例: y += 1, x--）
-    pub body: Box<Stmt>,             // 本体（文）
+    pub init: Option<Box<TypedExpr>>, // 式（文じゃない）← int i = 0; はNG
+    pub cond: Option<Box<TypedExpr>>, // 式
+    pub step: Option<Box<TypedExpr>>, // 式（例: y += 1, x--）
+    pub body: Box<Stmt>,              // 本体（文）
 }
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Return {
-    pub value: Option<Box<SemaExpr>>,
+    pub value: Option<Box<TypedExpr>>,
 }
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
@@ -98,7 +98,7 @@ pub enum Control {
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum Stmt {
-    ExprStmt(SemaExpr), // 式文（関数呼び出し、代入など）
+    ExprStmt(TypedExpr), // 式文（関数呼び出し、代入など）
     DeclStmt(DeclStmt),
     Control(Control),
     Return(Return),
@@ -109,7 +109,7 @@ pub enum Stmt {
     Continue,
 }
 impl Stmt {
-    pub fn expr(expr: SemaExpr) -> Box<Self> {
+    pub fn expr(expr: TypedExpr) -> Box<Self> {
         Box::new(Stmt::ExprStmt(expr))
     }
 
@@ -117,7 +117,7 @@ impl Stmt {
         Box::new(Stmt::DeclStmt(decl_stmt))
     }
 
-    pub fn r#if(cond: SemaExpr, then_branch: Stmt, else_branch: Option<Stmt>) -> Box<Self> {
+    pub fn r#if(cond: TypedExpr, then_branch: Stmt, else_branch: Option<Stmt>) -> Box<Self> {
         Box::new(Stmt::Control(Control::If(If {
             cond: Box::new(cond),
             then_branch: Box::new(then_branch),
@@ -125,20 +125,20 @@ impl Stmt {
         })))
     }
 
-    pub fn r#switch(cond: SemaExpr, cases: Vec<SwitchCase>) -> Box<Self> {
+    pub fn r#switch(cond: TypedExpr, cases: Vec<SwitchCase>) -> Box<Self> {
         Box::new(Stmt::Control(Control::Switch(Switch {
             cond: Box::new(cond),
             cases,
         })))
     }
 
-    pub fn r#while(cond: SemaExpr, body: Stmt) -> Box<Self> {
+    pub fn r#while(cond: TypedExpr, body: Stmt) -> Box<Self> {
         Box::new(Stmt::Control(Control::While(While {
             cond: Box::new(cond),
             body: Box::new(body),
         })))
     }
-    pub fn r#do_while(body: Stmt, cond: SemaExpr) -> Box<Self> {
+    pub fn r#do_while(body: Stmt, cond: TypedExpr) -> Box<Self> {
         Box::new(Stmt::Control(Control::DoWhile(DoWhile {
             body: Box::new(body),
             cond: Box::new(cond),
@@ -146,9 +146,9 @@ impl Stmt {
     }
 
     pub fn r#for(
-        init: Option<SemaExpr>,
-        cond: Option<SemaExpr>,
-        step: Option<SemaExpr>,
+        init: Option<TypedExpr>,
+        cond: Option<TypedExpr>,
+        step: Option<TypedExpr>,
         body: Stmt,
     ) -> Box<Self> {
         Box::new(Stmt::Control(Control::For(For {
@@ -159,7 +159,7 @@ impl Stmt {
         })))
     }
 
-    pub fn r#return(value: Option<SemaExpr>) -> Box<Self> {
+    pub fn r#return(value: Option<TypedExpr>) -> Box<Self> {
         Box::new(Stmt::Return(Return {
             value: value.map(|v| Box::new(v)),
         }))

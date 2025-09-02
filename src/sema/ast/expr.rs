@@ -1,6 +1,10 @@
-use super::{AssignOp, BinaryOp, Ident, UnaryOp};
-use crate::ast::{MemberAccessOp, Type};
+use super::{AssignOp, BinaryOp, Ident, ScopeNode, Type, UnaryOp};
+use crate::ast::MemberAccessOp;
 use ordered_float::OrderedFloat;
+use std::cell::RefCell;
+use std::hash::{Hash, Hasher};
+use std::rc::Weak;
+
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct PostfixChain {
     pub base: TypedExpr,              // primary に相当する基の式
@@ -93,13 +97,58 @@ pub struct Comma {
     pub assigns: Vec<TypedExpr>,
 }
 
+#[derive(Clone)]
+pub struct Symbol {
+    pub name: Ident,
+    pub scope: Weak<RefCell<ScopeNode>>, // どこのスコープで解決されたか
+}
+
+use std::fmt;
+impl fmt::Debug for Symbol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(scope_rc) = self.scope.upgrade() {
+            let scope = scope_rc.borrow();
+            f.debug_struct("Symbol")
+                .field("name", &self.name)
+                .field("scope", &scope) // ScopeNode も Debug impl 必要
+                .finish()
+        } else {
+            f.debug_struct("Symbol")
+                .field("name", &self.name)
+                .field("scope", &"<dropped>")
+                .finish()
+        }
+    }
+}
+
+impl Symbol {
+    pub fn new(name: Ident, scope: Weak<RefCell<ScopeNode>>) -> Self {
+        Symbol { name, scope }
+    }
+}
+
+impl Hash for Symbol {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state); // スコープは無視
+    }
+}
+
+impl PartialEq for Symbol {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
+impl Eq for Symbol {}
+
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum SemaExpr {
     Assign(Assign),
     Binary(Binary),
     Call(Call),
     Char(char),
-    Ident(Ident),
+    String(Vec<char>),
+    Ident(Symbol),
     NumInt(usize),
     NumFloat(OrderedFloat<f64>),
     Subscript(Subscript),
@@ -110,6 +159,7 @@ pub enum SemaExpr {
     Cast(Cast),
     Comma(Comma),
 }
+
 impl SemaExpr {
     pub fn num_int(n: usize) -> Self {
         SemaExpr::NumInt(n)
@@ -123,7 +173,11 @@ impl SemaExpr {
         SemaExpr::Char(c)
     }
 
-    pub fn ident(name: Ident) -> Self {
+    pub fn string(string: Vec<char>) -> Self {
+        SemaExpr::String(string)
+    }
+
+    pub fn ident(name: Symbol) -> Self {
         SemaExpr::Ident(name)
     }
 

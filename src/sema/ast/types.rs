@@ -1,6 +1,6 @@
-use crate::ast::{Enum, Union};
-
 use super::Struct;
+use super::*;
+use crate::ast;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Array {
@@ -52,6 +52,7 @@ pub enum Type {
     Pointer(Box<Type>),
     Array(Array),
     Typedef(Ident),
+    Unresolved, //後でなくすかも
 }
 
 impl Type {
@@ -72,6 +73,7 @@ impl Type {
             Type::Int => "int".to_string(),
             Type::Double => "double".to_string(),
             Type::Char => "char".to_string(),
+            Type::Unresolved => "unresolved".to_string(),
             Type::Func(func) => {
                 let params = if func.params.is_empty() {
                     "void".to_string()
@@ -177,6 +179,16 @@ impl FunctionSig {
 pub struct Ident {
     pub name: String,
 }
+
+impl ast::Ident {
+    /// ASTのIdentをcrate内共通型に変換
+    pub fn as_same(&self) -> Ident {
+        Ident {
+            name: self.name.clone(),
+        }
+    }
+}
+
 impl Ident {
     /// 新しく Ident を作る（&str, String 両方対応）
     pub fn new(name: impl Into<String>) -> Self {
