@@ -104,10 +104,14 @@ fn convert_type(ty: &old_ast::Type, session: &mut Session) -> new_ast::Type {
             new_ast::Type::Pointer(Box::new(convert_type(inner, session)))
         }
         old_ast::Type::Array(arr) => {
-            new_ast::Type::Array(new_ast::Array {
-                array_of: Box::new(convert_type(&arr.array_of, session)),
-                length: arr.length.as_ref().and_then(|_| Some(0)), // 後で解決する
-            })
+            new_ast::Type::Array(Array::new(
+                convert_type(&arr.array_of, session),
+                if arr.length.is_none() {
+                    None
+                } else {
+                    Some(convert_expr(&arr.length.clone().unwrap(), session))
+                }, // 後で解決する
+            ))
         }
         old_ast::Type::Typedef(ident) => new_ast::Type::Typedef(ident.as_same()),
     }

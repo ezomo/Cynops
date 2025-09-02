@@ -128,15 +128,4 @@ impl Init {
     pub fn new(mut r: MemberDecl, l: Option<InitData>) -> Self {
         Init { r, l }
     }
-
-    fn guess(r: &mut MemberDecl, l: &InitData) {
-        match &mut r.ty {
-            Type::Array(a) => {
-                if a.length.is_none() {
-                    a.length = Some(l.as_compound().unwrap().len());
-                }
-            }
-            _ => {}
-        }
-    }
 }

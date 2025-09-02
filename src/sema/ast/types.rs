@@ -5,14 +5,14 @@ use crate::ast;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Array {
     pub array_of: Box<Type>,
-    pub length: Option<usize>,
+    pub length: Option<Box<TypedExpr>>,
 }
 
 impl Array {
-    pub fn new(array_of: Type, length: usize) -> Self {
+    pub fn new(array_of: Type, length: Option<TypedExpr>) -> Self {
         Self {
             array_of: Box::new(array_of),
-            length: Some(length),
+            length: length.map(Box::new),
         }
     }
 }

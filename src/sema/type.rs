@@ -1,461 +1,452 @@
-// use super::{ast::SemaExpr, ast::TypedExpr};
-// use crate::ast::*;
+use super::ast::*;
 
-// impl Expr {
-//     /// ExprをTypedExprに変換する
-//     /// ここでは型チェックも行う
-//     pub fn to_typed_expr(self) -> TypedExpr {
-//         entry(self)
-//     }
-// }
+pub fn program(program: &Program, session: &mut Session) -> Program {
+    let mut resolved_items = Vec::new();
 
-// pub fn entry(exper: Expr) -> TypedExpr {
-//     match exper {
-//         Expr::Assign(a) => assign(a),
-//         Expr::Binary(a) => binary(a),
-//         Expr::Call(a) => call(a),
-//         Expr::Cast(a) => cast(a),
-//         Expr::Char(a) => char_lit(a),
-//         Expr::Comma(a) => comma(a),
-//         Expr::Ident(a) => todo!(), //variable(a),
-//         Expr::MemberAccess(a) => memberaccess(a),
-//         Expr::NumFloat(a) => num_float(a),
-//         Expr::NumInt(a) => num_int(a),
-//         Expr::Postfix(_) => unreachable!(),
-//         Expr::Sizeof(a) => sizeof(a),
-//         Expr::String(a) => string_lit(a),
-//         Expr::Subscript(a) => subscript(a),
-//         Expr::Ternary(a) => ternary(a),
-//         Expr::Unary(a) => unary(a),
-//     }
-// }
+    for item in &program.items {
+        let resolved_item = resolve_toplevel(item, session);
+        resolved_items.push(resolved_item);
+    }
 
-// /// 代入可能性の厳密チェック（完全一致のみ許可）
-// fn check_assignment_compatibility(lhs_type: &Type, rhs_type: &Type) -> Result<(), String> {
-//     if lhs_type == rhs_type {
-//         Ok(())
-//     } else {
-//         Err(format!(
-//             "型が完全に一致しません: {:?} vs {:?}",
-//             lhs_type, rhs_type
-//         ))
-//     }
-// }
+    Program {
+        items: resolved_items,
+    }
+}
 
-// /// 関数パラメータの型チェック（配列構文を禁止）
-// fn check_function_parameter_type(param_type: &Type) -> Result<(), String> {
-//     match param_type {
-//         // 配列型のパラメータは禁止
-//         Type::Array(_) => {
-//             Err("関数パラメータでの配列構文は禁止されています。配列ポインタ(*param)[]または(*param)[N]を使用してください".to_string())
-//         },
-//         _ => Ok(()),
-//     }
-// }
+fn resolve_toplevel(toplevel: &TopLevel, session: &mut Session) -> TopLevel {
+    match toplevel {
+        TopLevel::FunctionDef(func_def) => {
+            TopLevel::FunctionDef(resolve_function_def(func_def, session))
+        }
+        TopLevel::FunctionProto(func_proto) => {
+            TopLevel::FunctionProto(func_proto.clone()) // プロトタイプは既に解決済み
+        }
+        TopLevel::Stmt(stmt) => TopLevel::Stmt(resolve_stmt(stmt, session)),
+    }
+}
 
-// fn assign(a: crate::ast::expr::Assign) -> TypedExpr {
-//     let lhs = entry(*a.lhs);
-//     let rhs = entry(*a.rhs);
+fn resolve_function_def(func_def: &FunctionDef, session: &mut Session) -> FunctionDef {
+    // 関数のスコープに入る
+    session.push_scope();
 
-//     // 厳密な型チェック - 配列の暗黙変換を禁止
-//     if let Err(err) = check_assignment_compatibility(&lhs.r#type, &rhs.r#type) {
-//         panic!("代入エラー: {}", err);
-//     }
+    // パラメータを登録
+    if let Some(func_type) = func_def.sig.ty.as_func() {
+        for (param_name, param_type) in func_def.param_names.iter().zip(&func_type.params) {
+            session.register_symbols(param_name.clone(), param_type.clone());
+        }
+    }
 
-//     TypedExpr::new(
-//         lhs.r#type.clone(),
-//         *SemaExpr::assign(a.op.as_same(), Box::new(lhs), Box::new(rhs)),
-//     )
-// }
+    let resolved_body = resolve_block(&func_def.body, session);
 
-// fn binary(a: crate::ast::expr::Binary) -> TypedExpr {
-//     let lhs = entry(*a.lhs);
-//     let rhs = entry(*a.rhs);
+    session.pop_scope();
 
-//     // 二項演算の型推論（厳密版）
-//     let result_type = match (&lhs.r#type, &rhs.r#type, &a.op) {
-//         // 比較演算子は常にbool(int)を返す
-//         (_, _, BinaryOp::Comparison(_)) => Type::Int,
+    FunctionDef {
+        sig: func_def.sig.clone(),
+        param_names: func_def.param_names.clone(),
+        body: resolved_body,
+    }
+}
 
-//         // 論理演算子も int を返す
-//         (_, _, BinaryOp::Logical(_)) => Type::Int,
+fn resolve_block(block: &Block, session: &mut Session) -> Block {
+    session.push_scope();
 
-//         // 同じ型同士の算術演算
-//         (t1, t2, BinaryOp::Arithmetic(_)) if t1 == t2 => t1.clone(),
+    let mut resolved_statements = Vec::new();
+    for stmt in &block.statements {
+        let resolved_stmt = resolve_stmt(stmt, session);
+        resolved_statements.push(Box::new(resolved_stmt));
+    }
 
-//         // ポインタ演算
-//         (
-//             Type::Pointer(inner),
-//             Type::Int,
-//             BinaryOp::Arithmetic(Arithmetic::Plus | Arithmetic::Minus),
-//         ) => Type::Pointer(inner.clone()),
-//         (Type::Int, Type::Pointer(inner), BinaryOp::Arithmetic(Arithmetic::Plus)) => {
-//             Type::Pointer(inner.clone())
-//         }
+    session.pop_scope();
 
-//         // 配列の暗黙変換は禁止
-//         (Type::Array(_), _, _) | (_, Type::Array(_), _) => {
-//             panic!(
-//                 "配列型を直接二項演算で使用することはできません。要素アクセスまたは明示的なアドレス取得を行ってください"
-//             );
-//         }
+    Block {
+        statements: resolved_statements,
+    }
+}
 
-//         // 異なる型の場合はエラー
-//         _ => panic!("二項演算での型不一致: {:?} vs {:?}", lhs.r#type, rhs.r#type),
-//     };
+fn resolve_stmt(stmt: &Stmt, session: &mut Session) -> Stmt {
+    match stmt {
+        Stmt::ExprStmt(expr) => Stmt::ExprStmt(resolve_typed_expr(expr, session)),
+        Stmt::DeclStmt(decl) => Stmt::DeclStmt(resolve_decl_stmt(decl, session)),
+        Stmt::Control(control) => Stmt::Control(resolve_control(control, session)),
+        Stmt::Return(ret) => Stmt::Return(Return {
+            value: ret
+                .value
+                .as_ref()
+                .map(|v| Box::new(resolve_typed_expr(v, session))),
+        }),
+        Stmt::Block(block) => Stmt::Block(resolve_block(block, session)),
+        Stmt::Label(label) => Stmt::Label(Label {
+            name: label.name.clone(),
+            stmt: Box::new(resolve_stmt(&label.stmt, session)),
+        }),
+        _ => stmt.clone(), // Goto, Break, Continue はそのまま
+    }
+}
 
-//     TypedExpr::new(
-//         result_type,
-//         *SemaExpr::binary(a.op.as_same(), Box::new(lhs), Box::new(rhs)),
-//     )
-// }
+fn resolve_control(control: &Control, session: &mut Session) -> Control {
+    match control {
+        Control::If(if_stmt) => Control::If(If {
+            cond: Box::new(resolve_typed_expr(&if_stmt.cond, session)),
+            then_branch: Box::new(resolve_stmt(&if_stmt.then_branch, session)),
+            else_branch: if_stmt
+                .else_branch
+                .as_ref()
+                .map(|e| Box::new(resolve_stmt(e, session))),
+        }),
+        Control::While(while_stmt) => Control::While(While {
+            cond: Box::new(resolve_typed_expr(&while_stmt.cond, session)),
+            body: Box::new(resolve_stmt(&while_stmt.body, session)),
+        }),
+        Control::DoWhile(do_while) => Control::DoWhile(DoWhile {
+            body: Box::new(resolve_stmt(&do_while.body, session)),
+            cond: Box::new(resolve_typed_expr(&do_while.cond, session)),
+        }),
+        Control::For(for_stmt) => Control::For(For {
+            init: for_stmt
+                .init
+                .as_ref()
+                .map(|i| Box::new(resolve_typed_expr(i, session))),
+            cond: for_stmt
+                .cond
+                .as_ref()
+                .map(|c| Box::new(resolve_typed_expr(c, session))),
+            step: for_stmt
+                .step
+                .as_ref()
+                .map(|s| Box::new(resolve_typed_expr(s, session))),
+            body: Box::new(resolve_stmt(&for_stmt.body, session)),
+        }),
+        Control::Switch(switch) => Control::Switch(Switch {
+            cond: Box::new(resolve_typed_expr(&switch.cond, session)),
+            cases: switch
+                .cases
+                .iter()
+                .map(|c| resolve_switch_case(c, session))
+                .collect(),
+        }),
+    }
+}
 
-// fn call(a: crate::ast::expr::Call) -> TypedExpr {
-//     let func = entry(*a.func);
-//     let args: Vec<Box<TypedExpr>> = a
-//         .args
-//         .into_iter()
-//         .map(|arg| Box::new(entry(*arg)))
-//         .collect();
+fn resolve_switch_case(case: &SwitchCase, session: &mut Session) -> SwitchCase {
+    match case {
+        SwitchCase::Case(c) => SwitchCase::Case(Case {
+            const_expr: resolve_typed_expr(&c.const_expr, session),
+            stmts: c
+                .stmts
+                .iter()
+                .map(|s| Box::new(resolve_stmt(s, session)))
+                .collect(),
+        }),
+        SwitchCase::Default(d) => SwitchCase::Default(DefaultCase {
+            stmts: d
+                .stmts
+                .iter()
+                .map(|s| Box::new(resolve_stmt(s, session)))
+                .collect(),
+        }),
+    }
+}
 
-//     // 関数型チェックと引数型チェック
-//     let return_type = match &func.r#type {
-//         Type::Func(func_type) => {
-//             if func_type.params[0] == Type::Void {
-//                 &func_type.return_type
-//             } else {
-//                 for param in &func_type.params {
-//                     if let Err(err) = check_function_parameter_type(param) {
-//                         panic!("関数パラメータエラー: {}", err);
-//                     }
-//                 }
+fn resolve_decl_stmt(decl: &DeclStmt, session: &mut Session) -> DeclStmt {
+    match decl {
+        DeclStmt::InitVec(inits) => {
+            let mut resolved_inits = Vec::new();
+            for init in inits {
+                let resolved_init = resolve_init(init, session);
+                resolved_inits.push(resolved_init);
+            }
+            DeclStmt::InitVec(resolved_inits)
+        }
+        _ => decl.clone(), // Struct, Union, Enum, Typedef はconvert時点で解決済み
+    }
+}
 
-//                 if (args.len() != func_type.params.len())
-//                     && (func_type.params.last().unwrap() != &Type::DotDotDot)
-//                 {
-//                     panic!(
-//                         "引数の個数が一致しません: expected {}, got {},{:?}",
-//                         func_type.params.len(),
-//                         args.len(),
-//                         func_type.params
-//                     );
-//                 }
+fn resolve_init(init: &Init, session: &mut Session) -> Init {
+    let mut resolved_type = init.r.ty.clone();
 
-//                 for (i, (arg, param_type)) in args.iter().zip(&func_type.params).enumerate() {
-//                     if param_type == &Type::DotDotDot {
-//                         break;
-//                     }
-//                     if let Err(err) = check_assignment_compatibility(param_type, &arg.r#type) {
-//                         panic!("第{}引数の型エラー: {}", i + 1, err);
-//                     }
-//                 }
-//                 &func_type.return_type
-//             }
-//         }
-//         _ => {
-//             panic!("関数型ではありません: {:?}", func.r#type);
-//         }
-//     };
+    // 配列の長さ推論
+    if let Some(init_data) = &init.l {
+        infer_array_length(&mut resolved_type, init_data, session);
+    }
 
-//     TypedExpr::new(*return_type.clone(), SemaExpr::call(func, args))
-// }
+    let resolved_member_decl = MemberDecl {
+        ident: init.r.ident.clone(),
+        ty: resolved_type.clone(),
+    };
 
-// fn cast(a: crate::ast::expr::Cast) -> TypedExpr {
-//     let expr = entry(*a.expr);
-//     let target_type = *a.r#type;
+    // 変数をセッションに登録
+    session.register_symbols(
+        resolved_member_decl.ident.clone(),
+        resolved_member_decl.ty.clone(),
+    );
 
-//     //互換性を決めていないのでまだ作れない TODO
+    Init {
+        r: resolved_member_decl,
+        l: init.l.as_ref().map(|data| resolve_init_data(data, session)),
+    }
+}
 
-//     TypedExpr::new(target_type.clone(), *SemaExpr::cast(target_type, expr))
-// }
+fn infer_array_length(array_type: &mut Type, init_data: &InitData, session: &mut Session) {
+    if let Type::Array(array) = array_type {
+        // 長さが未定義の場合
+        if array.length.is_none() {
+            if let InitData::Compound(compounds) = init_data {
+                // 初期化子の長さを TypedExpr に変換
+                let len_expr = TypedExpr::new(
+                    Type::Int,                         // 配列長は整数型
+                    SemaExpr::NumInt(compounds.len()), // 要素数
+                );
+                array.length = Some(Box::new(len_expr));
+            }
+        } else {
+            let len_expr = TypedExpr::new(
+                Type::Int, // 配列長は整数型
+                SemaExpr::NumInt(
+                    resolve_typed_expr(array.length.clone().unwrap().as_ref(), session)
+                        .eval_const()
+                        .unwrap()
+                        .try_into()
+                        .unwrap(),
+                ), // 要素数
+            );
+            array.length = Some(Box::new(len_expr));
+        }
 
-// fn char_lit(c: char) -> TypedExpr {
-//     TypedExpr::new(Type::Char, SemaExpr::char_lit(c))
-// }
+        // 配列の長さが式で指定されている場合の定数評価もここで可能
+        // 例: const folding など
+    }
+}
+fn resolve_init_data(data: &InitData, session: &mut Session) -> InitData {
+    match data {
+        InitData::Expr(expr) => InitData::Expr(resolve_typed_expr(expr, session)),
+        InitData::Compound(compounds) => InitData::Compound(
+            compounds
+                .iter()
+                .map(|c| resolve_init_data(c, session))
+                .collect(),
+        ),
+    }
+}
 
-// fn comma(a: crate::ast::expr::Comma) -> TypedExpr {
-//     let assigns: Vec<TypedExpr> = a.assigns.into_iter().map(|expr| entry(expr)).collect();
+fn resolve_typed_expr(expr: &TypedExpr, session: &mut Session) -> TypedExpr {
+    let resolved_sema_expr = resolve_sema_expr(&expr.r#expr, session);
+    let inferred_type = infer_type(&resolved_sema_expr, session);
 
-//     // コンマ演算子は最後の式の型を返す
-//     let result_type = assigns
-//         .last()
-//         .map(|expr| expr.r#type.clone())
-//         .unwrap_or(Type::Void);
+    TypedExpr {
+        r#type: inferred_type,
+        r#expr: resolved_sema_expr,
+    }
+}
 
-//     TypedExpr::new(result_type, SemaExpr::comma(assigns))
-// }
+fn resolve_sema_expr(expr: &SemaExpr, session: &mut Session) -> SemaExpr {
+    match expr {
+        SemaExpr::Assign(assign) => SemaExpr::Assign(Assign {
+            op: assign.op,
+            lhs: Box::new(resolve_typed_expr(&assign.lhs, session)),
+            rhs: Box::new(resolve_typed_expr(&assign.rhs, session)),
+        }),
+        SemaExpr::Binary(binary) => SemaExpr::Binary(Binary {
+            op: binary.op,
+            lhs: Box::new(resolve_typed_expr(&binary.lhs, session)),
+            rhs: Box::new(resolve_typed_expr(&binary.rhs, session)),
+        }),
+        SemaExpr::Unary(unary) => SemaExpr::Unary(Unary {
+            op: unary.op,
+            expr: Box::new(resolve_typed_expr(&unary.expr, session)),
+        }),
+        SemaExpr::Ternary(ternary) => SemaExpr::Ternary(Ternary {
+            cond: Box::new(resolve_typed_expr(&ternary.cond, session)),
+            then_branch: Box::new(resolve_typed_expr(&ternary.then_branch, session)),
+            else_branch: Box::new(resolve_typed_expr(&ternary.else_branch, session)),
+        }),
+        SemaExpr::Call(call) => SemaExpr::Call(Call {
+            func: Box::new(resolve_typed_expr(&call.func, session)),
+            args: call
+                .args
+                .iter()
+                .map(|a| Box::new(resolve_typed_expr(a, session)))
+                .collect(),
+        }),
+        SemaExpr::Subscript(subscript) => SemaExpr::Subscript(Subscript {
+            subject: Box::new(resolve_typed_expr(&subscript.subject, session)),
+            index: Box::new(resolve_typed_expr(&subscript.index, session)),
+        }),
+        SemaExpr::MemberAccess(member) => SemaExpr::MemberAccess(MemberAccess {
+            base: Box::new(resolve_typed_expr(&member.base, session)),
+            member: member.member.clone(),
+            kind: member.kind.clone(),
+        }),
+        SemaExpr::Cast(cast) => SemaExpr::Cast(Cast {
+            r#type: cast.r#type.clone(),
+            expr: Box::new(resolve_typed_expr(&cast.expr, session)),
+        }),
+        SemaExpr::Comma(comma) => SemaExpr::Comma(Comma {
+            assigns: comma
+                .assigns
+                .iter()
+                .map(|a| resolve_typed_expr(a, session))
+                .collect(),
+        }),
+        SemaExpr::Sizeof(sizeof) => {
+            let resolved_sizeof = match sizeof {
+                Sizeof::Type(ty) => Sizeof::Type(ty.clone()),
+                Sizeof::TypedExpr(expr) => {
+                    Sizeof::TypedExpr(Box::new(resolve_typed_expr(expr, session)))
+                }
+            };
+            SemaExpr::Sizeof(resolved_sizeof)
+        }
+        _ => expr.clone(), // リテラル類やIdentはそのまま
+    }
+}
 
-// // fn variable(a: crate::ast::expr::) -> TypedExpr {
-// //     let var_type = *a.r#type;
-// //     TypedExpr::new(var_type, SemaExpr::ident(a.ident))
-// // }
+fn infer_type(expr: &SemaExpr, session: &mut Session) -> Type {
+    match expr {
+        SemaExpr::NumInt(_) => Type::Int,
+        SemaExpr::NumFloat(_) => Type::Double,
+        SemaExpr::Char(_) => Type::Char,
+        SemaExpr::String(_) => {
+            // 文字列リテラルは char の配列
+            Type::Array(Array {
+                array_of: Box::new(Type::Char),
+                length: None, // 文字列長は実行時に決定
+            })
+        }
+        SemaExpr::Ident(symbol) => {
+            // シンボルテーブルから型を検索
+            session
+                .get_variable(&symbol.name)
+                .unwrap_or_else(|| panic!("未定義の変数: {}", symbol.name.name))
+        }
+        SemaExpr::Binary(binary) => infer_binary_type(binary, session),
+        SemaExpr::Unary(unary) => infer_unary_type(unary, session),
+        SemaExpr::Assign(assign) => {
+            // 代入式の型は左辺の型
+            infer_type(&assign.lhs.r#expr, session)
+        }
+        SemaExpr::Call(call) => {
+            // 関数呼び出しの戻り値型を推論
+            let func_type = infer_type(&call.func.r#expr, session);
+            if let Type::Func(func) = func_type {
+                *func.return_type
+            } else {
+                panic!("関数でないものを呼び出そうとしています")
+            }
+        }
+        SemaExpr::Subscript(subscript) => {
+            // 配列添字の型は配列要素の型
+            let subject_type = infer_type(&subscript.subject.r#expr, session);
+            match subject_type {
+                Type::Array(array) => *array.array_of,
+                Type::Pointer(inner) => *inner,
+                _ => panic!("配列またはポインタでないものに添字アクセスしています"),
+            }
+        }
+        SemaExpr::MemberAccess(member) => {
+            // 構造体メンバアクセスの型推論
+            let base_type = infer_type(&member.base.r#expr, session);
+            let actual_type = match &member.kind {
+                crate::ast::MemberAccessOp::Dot => base_type,
+                crate::ast::MemberAccessOp::MinusGreater => {
+                    // -> の場合はポインタを逆参照
+                    if let Type::Pointer(inner) = base_type {
+                        *inner
+                    } else {
+                        panic!("-> 演算子はポインタ型でのみ使用できます")
+                    }
+                }
+            };
 
-// fn memberaccess(a: crate::ast::expr::MemberAccess) -> TypedExpr {
-//     let base = entry(*a.base);
+            // 構造体からメンバの型を取得
+            match actual_type {
+                Type::Struct(s) => s
+                    .member
+                    .iter()
+                    .find(|m| m.ident.name == member.member.name)
+                    .map(|m| m.ty.clone())
+                    .unwrap_or_else(|| panic!("存在しないメンバ: {}", member.member.name)),
+                Type::Union(u) => u
+                    .member
+                    .iter()
+                    .find(|m| m.ident.name == member.member.name)
+                    .map(|m| m.ty.clone())
+                    .unwrap_or_else(|| panic!("存在しないメンバ: {}", member.member.name)),
+                _ => panic!("構造体またはユニオン型でないものにメンバアクセスしています"),
+            }
+        }
+        SemaExpr::Ternary(ternary) => {
+            // 三項演算子の型は then_branch と else_branch の共通型
+            let then_type = infer_type(&ternary.then_branch.r#expr, session);
+            let else_type = infer_type(&ternary.else_branch.r#expr, session);
 
-//     // メンバーアクセスの型チェック
-//     let member_type = match (&base.r#type, &a.kind) {
-//         // 構造体.メンバー
-//         (Type::Struct(struct_def), MemberAccessOp::Dot) => {
-//             // MemberDeclから実際のメンバー型を取得
-//             struct_def
-//                 .member
-//                 .iter()
-//                 .find(|member| member.ident.name == a.member.name)
-//                 .map(|member| member.ty.clone())
-//                 .unwrap_or_else(|| {
-//                     panic!(
-//                         "構造体 {} にメンバー {} が見つかりません",
-//                         struct_def
-//                             .ident
-//                             .as_ref()
-//                             .map(|id| id.name.as_str())
-//                             .unwrap_or("Anonymous"),
-//                         a.member.name
-//                     )
-//                 })
-//         }
-//         // 共用体.メンバー
-//         (Type::Union(union_def), MemberAccessOp::Dot) => {
-//             // MemberDeclから実際のメンバー型を取得
-//             union_def
-//                 .member
-//                 .iter()
-//                 .find(|member| member.ident.name == a.member.name)
-//                 .map(|member| member.ty.clone())
-//                 .unwrap_or_else(|| {
-//                     panic!(
-//                         "共用体 {} にメンバー {} が見つかりません",
-//                         union_def
-//                             .ident
-//                             .as_ref()
-//                             .map(|id| id.name.as_str())
-//                             .unwrap_or("Anonymous"),
-//                         a.member.name
-//                     )
-//                 })
-//         }
-//         // ポインタ->メンバー
-//         (Type::Pointer(inner_type), MemberAccessOp::MinusGreater) => {
-//             match inner_type.as_ref() {
-//                 Type::Struct(struct_def) => {
-//                     // MemberDeclから実際のメンバー型を取得
-//                     struct_def
-//                         .member
-//                         .iter()
-//                         .find(|member| member.ident.name == a.member.name)
-//                         .map(|member| member.ty.clone())
-//                         .unwrap_or_else(|| {
-//                             panic!(
-//                                 "構造体 {} にメンバー {} が見つかりません",
-//                                 struct_def
-//                                     .ident
-//                                     .as_ref()
-//                                     .map(|id| id.name.as_str())
-//                                     .unwrap_or("Anonymous"),
-//                                 a.member.name
-//                             )
-//                         })
-//                 }
-//                 Type::Union(union_def) => {
-//                     // MemberDeclから実際のメンバー型を取得
-//                     union_def
-//                         .member
-//                         .iter()
-//                         .find(|member| member.ident.name == a.member.name)
-//                         .map(|member| member.ty.clone())
-//                         .unwrap_or_else(|| {
-//                             panic!(
-//                                 "共用体 {} にメンバー {} が見つかりません",
-//                                 union_def
-//                                     .ident
-//                                     .as_ref()
-//                                     .map(|id| id.name.as_str())
-//                                     .unwrap_or("Anonymous"),
-//                                 a.member.name
-//                             )
-//                         })
-//                 }
-//                 _ => {
-//                     panic!(
-//                         "-> 演算子はポインタ型の構造体または共用体に対してのみ使用可能です: {:?}",
-//                         inner_type
-//                     );
-//                 }
-//             }
-//         }
-//         // 配列のメンバーアクセスは基本的に禁止
-//         (Type::Array(_), _) => {
-//             panic!("配列型に対する直接のメンバーアクセスは禁止されています");
-//         }
-//         _ => {
-//             panic!(
-//                 "不正なメンバーアクセス: {:?} に対して {:?}",
-//                 base.r#type, a.kind
-//             );
-//         }
-//     };
+            // 簡単な共通型推論（実際のCでは複雑なルールがある）
+            if then_type == else_type {
+                then_type
+            } else {
+                // 異なる型の場合は促進ルールに従う
+                promote_types(&then_type, &else_type)
+            }
+        }
+        SemaExpr::Cast(cast) => {
+            // キャストの型は明示的に指定された型
+            *cast.r#type.clone()
+        }
+        SemaExpr::Comma(comma) => {
+            // コンマ演算子の型は最後の式の型
+            if let Some(last_expr) = comma.assigns.last() {
+                infer_type(&last_expr.r#expr, session)
+            } else {
+                Type::Void
+            }
+        }
+        SemaExpr::Sizeof(_) => Type::Int,
+    }
+}
 
-//     TypedExpr::new(
-//         member_type,
-//         SemaExpr::member_access(base, a.member.as_same(), a.kind),
-//     )
-// }
+fn infer_binary_type(binary: &Binary, session: &mut Session) -> Type {
+    let lhs_type = infer_type(&binary.lhs.r#expr, session);
+    let rhs_type = infer_type(&binary.rhs.r#expr, session);
 
-// fn num_float(f: ordered_float::OrderedFloat<f64>) -> TypedExpr {
-//     TypedExpr::new(Type::Double, SemaExpr::num_float(f))
-// }
+    match binary.op {
+        BinaryOp::Comparison(_) | BinaryOp::Logical(_) => {
+            // 比較・論理演算の結果は int (0 or 1)
+            Type::Int
+        }
+        BinaryOp::Arithmetic(_) => {
+            // 算術演算は型促進ルールに従う
+            promote_types(&lhs_type, &rhs_type)
+        }
+    }
+}
 
-// fn num_int(n: usize) -> TypedExpr {
-//     TypedExpr::new(Type::Int, SemaExpr::num_int(n))
-// }
+fn infer_unary_type(unary: &Unary, session: &mut Session) -> Type {
+    let operand_type = infer_type(&unary.expr.r#expr, session);
 
-// fn sizeof(a: crate::ast::expr::Sizeof) -> TypedExpr {
-//     let sema_sizeof = match a {
-//         crate::ast::expr::Sizeof::Type(ty) => crate::sema::ast::Sizeof::Type(ty),
-//         crate::ast::expr::Sizeof::Expr(expr) => crate::sema::ast::Sizeof::expr(entry(*expr)),
-//     };
+    match unary.op {
+        UnaryOp::Bang => Type::Int,     // ! の結果は int (0 or 1)
+        UnaryOp::Tilde => operand_type, // ~ は元の型を保持
+        UnaryOp::Ampersand => {
+            // & はポインタ型を生成
+            Type::Pointer(Box::new(operand_type))
+        }
+        UnaryOp::Asterisk => {
+            // * はポインタを逆参照
+            if let Type::Pointer(inner) = operand_type {
+                *inner
+            } else {
+                panic!("ポインタでないものを逆参照しています")
+            }
+        }
+    }
+}
 
-//     TypedExpr::new(Type::Int, *SemaExpr::sizeof(sema_sizeof))
-// }
-
-// fn string_lit(s: Vec<char>) -> TypedExpr {
-//     TypedExpr::new(
-//         Type::Array(Array::new(Type::Char, Some(Expr::NumInt(s.len())))), // 文字列リテラルはchar [n]型
-//         SemaExpr::string(s),
-//     )
-// }
-
-// fn subscript(a: crate::ast::expr::Subscript) -> TypedExpr {
-//     let name = entry(*a.name);
-//     let index = entry(*a.index);
-
-//     // インデックスは整数型である必要がある
-//     if !matches!(index.r#type, Type::Int) {
-//         panic!(
-//             "配列インデックスは整数型である必要があります: {:?}",
-//             index.r#type
-//         );
-//     }
-
-//     // 配列の添え字アクセス
-//     let element_type = match &name.r#type {
-//         Type::Array(arr) => *arr.array_of.clone(),
-//         Type::Pointer(elem_type) => {
-//             match elem_type.as_ref() {
-//                 // 配列ポインタ(*arr)[N] の添え字アクセスはエラー
-//                 // 正しくは (*arr)[index] のように間接参照してからアクセス
-//                 Type::Array(_) => {
-//                     panic!(
-//                         "配列ポインタに対する添え字アクセスは (*ptr)[index] の形で間接参照を明示してください"
-//                     );
-//                 }
-//                 // 通常のポインタの添え字アクセス
-//                 _ => *elem_type.clone(),
-//             }
-//         }
-//         _ => panic!(
-//             "添え字アクセスは配列またはポインタに対してのみ可能です: {:?}",
-//             name.r#type
-//         ),
-//     };
-
-//     TypedExpr::new(element_type, SemaExpr::subscript(name, index))
-// }
-
-// fn ternary(a: crate::ast::expr::Ternary) -> TypedExpr {
-//     let cond = entry(*a.cond);
-//     let then_branch = entry(*a.then_branch);
-//     let else_branch = entry(*a.else_branch);
-
-//     // 条件式の型チェック
-//     if !matches!(cond.r#type, Type::Int | Type::Pointer(_)) {
-//         panic!(
-//             "三項演算子の条件式は整数型またはポインタ型である必要があります: {:?}",
-//             cond.r#type
-//         );
-//     }
-
-//     // then節とelse節の型の厳密チェック
-//     if let Err(err) = check_assignment_compatibility(&then_branch.r#type, &else_branch.r#type) {
-//         // 逆方向もチェック
-//         if let Err(_) = check_assignment_compatibility(&else_branch.r#type, &then_branch.r#type) {
-//             panic!("三項演算子の分岐の型が一致しません: {}", err);
-//         }
-//     }
-
-//     let result_type = then_branch.r#type.clone();
-//     TypedExpr::new(
-//         result_type,
-//         *SemaExpr::ternary(Box::new(cond), then_branch, else_branch),
-//     )
-// }
-
-// fn unary(a: crate::ast::expr::Unary) -> TypedExpr {
-//     let expr = entry(*a.expr);
-
-//     // 単項演算子の型推論と配列チェック
-//     let result_type = match a.op {
-//         UnaryOp::Ampersand => {
-//             // アドレス演算子: 配列の場合は配列ポインタを返す
-//             match &expr.r#type {
-//                 Type::Array(arr) => Type::Pointer(Box::new(Type::Array(arr.clone()))),
-//                 _ => Type::Pointer(Box::new(expr.r#type.clone())),
-//             }
-//         }
-//         UnaryOp::Asterisk => {
-//             // 間接参照演算子
-//             match &expr.r#type {
-//                 Type::Pointer(inner_type) => {
-//                     match inner_type.as_ref() {
-//                         // 配列ポインタの間接参照は配列型を返す
-//                         Type::Array(arr) => Type::Array(arr.clone()),
-//                         _ => *inner_type.clone(),
-//                     }
-//                 }
-//                 _ => panic!(
-//                     "間接参照はポインタ型に対してのみ可能です: {:?}",
-//                     expr.r#type
-//                 ),
-//             }
-//         }
-//         UnaryOp::PlusPlus | UnaryOp::MinusMinus => {
-//             // インクリメント/デクリメント: 配列には適用不可
-//             match &expr.r#type {
-//                 Type::Array(_) => {
-//                     panic!("配列型に対するインクリメント/デクリメント演算子は禁止されています");
-//                 }
-//                 _ => expr.r#type.clone(),
-//             }
-//         }
-//         UnaryOp::Minus => {
-//             // 単項-: 数値型のみ
-//             match &expr.r#type {
-//                 Type::Int | Type::Double => expr.r#type.clone(),
-//                 _ => panic!("単項-は数値型にのみ適用可能です: {:?}", expr.r#type),
-//             }
-//         }
-//         UnaryOp::Bang => {
-//             // 論理否定: 整数型またはポインタ型
-//             match &expr.r#type {
-//                 Type::Int | Type::Pointer(_) => Type::Int,
-//                 _ => panic!(
-//                     "論理否定は整数型またはポインタ型にのみ適用可能です: {:?}",
-//                     expr.r#type
-//                 ),
-//             }
-//         }
-//         UnaryOp::Tilde => {
-//             // ビット反転: 整数型のみ
-//             match &expr.r#type {
-//                 Type::Int => expr.r#type.clone(),
-//                 _ => panic!("ビット反転は整数型にのみ適用可能です: {:?}", expr.r#type),
-//             }
-//         }
-//     };
-
-//     TypedExpr::new(
-//         result_type,
-//         *SemaExpr::unary(a.op.as_same(), Box::new(expr)),
-//     )
-// }
+fn promote_types(lhs: &Type, rhs: &Type) -> Type {
+    // 簡単な型促進ルール
+    match (lhs, rhs) {
+        (Type::Double, _) | (_, Type::Double) => Type::Double,
+        (Type::Int, Type::Int) => Type::Int,
+        (Type::Int, Type::Char) | (Type::Char, Type::Int) => Type::Int,
+        (Type::Char, Type::Char) => Type::Char,
+        _ => lhs.clone(), // その他の場合は左の型を採用
+    }
+}

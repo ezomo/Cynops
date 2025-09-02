@@ -4,7 +4,6 @@ use std::{env, fs, process};
 mod ast;
 #[allow(dead_code)]
 mod ast_visualizer;
-mod const_eval;
 mod lexer;
 mod parser;
 mod preprocessor;
@@ -42,6 +41,10 @@ fn main() {
             ast_visualizer::visualize_program(&program);
             let mut session = sema::ast::Session::new();
             let new_pragram = sema::convert::program(&program, &mut session);
+            println!("{:#?}", new_pragram);
+
+            println!("_______________________________________________");
+            let new_pragram = sema::r#type::program(&new_pragram, &mut session);
             println!("{:#?}", new_pragram);
         }
         "codegen" => {
