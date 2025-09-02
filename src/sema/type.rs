@@ -439,9 +439,12 @@ fn infer_type(expr: &SemaExpr, session: &mut Session) -> TypeResult<Type> {
         SemaExpr::NumInt(_) => Ok(Type::Int),
         SemaExpr::NumFloat(_) => Ok(Type::Double),
         SemaExpr::Char(_) => Ok(Type::Char),
-        SemaExpr::String(_) => Ok(Type::Array(Array {
+        SemaExpr::String(this) => Ok(Type::Array(Array {
             array_of: Box::new(Type::Char),
-            length: None,
+            length: Some(Box::new(TypedExpr::new(
+                Type::Int,
+                SemaExpr::NumInt(this.len()),
+            ))),
         })),
         SemaExpr::Ident(symbol) => session
             .get_variable(&symbol.name)

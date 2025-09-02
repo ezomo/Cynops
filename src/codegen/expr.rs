@@ -1,9 +1,7 @@
 use ordered_float::OrderedFloat;
 
 use super::*;
-use crate::ast::*;
-use crate::sema::Subscript;
-use crate::sema::*; // Explicitly import Subscript to disambiguate
+use crate::sema::ast::*;
 
 pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
     match typed_expr.expr {
@@ -126,50 +124,6 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                 );
                 rhs
             }
-            _ => {
-                // 複合代入演算子 (+=, -=, など)
-                if let SemaExpr::Ident(ident) = &assign.lhs.r#expr {
-                    let ptr = cgs.variables.get(ident).unwrap().clone();
-                    let lhs_val = cgs.name_gen.register();
-
-                    println!("{} = load i64, ptr {}", lhs_val.to_string(), ptr);
-
-                    let rhs = gen_expr(*assign.rhs, cgs);
-                    let result = cgs.name_gen.register();
-
-                    let op = match assign.op {
-                        AssignOp::PlusEqual => "add",
-                        AssignOp::MinusEqual => "sub",
-                        AssignOp::AsteriskEqual => "mul",
-                        AssignOp::SlashEqual => "sdiv",
-                        AssignOp::PercentEqual => "srem",
-                        AssignOp::AmpersandEqual => "and",
-                        AssignOp::PipeEqual => "or",
-                        AssignOp::CaretEqual => "xor",
-                        AssignOp::LessLessEqual => "shl",
-                        AssignOp::GreaterGreaterEqual => "ashr",
-                        _ => panic!("Unsupported assign op"),
-                    };
-
-                    println!(
-                        "{} = {} {} {}, {}",
-                        result.to_string(),
-                        op,
-                        typed_expr.r#type.to_llvm_format(),
-                        lhs_val.to_string(),
-                        rhs.to_string()
-                    );
-                    println!(
-                        "store {} {}, ptr {}",
-                        typed_expr.r#type.to_llvm_format(),
-                        result.to_string(),
-                        ptr
-                    );
-                    result
-                } else {
-                    panic!("The left side is not variable!");
-                }
-            }
         },
         SemaExpr::NumInt(num) => LLVMValue::new(num, LLVMType::Const),
         SemaExpr::NumFloat(num) => {
@@ -198,11 +152,11 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                 typed_expr.r#type.to_llvm_format()
             );
             let arr = typed_expr.r#type.as_array().unwrap();
-            for i in 0..arr.length.unwrap() {
+            for i in 0..arr.length.clone().unwrap().consume_const() {
                 let element_ptr = cgs.name_gen.register();
                 let array_type = format!(
                     "[{} x {}]",
-                    arr.length.unwrap(),
+                    arr.length.clone().unwrap().consume_const(),
                     &arr.array_of.to_llvm_format()
                 );
                 println!(
@@ -217,7 +171,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                 println!(
                     "  store {} {}, {}* {}",
                     arr.array_of.to_llvm_format(),
-                    s[i] as u8,
+                    s[i as usize] as u8,
                     arr.array_of.to_llvm_format(),
                     element_ptr.to_string()
                 );
@@ -226,10 +180,16 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
             var_name
         }
         SemaExpr::Ident(ident) => match typed_expr.r#type {
-            Type::Array(_) => LLVMValue::new(cgs.variables[&ident].clone(), LLVMType::Variable),
-            Type::Pointer(_) => LLVMValue::new(cgs.variables[&ident].clone(), LLVMType::Variable),
+            Type::Array(_) => {
+                LLVMValue::new(cgs.variables[&ident.name].clone(), LLVMType::Variable)
+            }
+            Type::Pointer(_) => {
+                LLVMValue::new(cgs.variables[&ident.name].clone(), LLVMType::Variable)
+            }
             _ => LLVMValue::new(
-                cgs.variables.get(&ident).unwrap_or(&ident.get_fnc_name()),
+                cgs.variables
+                    .get(&ident.name)
+                    .unwrap_or(&ident.name.get_fnc_name()),
                 LLVMType::Variable,
             ),
         },
@@ -277,12 +237,6 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
         }
         SemaExpr::Unary(unary) => {
             match unary.op {
-                UnaryOp::Minus => {
-                    let operand = gen_expr(*unary.expr, cgs);
-                    let name = cgs.name_gen.register();
-                    println!("{} = sub i64 0, {}", name.to_string(), operand.to_string());
-                    name
-                }
                 UnaryOp::Bang => {
                     let operand = gen_expr(*unary.expr, cgs);
                     let name = cgs.name_gen.register();
@@ -298,42 +252,6 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                     let name = cgs.name_gen.register();
                     println!("{} = xor i64 {}, -1", name.to_string(), operand.to_string());
                     name
-                }
-                UnaryOp::PlusPlus => {
-                    // 前置インクリメント
-                    if let SemaExpr::Ident(ident) = &unary.expr.r#expr {
-                        let ptr = cgs.variables.get(ident).unwrap().clone();
-                        let old_val = cgs.name_gen.register();
-                        println!("{} = load i64, ptr {}", old_val.to_string(), ptr);
-                        let new_val = cgs.name_gen.register();
-                        println!(
-                            "{} = add i64 {}, 1",
-                            new_val.to_string(),
-                            old_val.to_string()
-                        );
-                        println!("store i64 {}, ptr {}", new_val.to_string(), ptr);
-                        new_val
-                    } else {
-                        panic!("++ can only be applied to variables");
-                    }
-                }
-                UnaryOp::MinusMinus => {
-                    // 前置デクリメント
-                    if let SemaExpr::Ident(ident) = &unary.expr.r#expr {
-                        let ptr = cgs.variables.get(ident).unwrap().clone();
-                        let old_val = cgs.name_gen.register();
-                        println!("{} = load i64, ptr {}", old_val.to_string(), ptr);
-                        let new_val = cgs.name_gen.register();
-                        println!(
-                            "{} = sub i64 {}, 1",
-                            new_val.to_string(),
-                            old_val.to_string()
-                        );
-                        println!("store i64 {}, ptr {}", new_val.to_string(), ptr);
-                        new_val
-                    } else {
-                        panic!("-- can only be applied to variables");
-                    }
                 }
                 UnaryOp::Ampersand => {
                     let ty = unary.expr.r#type.clone();
@@ -365,46 +283,6 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                         ptr.to_string()
                     );
                     name
-                }
-            }
-        }
-        SemaExpr::Postfix(postfix) => {
-            match postfix.op {
-                PostfixOp::PlusPlus => {
-                    // 後置インクリメント
-                    if let SemaExpr::Ident(ident) = &postfix.expr.r#expr {
-                        let ptr = cgs.variables.get(ident).unwrap().clone();
-                        let old_val = cgs.name_gen.register();
-                        println!("{} = load i64, ptr {}", old_val.to_string(), ptr);
-                        let new_val = cgs.name_gen.register();
-                        println!(
-                            "{} = add i64 {}, 1",
-                            new_val.to_string(),
-                            old_val.to_string()
-                        );
-                        println!("store i64 {}, ptr {}", new_val.to_string(), ptr);
-                        old_val // 後置なので古い値を返す
-                    } else {
-                        panic!("++ can only be applied to variables");
-                    }
-                }
-                PostfixOp::MinusMinus => {
-                    // 後置デクリメント
-                    if let SemaExpr::Ident(ident) = &postfix.expr.r#expr {
-                        let ptr = cgs.variables.get(ident).unwrap().clone();
-                        let old_val = cgs.name_gen.register();
-                        println!("{} = load i64, ptr {}", old_val.to_string(), ptr);
-                        let new_val = cgs.name_gen.register();
-                        println!(
-                            "{} = sub i64 {}, 1",
-                            new_val.to_string(),
-                            old_val.to_string()
-                        );
-                        println!("store i64 {}, ptr {}", new_val.to_string(), ptr);
-                        old_val // 後置なので古い値を返す
-                    } else {
-                        panic!("-- can only be applied to variables");
-                    }
                 }
             }
         }
@@ -468,44 +346,45 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
             array_access(subscript, cgs)
         }
         SemaExpr::MemberAccess(member_access) => {
+            todo!()
             // 構造体メンバアクセス
-            let base = gen_expr(*member_access.base, cgs);
-            match member_access.kind {
-                MemberAccessOp::Dot => {
-                    // obj.member
-                    let name = cgs.name_gen.register();
-                    println!(
-                        "{} = getelementptr inbounds struct, ptr {}, i64 0, i64 {}",
-                        name.to_string(),
-                        base.to_string(),
-                        0
-                    ); // 簡略化のため0番目として扱う
-                    let result = cgs.name_gen.register();
-                    println!(
-                        "{} = load i64, ptr {}",
-                        result.to_string(),
-                        name.to_string()
-                    );
-                    result
-                }
-                MemberAccessOp::MinusGreater => {
-                    // ptr->member
-                    let name = cgs.name_gen.register();
-                    println!(
-                        "{} = getelementptr inbounds struct, ptr {}, i64 0, i64 {}",
-                        name.to_string(),
-                        base.to_string(),
-                        0
-                    ); // 簡略化のため0番目として扱う
-                    let result = cgs.name_gen.register();
-                    println!(
-                        "{} = load i64, ptr {}",
-                        result.to_string(),
-                        name.to_string()
-                    );
-                    result
-                }
-            }
+            // let base = gen_expr(*member_access.base, cgs);
+            // match member_access.kind {
+            //     MemberAccessOp::Dot => {
+            //         // obj.member
+            //         let name = cgs.name_gen.register();
+            //         println!(
+            //             "{} = getelementptr inbounds struct, ptr {}, i64 0, i64 {}",
+            //             name.to_string(),
+            //             base.to_string(),
+            //             0
+            //         ); // 簡略化のため0番目として扱う
+            //         let result = cgs.name_gen.register();
+            //         println!(
+            //             "{} = load i64, ptr {}",
+            //             result.to_string(),
+            //             name.to_string()
+            //         );
+            //         result
+            //     }
+            //     MemberAccessOp::MinusGreater => {
+            //         // ptr->member
+            //         let name = cgs.name_gen.register();
+            //         println!(
+            //             "{} = getelementptr inbounds struct, ptr {}, i64 0, i64 {}",
+            //             name.to_string(),
+            //             base.to_string(),
+            //             0
+            //         ); // 簡略化のため0番目として扱う
+            //         let result = cgs.name_gen.register();
+            //         println!(
+            //             "{} = load i64, ptr {}",
+            //             result.to_string(),
+            //             name.to_string()
+            //         );
+            //         result
+            //     }
+            // }
         }
         SemaExpr::Sizeof(_sizeof) => {
             // sizeof演算子 - 簡略化のため4（intのサイズ）を返す

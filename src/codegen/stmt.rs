@@ -1,5 +1,5 @@
 use super::*;
-use crate::ast::*;
+use crate::sema::ast::*;
 
 pub fn stmt(stmt: Stmt, cgs: &mut CodeGenStatus) {
     match stmt {
@@ -85,7 +85,7 @@ fn initialize_variable(
                         let element_ptr = cgs.name_gen.variable();
                         let array_type = format!(
                             "[{} x {}]",
-                            arr.length.unwrap(),
+                            arr.length.clone().unwrap().consume_const(),
                             &arr.array_of.to_llvm_format()
                         );
                         println!(
@@ -353,7 +353,7 @@ mod controls {
                 SwitchCase::Case(case_stmt) => {
                     let case_label = cgs.next_label(&format!("case_{}", i));
                     case_labels.push((case_label.clone(), case));
-                    let case_value = case_stmt.const_expr.to_string(); // todo!()でcase値を評価
+                    let case_value = case_stmt.const_expr.consume_const(); // todo!()でcase値を評価
                     print!("\n    i64 {}, label %{}", case_value, case_label);
                 }
                 SwitchCase::Default(_) => {

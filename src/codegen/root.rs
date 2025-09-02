@@ -1,5 +1,5 @@
 use super::*;
-use crate::ast::*;
+use crate::sema::ast::*;
 
 fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
     let args: Vec<(Ident, Type)> = (0..function.param_names.len())

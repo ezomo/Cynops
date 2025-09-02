@@ -103,29 +103,27 @@ fn convert_type(ty: &old_ast::Type, session: &mut Session) -> new_ast::Type {
         old_ast::Type::Pointer(inner) => {
             new_ast::Type::Pointer(Box::new(convert_type(inner, session)))
         }
-        old_ast::Type::Array(arr) => {
-            new_ast::Type::Array(Array::new(
-                convert_type(&arr.array_of, session),
-                if arr.length.is_none() {
-                    None
-                } else {
-                    Some(new_ast::TypedExpr::new(
-                        new_ast::Type::Int,
-                        new_ast::SemaExpr::NumInt(
-                            super::r#type::resolve_typed_expr(
-                                &convert_expr(&arr.length.clone().unwrap(), session),
-                                session,
-                            )
-                            .unwrap()
-                            .eval_const()
-                            .unwrap()
-                            .try_into()
-                            .unwrap(),
-                        ),
-                    ))
-                }, // 後で解決する
-            ))
-        }
+        old_ast::Type::Array(arr) => new_ast::Type::Array(Array::new(
+            convert_type(&arr.array_of, session),
+            if arr.length.is_none() {
+                None
+            } else {
+                Some(new_ast::TypedExpr::new(
+                    new_ast::Type::Int,
+                    new_ast::SemaExpr::NumInt(
+                        super::r#type::resolve_typed_expr(
+                            &convert_expr(&arr.length.clone().unwrap(), session),
+                            session,
+                        )
+                        .unwrap()
+                        .eval_const()
+                        .unwrap()
+                        .try_into()
+                        .unwrap(),
+                    ),
+                ))
+            },
+        )),
         old_ast::Type::Typedef(ident) => new_ast::Type::Typedef(ident.as_same()),
     }
 }
@@ -338,7 +336,10 @@ fn convert_decl_stmt(decl: &old_ast::DeclStmt, session: &mut Session) -> new_ast
 fn infer_array_length(init_data: &new_ast::InitData) -> Option<usize> {
     match init_data {
         new_ast::InitData::Compound(elements) => Some(elements.len()),
-        _ => None,
+        new_ast::InitData::Expr(that) => match &that.expr {
+            SemaExpr::String(this) => Some(this.len()),
+            _ => None,
+        },
     }
 }
 

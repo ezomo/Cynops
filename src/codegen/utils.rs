@@ -1,4 +1,4 @@
-use crate::{ast::*, sema::TypedExpr};
+use crate::sema::ast::*;
 use std::collections::HashMap;
 
 // CodeGenStatus の定義
@@ -202,7 +202,6 @@ impl ToLLVMIR for Comparison {
 impl ToLLVMIR for UnaryOp {
     fn to_llvmir(&self) -> &str {
         match self {
-            Self::Minus => "sub",    // 0 - x として実装
             Self::Bang => "icmp eq", // x == 0 として実装
             Self::Tilde => "xor",    // x ^ -1 として実装
             _ => "unknown",
@@ -271,6 +270,15 @@ pub fn wrap(ty: &Type, data: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
     }
 }
 
+impl TypedExpr {
+    pub fn consume_const(&self) -> isize {
+        match &self.r#expr {
+            SemaExpr::NumInt(n) => *n as isize,
+            _ => unreachable!(),
+        }
+    }
+}
+
 impl Type {
     pub fn is_void(&self) -> bool {
         matches!(self, Type::Void)
@@ -289,7 +297,7 @@ impl Type {
             Type::Array(arr) => {
                 format!(
                     "[{} x {}]",
-                    arr.length.unwrap(),
+                    arr.length.clone().unwrap().consume_const(),
                     &arr.array_of.to_llvm_format()
                 )
             }
