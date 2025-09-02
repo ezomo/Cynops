@@ -36,7 +36,7 @@ fn convert_function_def(
     func_def: &old_ast::FunctionDef,
     session: &mut Session,
 ) -> new_ast::FunctionDef {
-    // 関数シグネチャを変換
+    // 関数シグニチャを変換
     let sig = convert_function_sig(&func_def.sig, session);
 
     // 関数をsessionに登録
@@ -109,7 +109,20 @@ fn convert_type(ty: &old_ast::Type, session: &mut Session) -> new_ast::Type {
                 if arr.length.is_none() {
                     None
                 } else {
-                    Some(convert_expr(&arr.length.clone().unwrap(), session))
+                    Some(new_ast::TypedExpr::new(
+                        new_ast::Type::Int,
+                        new_ast::SemaExpr::NumInt(
+                            super::r#type::resolve_typed_expr(
+                                &convert_expr(&arr.length.clone().unwrap(), session),
+                                session,
+                            )
+                            .unwrap()
+                            .eval_const()
+                            .unwrap()
+                            .try_into()
+                            .unwrap(),
+                        ),
+                    ))
                 }, // 後で解決する
             ))
         }
@@ -321,15 +334,55 @@ fn convert_decl_stmt(decl: &old_ast::DeclStmt, session: &mut Session) -> new_ast
     }
 }
 
+// 配列長を推論するヘルパー関数
+fn infer_array_length(init_data: &new_ast::InitData) -> Option<usize> {
+    match init_data {
+        new_ast::InitData::Compound(elements) => Some(elements.len()),
+        _ => None,
+    }
+}
+
 fn convert_init(init: &old_ast::Init, session: &mut Session) -> new_ast::Init {
-    let member_decl = convert_member_decl(&init.r, session);
+    let mut member_decl = convert_member_decl(&init.r, session);
+    let converted_init_data = init.l.as_ref().map(|data| convert_init_data(data, session));
+
+    // 配列の長さ推論を実行
+    if let (Some(init_data), new_ast::Type::Array(array)) =
+        (&converted_init_data, &mut member_decl.ty)
+    {
+        // 配列の長さがNoneの場合のみ推論
+        if array.length.is_none() {
+            if let Some(inferred_length) = infer_array_length(init_data) {
+                // 推論された長さをTypedExprとして設定
+                array.length = Some(Box::new(new_ast::TypedExpr::new(
+                    new_ast::Type::Int,
+                    new_ast::SemaExpr::NumInt(inferred_length),
+                )));
+            }
+        } else {
+            array.length = Some(Box::new(new_ast::TypedExpr::new(
+                new_ast::Type::Int,
+                new_ast::SemaExpr::NumInt(
+                    super::r#type::resolve_typed_expr(
+                        array.length.clone().unwrap().as_ref(),
+                        session,
+                    )
+                    .unwrap()
+                    .eval_const()
+                    .unwrap()
+                    .try_into()
+                    .unwrap(),
+                ),
+            )));
+        }
+    }
 
     // 変数をsessionに登録
     session.register_symbols(member_decl.ident.clone(), member_decl.ty.clone());
 
     new_ast::Init {
         r: member_decl,
-        l: init.l.as_ref().map(|data| convert_init_data(data, session)),
+        l: converted_init_data,
     }
 }
 

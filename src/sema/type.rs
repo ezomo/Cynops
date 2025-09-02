@@ -1,167 +1,232 @@
 use super::ast::*;
 
-pub fn program(program: &Program, session: &mut Session) -> Program {
+#[derive(Debug, Clone)]
+pub enum TypeError {
+    IncompatibleTypes {
+        expected: Type,
+        found: Type,
+        context: String,
+    },
+    UndefinedVariable(String),
+    UndefinedFunction(String),
+    InvalidOperation {
+        op: String,
+        operand_type: Type,
+    },
+    InvalidMemberAccess {
+        base_type: Type,
+        member: String,
+    },
+}
+
+impl std::fmt::Display for TypeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TypeError::IncompatibleTypes {
+                expected,
+                found,
+                context,
+            } => {
+                write!(
+                    f,
+                    "Type error in {}: expected '{}', found '{}'",
+                    context,
+                    expected.to_rust_format(),
+                    found.to_rust_format()
+                )
+            }
+            TypeError::UndefinedVariable(name) => {
+                write!(f, "Undefined variable: {}", name)
+            }
+            TypeError::UndefinedFunction(name) => {
+                write!(f, "Undefined function: {}", name)
+            }
+            TypeError::InvalidOperation { op, operand_type } => {
+                write!(
+                    f,
+                    "Invalid operation '{}' for type '{}'",
+                    op,
+                    operand_type.to_rust_format()
+                )
+            }
+            TypeError::InvalidMemberAccess { base_type, member } => {
+                write!(
+                    f,
+                    "Invalid member access '{}' for type '{}'",
+                    member,
+                    base_type.to_rust_format()
+                )
+            }
+        }
+    }
+}
+
+pub type TypeResult<T> = Result<T, TypeError>;
+
+pub fn program(program: &Program, session: &mut Session) -> TypeResult<Program> {
     let mut resolved_items = Vec::new();
 
     for item in &program.items {
-        let resolved_item = resolve_toplevel(item, session);
+        let resolved_item = resolve_toplevel(item, session)?;
         resolved_items.push(resolved_item);
     }
 
-    Program {
+    Ok(Program {
         items: resolved_items,
-    }
+    })
 }
 
-fn resolve_toplevel(toplevel: &TopLevel, session: &mut Session) -> TopLevel {
+fn resolve_toplevel(toplevel: &TopLevel, session: &mut Session) -> TypeResult<TopLevel> {
     match toplevel {
-        TopLevel::FunctionDef(func_def) => {
-            TopLevel::FunctionDef(resolve_function_def(func_def, session))
-        }
-        TopLevel::FunctionProto(func_proto) => {
-            TopLevel::FunctionProto(func_proto.clone()) // プロトタイプは既に解決済み
-        }
-        TopLevel::Stmt(stmt) => TopLevel::Stmt(resolve_stmt(stmt, session)),
+        TopLevel::FunctionDef(func_def) => Ok(TopLevel::FunctionDef(resolve_function_def(
+            func_def, session,
+        )?)),
+        TopLevel::FunctionProto(func_proto) => Ok(TopLevel::FunctionProto(func_proto.clone())),
+        TopLevel::Stmt(stmt) => Ok(TopLevel::Stmt(resolve_stmt(stmt, session)?)),
     }
 }
 
-fn resolve_function_def(func_def: &FunctionDef, session: &mut Session) -> FunctionDef {
-    // 関数のスコープに入る
+fn resolve_function_def(func_def: &FunctionDef, session: &mut Session) -> TypeResult<FunctionDef> {
     session.push_scope();
 
-    // パラメータを登録
     if let Some(func_type) = func_def.sig.ty.as_func() {
         for (param_name, param_type) in func_def.param_names.iter().zip(&func_type.params) {
             session.register_symbols(param_name.clone(), param_type.clone());
         }
     }
 
-    let resolved_body = resolve_block(&func_def.body, session);
+    let resolved_body = resolve_block(&func_def.body, session)?;
 
     session.pop_scope();
 
-    FunctionDef {
+    Ok(FunctionDef {
         sig: func_def.sig.clone(),
         param_names: func_def.param_names.clone(),
         body: resolved_body,
-    }
+    })
 }
 
-fn resolve_block(block: &Block, session: &mut Session) -> Block {
+fn resolve_block(block: &Block, session: &mut Session) -> TypeResult<Block> {
     session.push_scope();
 
     let mut resolved_statements = Vec::new();
     for stmt in &block.statements {
-        let resolved_stmt = resolve_stmt(stmt, session);
+        let resolved_stmt = resolve_stmt(stmt, session)?;
         resolved_statements.push(Box::new(resolved_stmt));
     }
 
     session.pop_scope();
 
-    Block {
+    Ok(Block {
         statements: resolved_statements,
-    }
+    })
 }
 
-fn resolve_stmt(stmt: &Stmt, session: &mut Session) -> Stmt {
+fn resolve_stmt(stmt: &Stmt, session: &mut Session) -> TypeResult<Stmt> {
     match stmt {
-        Stmt::ExprStmt(expr) => Stmt::ExprStmt(resolve_typed_expr(expr, session)),
-        Stmt::DeclStmt(decl) => Stmt::DeclStmt(resolve_decl_stmt(decl, session)),
-        Stmt::Control(control) => Stmt::Control(resolve_control(control, session)),
-        Stmt::Return(ret) => Stmt::Return(Return {
-            value: ret
-                .value
-                .as_ref()
-                .map(|v| Box::new(resolve_typed_expr(v, session))),
-        }),
-        Stmt::Block(block) => Stmt::Block(resolve_block(block, session)),
-        Stmt::Label(label) => Stmt::Label(Label {
+        Stmt::ExprStmt(expr) => Ok(Stmt::ExprStmt(resolve_typed_expr(expr, session)?)),
+        Stmt::DeclStmt(decl) => Ok(Stmt::DeclStmt(resolve_decl_stmt(decl, session)?)),
+        Stmt::Control(control) => Ok(Stmt::Control(resolve_control(control, session)?)),
+        Stmt::Return(ret) => Ok(Stmt::Return(Return {
+            value: match &ret.value {
+                Some(v) => Some(Box::new(resolve_typed_expr(v, session)?)),
+                None => None,
+            },
+        })),
+        Stmt::Block(block) => Ok(Stmt::Block(resolve_block(block, session)?)),
+        Stmt::Label(label) => Ok(Stmt::Label(Label {
             name: label.name.clone(),
-            stmt: Box::new(resolve_stmt(&label.stmt, session)),
-        }),
-        _ => stmt.clone(), // Goto, Break, Continue はそのまま
+            stmt: Box::new(resolve_stmt(&label.stmt, session)?),
+        })),
+        _ => Ok(stmt.clone()),
     }
 }
 
-fn resolve_control(control: &Control, session: &mut Session) -> Control {
+fn resolve_control(control: &Control, session: &mut Session) -> TypeResult<Control> {
     match control {
-        Control::If(if_stmt) => Control::If(If {
-            cond: Box::new(resolve_typed_expr(&if_stmt.cond, session)),
-            then_branch: Box::new(resolve_stmt(&if_stmt.then_branch, session)),
-            else_branch: if_stmt
-                .else_branch
-                .as_ref()
-                .map(|e| Box::new(resolve_stmt(e, session))),
-        }),
-        Control::While(while_stmt) => Control::While(While {
-            cond: Box::new(resolve_typed_expr(&while_stmt.cond, session)),
-            body: Box::new(resolve_stmt(&while_stmt.body, session)),
-        }),
-        Control::DoWhile(do_while) => Control::DoWhile(DoWhile {
-            body: Box::new(resolve_stmt(&do_while.body, session)),
-            cond: Box::new(resolve_typed_expr(&do_while.cond, session)),
-        }),
-        Control::For(for_stmt) => Control::For(For {
-            init: for_stmt
-                .init
-                .as_ref()
-                .map(|i| Box::new(resolve_typed_expr(i, session))),
-            cond: for_stmt
-                .cond
-                .as_ref()
-                .map(|c| Box::new(resolve_typed_expr(c, session))),
-            step: for_stmt
-                .step
-                .as_ref()
-                .map(|s| Box::new(resolve_typed_expr(s, session))),
-            body: Box::new(resolve_stmt(&for_stmt.body, session)),
-        }),
-        Control::Switch(switch) => Control::Switch(Switch {
-            cond: Box::new(resolve_typed_expr(&switch.cond, session)),
-            cases: switch
-                .cases
-                .iter()
-                .map(|c| resolve_switch_case(c, session))
-                .collect(),
-        }),
+        Control::If(if_stmt) => Ok(Control::If(If {
+            cond: Box::new(resolve_typed_expr(&if_stmt.cond, session)?),
+            then_branch: Box::new(resolve_stmt(&if_stmt.then_branch, session)?),
+            else_branch: match &if_stmt.else_branch {
+                Some(e) => Some(Box::new(resolve_stmt(e, session)?)),
+                None => None,
+            },
+        })),
+        Control::While(while_stmt) => Ok(Control::While(While {
+            cond: Box::new(resolve_typed_expr(&while_stmt.cond, session)?),
+            body: Box::new(resolve_stmt(&while_stmt.body, session)?),
+        })),
+        Control::DoWhile(do_while) => Ok(Control::DoWhile(DoWhile {
+            body: Box::new(resolve_stmt(&do_while.body, session)?),
+            cond: Box::new(resolve_typed_expr(&do_while.cond, session)?),
+        })),
+        Control::For(for_stmt) => Ok(Control::For(For {
+            init: match &for_stmt.init {
+                Some(i) => Some(Box::new(resolve_typed_expr(i, session)?)),
+                None => None,
+            },
+            cond: match &for_stmt.cond {
+                Some(c) => Some(Box::new(resolve_typed_expr(c, session)?)),
+                None => None,
+            },
+            step: match &for_stmt.step {
+                Some(s) => Some(Box::new(resolve_typed_expr(s, session)?)),
+                None => None,
+            },
+            body: Box::new(resolve_stmt(&for_stmt.body, session)?),
+        })),
+        Control::Switch(switch) => Ok(Control::Switch(Switch {
+            cond: Box::new(resolve_typed_expr(&switch.cond, session)?),
+            cases: {
+                let mut cases = Vec::new();
+                for c in &switch.cases {
+                    cases.push(resolve_switch_case(c, session)?);
+                }
+                cases
+            },
+        })),
     }
 }
 
-fn resolve_switch_case(case: &SwitchCase, session: &mut Session) -> SwitchCase {
+fn resolve_switch_case(case: &SwitchCase, session: &mut Session) -> TypeResult<SwitchCase> {
     match case {
-        SwitchCase::Case(c) => SwitchCase::Case(Case {
-            const_expr: resolve_typed_expr(&c.const_expr, session),
-            stmts: c
-                .stmts
-                .iter()
-                .map(|s| Box::new(resolve_stmt(s, session)))
-                .collect(),
-        }),
-        SwitchCase::Default(d) => SwitchCase::Default(DefaultCase {
-            stmts: d
-                .stmts
-                .iter()
-                .map(|s| Box::new(resolve_stmt(s, session)))
-                .collect(),
-        }),
+        SwitchCase::Case(c) => Ok(SwitchCase::Case(Case {
+            const_expr: resolve_typed_expr(&c.const_expr, session)?,
+            stmts: {
+                let mut stmts = Vec::new();
+                for s in &c.stmts {
+                    stmts.push(Box::new(resolve_stmt(s, session)?));
+                }
+                stmts
+            },
+        })),
+        SwitchCase::Default(d) => Ok(SwitchCase::Default(DefaultCase {
+            stmts: {
+                let mut stmts = Vec::new();
+                for s in &d.stmts {
+                    stmts.push(Box::new(resolve_stmt(s, session)?));
+                }
+                stmts
+            },
+        })),
     }
 }
 
-fn resolve_decl_stmt(decl: &DeclStmt, session: &mut Session) -> DeclStmt {
+fn resolve_decl_stmt(decl: &DeclStmt, session: &mut Session) -> TypeResult<DeclStmt> {
     match decl {
         DeclStmt::InitVec(inits) => {
             let mut resolved_inits = Vec::new();
             for init in inits {
-                let resolved_init = resolve_init(init, session);
+                let resolved_init = resolve_init(init, session)?;
                 resolved_inits.push(resolved_init);
             }
-            DeclStmt::InitVec(resolved_inits)
+            Ok(DeclStmt::InitVec(resolved_inits))
         }
-        _ => decl.clone(), // Struct, Union, Enum, Typedef はconvert時点で解決済み
+        _ => Ok(decl.clone()),
     }
 }
 
-fn resolve_init(init: &Init, session: &mut Session) -> Init {
+fn resolve_init(init: &Init, session: &mut Session) -> TypeResult<Init> {
     let mut resolved_type = init.r.ty.clone();
 
     // 配列の長さ推論
@@ -174,279 +239,351 @@ fn resolve_init(init: &Init, session: &mut Session) -> Init {
         ty: resolved_type.clone(),
     };
 
+    // 初期化データがある場合、型の互換性をチェック
+    if let Some(init_data) = &init.l {
+        let init_expr = resolve_init_data(init_data, session)?;
+        check_init_compatibility(&resolved_type, &init_expr, session)?;
+    }
+
     // 変数をセッションに登録
     session.register_symbols(
         resolved_member_decl.ident.clone(),
         resolved_member_decl.ty.clone(),
     );
 
-    Init {
+    Ok(Init {
         r: resolved_member_decl,
-        l: init.l.as_ref().map(|data| resolve_init_data(data, session)),
+        l: init
+            .l
+            .as_ref()
+            .map(|data| resolve_init_data(data, session))
+            .transpose()?,
+    })
+}
+
+fn check_init_compatibility(
+    var_type: &Type,
+    init_data: &InitData,
+    session: &mut Session,
+) -> TypeResult<()> {
+    match init_data {
+        InitData::Expr(expr) => {
+            let expr_type = &expr.r#type;
+            if !are_types_compatible(var_type, expr_type) {
+                return Err(TypeError::IncompatibleTypes {
+                    expected: var_type.clone(),
+                    found: expr_type.clone(),
+                    context: "variable initialization".to_string(),
+                });
+            }
+        }
+        InitData::Compound(compounds) => {
+            // 配列や構造体の複合初期化子の場合
+            if let Type::Array(array) = var_type {
+                for compound in compounds {
+                    check_init_compatibility(&array.array_of, compound, session)?;
+                }
+            }
+            // 構造体の場合は省略（実装が複雑になるため）
+        }
+    }
+    Ok(())
+}
+
+// 完全一致を原則とする新しいare_types_compatible関数
+fn are_types_compatible(target: &Type, source: &Type) -> bool {
+    match (target, source) {
+        // 同じ型は互換性がある（完全一致）
+        (a, b) if a == b => true,
+
+        // ポインタ型の互換性（要素型も完全一致が必要）
+        (Type::Pointer(a), Type::Pointer(b)) => are_types_compatible(a, b),
+
+        // 配列からポインタへの変換は禁止（安全C方言のルール）
+        (Type::Pointer(_), Type::Array(_)) => false,
+
+        // その他の場合は互換性なし（暗黙変換禁止）
+        _ => false,
     }
 }
 
 fn infer_array_length(array_type: &mut Type, init_data: &InitData, session: &mut Session) {
     if let Type::Array(array) = array_type {
-        // 長さが未定義の場合
         if array.length.is_none() {
             if let InitData::Compound(compounds) = init_data {
-                // 初期化子の長さを TypedExpr に変換
-                let len_expr = TypedExpr::new(
-                    Type::Int,                         // 配列長は整数型
-                    SemaExpr::NumInt(compounds.len()), // 要素数
-                );
+                let len_expr = TypedExpr::new(Type::Int, SemaExpr::NumInt(compounds.len()));
                 array.length = Some(Box::new(len_expr));
             }
         } else {
             let len_expr = TypedExpr::new(
-                Type::Int, // 配列長は整数型
+                Type::Int,
                 SemaExpr::NumInt(
                     resolve_typed_expr(array.length.clone().unwrap().as_ref(), session)
+                        .unwrap()
                         .eval_const()
                         .unwrap()
                         .try_into()
                         .unwrap(),
-                ), // 要素数
+                ),
             );
             array.length = Some(Box::new(len_expr));
         }
-
-        // 配列の長さが式で指定されている場合の定数評価もここで可能
-        // 例: const folding など
     }
 }
-fn resolve_init_data(data: &InitData, session: &mut Session) -> InitData {
+
+fn resolve_init_data(data: &InitData, session: &mut Session) -> TypeResult<InitData> {
     match data {
-        InitData::Expr(expr) => InitData::Expr(resolve_typed_expr(expr, session)),
-        InitData::Compound(compounds) => InitData::Compound(
-            compounds
-                .iter()
-                .map(|c| resolve_init_data(c, session))
-                .collect(),
-        ),
+        InitData::Expr(expr) => Ok(InitData::Expr(resolve_typed_expr(expr, session)?)),
+        InitData::Compound(compounds) => {
+            let mut resolved_compounds = Vec::new();
+            for c in compounds {
+                resolved_compounds.push(resolve_init_data(c, session)?);
+            }
+            Ok(InitData::Compound(resolved_compounds))
+        }
     }
 }
 
-fn resolve_typed_expr(expr: &TypedExpr, session: &mut Session) -> TypedExpr {
-    let resolved_sema_expr = resolve_sema_expr(&expr.r#expr, session);
-    let inferred_type = infer_type(&resolved_sema_expr, session);
+pub fn resolve_typed_expr(expr: &TypedExpr, session: &mut Session) -> TypeResult<TypedExpr> {
+    let resolved_sema_expr = resolve_sema_expr(&expr.r#expr, session)?;
+    let inferred_type = infer_type(&resolved_sema_expr, session)?;
 
-    TypedExpr {
+    Ok(TypedExpr {
         r#type: inferred_type,
         r#expr: resolved_sema_expr,
-    }
+    })
 }
 
-fn resolve_sema_expr(expr: &SemaExpr, session: &mut Session) -> SemaExpr {
+fn resolve_sema_expr(expr: &SemaExpr, session: &mut Session) -> TypeResult<SemaExpr> {
     match expr {
-        SemaExpr::Assign(assign) => SemaExpr::Assign(Assign {
-            op: assign.op,
-            lhs: Box::new(resolve_typed_expr(&assign.lhs, session)),
-            rhs: Box::new(resolve_typed_expr(&assign.rhs, session)),
-        }),
-        SemaExpr::Binary(binary) => SemaExpr::Binary(Binary {
+        SemaExpr::Assign(assign) => {
+            let lhs = resolve_typed_expr(&assign.lhs, session)?;
+            let rhs = resolve_typed_expr(&assign.rhs, session)?;
+
+            // 代入の型互換性チェック（完全一致を要求）
+            if !are_types_compatible(&lhs.r#type, &rhs.r#type) {
+                return Err(TypeError::IncompatibleTypes {
+                    expected: lhs.r#type.clone(),
+                    found: rhs.r#type.clone(),
+                    context: "assignment".to_string(),
+                });
+            }
+
+            Ok(SemaExpr::Assign(Assign {
+                op: assign.op,
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+            }))
+        }
+        SemaExpr::Binary(binary) => Ok(SemaExpr::Binary(Binary {
             op: binary.op,
-            lhs: Box::new(resolve_typed_expr(&binary.lhs, session)),
-            rhs: Box::new(resolve_typed_expr(&binary.rhs, session)),
-        }),
-        SemaExpr::Unary(unary) => SemaExpr::Unary(Unary {
+            lhs: Box::new(resolve_typed_expr(&binary.lhs, session)?),
+            rhs: Box::new(resolve_typed_expr(&binary.rhs, session)?),
+        })),
+        SemaExpr::Unary(unary) => Ok(SemaExpr::Unary(Unary {
             op: unary.op,
-            expr: Box::new(resolve_typed_expr(&unary.expr, session)),
-        }),
-        SemaExpr::Ternary(ternary) => SemaExpr::Ternary(Ternary {
-            cond: Box::new(resolve_typed_expr(&ternary.cond, session)),
-            then_branch: Box::new(resolve_typed_expr(&ternary.then_branch, session)),
-            else_branch: Box::new(resolve_typed_expr(&ternary.else_branch, session)),
-        }),
-        SemaExpr::Call(call) => SemaExpr::Call(Call {
-            func: Box::new(resolve_typed_expr(&call.func, session)),
-            args: call
-                .args
-                .iter()
-                .map(|a| Box::new(resolve_typed_expr(a, session)))
-                .collect(),
-        }),
-        SemaExpr::Subscript(subscript) => SemaExpr::Subscript(Subscript {
-            subject: Box::new(resolve_typed_expr(&subscript.subject, session)),
-            index: Box::new(resolve_typed_expr(&subscript.index, session)),
-        }),
-        SemaExpr::MemberAccess(member) => SemaExpr::MemberAccess(MemberAccess {
-            base: Box::new(resolve_typed_expr(&member.base, session)),
+            expr: Box::new(resolve_typed_expr(&unary.expr, session)?),
+        })),
+        SemaExpr::Ternary(ternary) => Ok(SemaExpr::Ternary(Ternary {
+            cond: Box::new(resolve_typed_expr(&ternary.cond, session)?),
+            then_branch: Box::new(resolve_typed_expr(&ternary.then_branch, session)?),
+            else_branch: Box::new(resolve_typed_expr(&ternary.else_branch, session)?),
+        })),
+        SemaExpr::Call(call) => Ok(SemaExpr::Call(Call {
+            func: Box::new(resolve_typed_expr(&call.func, session)?),
+            args: {
+                let mut args = Vec::new();
+                for a in &call.args {
+                    args.push(Box::new(resolve_typed_expr(a, session)?));
+                }
+                args
+            },
+        })),
+        SemaExpr::Subscript(subscript) => Ok(SemaExpr::Subscript(Subscript {
+            subject: Box::new(resolve_typed_expr(&subscript.subject, session)?),
+            index: Box::new(resolve_typed_expr(&subscript.index, session)?),
+        })),
+        SemaExpr::MemberAccess(member) => Ok(SemaExpr::MemberAccess(MemberAccess {
+            base: Box::new(resolve_typed_expr(&member.base, session)?),
             member: member.member.clone(),
             kind: member.kind.clone(),
-        }),
-        SemaExpr::Cast(cast) => SemaExpr::Cast(Cast {
+        })),
+        SemaExpr::Cast(cast) => Ok(SemaExpr::Cast(Cast {
             r#type: cast.r#type.clone(),
-            expr: Box::new(resolve_typed_expr(&cast.expr, session)),
-        }),
-        SemaExpr::Comma(comma) => SemaExpr::Comma(Comma {
-            assigns: comma
-                .assigns
-                .iter()
-                .map(|a| resolve_typed_expr(a, session))
-                .collect(),
-        }),
+            expr: Box::new(resolve_typed_expr(&cast.expr, session)?),
+        })),
+        SemaExpr::Comma(comma) => Ok(SemaExpr::Comma(Comma {
+            assigns: {
+                let mut assigns = Vec::new();
+                for a in &comma.assigns {
+                    assigns.push(resolve_typed_expr(a, session)?);
+                }
+                assigns
+            },
+        })),
         SemaExpr::Sizeof(sizeof) => {
             let resolved_sizeof = match sizeof {
                 Sizeof::Type(ty) => Sizeof::Type(ty.clone()),
                 Sizeof::TypedExpr(expr) => {
-                    Sizeof::TypedExpr(Box::new(resolve_typed_expr(expr, session)))
+                    Sizeof::TypedExpr(Box::new(resolve_typed_expr(expr, session)?))
                 }
             };
-            SemaExpr::Sizeof(resolved_sizeof)
+            Ok(SemaExpr::Sizeof(resolved_sizeof))
         }
-        _ => expr.clone(), // リテラル類やIdentはそのまま
+        _ => Ok(expr.clone()),
     }
 }
 
-fn infer_type(expr: &SemaExpr, session: &mut Session) -> Type {
+fn infer_type(expr: &SemaExpr, session: &mut Session) -> TypeResult<Type> {
     match expr {
-        SemaExpr::NumInt(_) => Type::Int,
-        SemaExpr::NumFloat(_) => Type::Double,
-        SemaExpr::Char(_) => Type::Char,
-        SemaExpr::String(_) => {
-            // 文字列リテラルは char の配列
-            Type::Array(Array {
-                array_of: Box::new(Type::Char),
-                length: None, // 文字列長は実行時に決定
-            })
-        }
-        SemaExpr::Ident(symbol) => {
-            // シンボルテーブルから型を検索
-            session
-                .get_variable(&symbol.name)
-                .unwrap_or_else(|| panic!("未定義の変数: {}", symbol.name.name))
-        }
+        SemaExpr::NumInt(_) => Ok(Type::Int),
+        SemaExpr::NumFloat(_) => Ok(Type::Double),
+        SemaExpr::Char(_) => Ok(Type::Char),
+        SemaExpr::String(_) => Ok(Type::Array(Array {
+            array_of: Box::new(Type::Char),
+            length: None,
+        })),
+        SemaExpr::Ident(symbol) => session
+            .get_variable(&symbol.name)
+            .ok_or_else(|| TypeError::UndefinedVariable(symbol.name.name.clone())),
         SemaExpr::Binary(binary) => infer_binary_type(binary, session),
         SemaExpr::Unary(unary) => infer_unary_type(unary, session),
-        SemaExpr::Assign(assign) => {
-            // 代入式の型は左辺の型
-            infer_type(&assign.lhs.r#expr, session)
-        }
+        SemaExpr::Assign(assign) => Ok(infer_type(&assign.lhs.r#expr, session)?),
         SemaExpr::Call(call) => {
-            // 関数呼び出しの戻り値型を推論
-            let func_type = infer_type(&call.func.r#expr, session);
+            let func_type = infer_type(&call.func.r#expr, session)?;
             if let Type::Func(func) = func_type {
-                *func.return_type
+                Ok(*func.return_type)
             } else {
-                panic!("関数でないものを呼び出そうとしています")
+                Err(TypeError::InvalidOperation {
+                    op: "function call".to_string(),
+                    operand_type: func_type,
+                })
             }
         }
         SemaExpr::Subscript(subscript) => {
-            // 配列添字の型は配列要素の型
-            let subject_type = infer_type(&subscript.subject.r#expr, session);
+            let subject_type = infer_type(&subscript.subject.r#expr, session)?;
             match subject_type {
-                Type::Array(array) => *array.array_of,
-                Type::Pointer(inner) => *inner,
-                _ => panic!("配列またはポインタでないものに添字アクセスしています"),
+                Type::Array(array) => Ok(*array.array_of),
+                Type::Pointer(inner) => Ok(*inner),
+                _ => Err(TypeError::InvalidOperation {
+                    op: "array subscript".to_string(),
+                    operand_type: subject_type,
+                }),
             }
         }
         SemaExpr::MemberAccess(member) => {
-            // 構造体メンバアクセスの型推論
-            let base_type = infer_type(&member.base.r#expr, session);
+            let base_type = infer_type(&member.base.r#expr, session)?;
             let actual_type = match &member.kind {
-                crate::ast::MemberAccessOp::Dot => base_type,
+                crate::ast::MemberAccessOp::Dot => base_type.clone(),
                 crate::ast::MemberAccessOp::MinusGreater => {
-                    // -> の場合はポインタを逆参照
-                    if let Type::Pointer(inner) = base_type {
+                    if let Type::Pointer(inner) = base_type.clone() {
                         *inner
                     } else {
-                        panic!("-> 演算子はポインタ型でのみ使用できます")
+                        return Err(TypeError::InvalidOperation {
+                            op: "-> operator".to_string(),
+                            operand_type: base_type,
+                        });
                     }
                 }
             };
 
-            // 構造体からメンバの型を取得
             match actual_type {
-                Type::Struct(s) => s
-                    .member
-                    .iter()
-                    .find(|m| m.ident.name == member.member.name)
-                    .map(|m| m.ty.clone())
-                    .unwrap_or_else(|| panic!("存在しないメンバ: {}", member.member.name)),
-                Type::Union(u) => u
-                    .member
-                    .iter()
-                    .find(|m| m.ident.name == member.member.name)
-                    .map(|m| m.ty.clone())
-                    .unwrap_or_else(|| panic!("存在しないメンバ: {}", member.member.name)),
-                _ => panic!("構造体またはユニオン型でないものにメンバアクセスしています"),
+                // Type::Struct(s) => s
+                //     .member
+                //     .iter()
+                //     .find(|m| m.ident.name == member.member.name)
+                //     .map(|m| m.ty.clone())
+                //     .ok_or_else(|| TypeError::InvalidMemberAccess {
+                //         base_type: actual_type.clone(),
+                //         member: member.member.name.clone(),
+                //     }),
+                // Type::Union(u) => u
+                //     .member
+                //     .iter()
+                //     .find(|m| m.ident.name == member.member.name)
+                //     .map(|m| m.ty.clone())
+                //     .ok_or_else(|| TypeError::InvalidMemberAccess {
+                //         base_type: actual_type,
+                //         member: member.member.name.clone(),
+                //     }),
+                // _ => Err(TypeError::InvalidMemberAccess {
+                //     base_type: actual_type,
+                //     member: member.member.name.clone(),
+                // }),
+                _ => todo!(),
             }
         }
         SemaExpr::Ternary(ternary) => {
-            // 三項演算子の型は then_branch と else_branch の共通型
-            let then_type = infer_type(&ternary.then_branch.r#expr, session);
-            let else_type = infer_type(&ternary.else_branch.r#expr, session);
+            let then_type = infer_type(&ternary.then_branch.r#expr, session)?;
+            let else_type = infer_type(&ternary.else_branch.r#expr, session)?;
 
-            // 簡単な共通型推論（実際のCでは複雑なルールがある）
+            // 三項演算子でも完全一致を要求
             if then_type == else_type {
-                then_type
+                Ok(then_type)
             } else {
-                // 異なる型の場合は促進ルールに従う
-                promote_types(&then_type, &else_type)
+                // 型が一致しない場合はエラー
+                Err(TypeError::IncompatibleTypes {
+                    expected: then_type,
+                    found: else_type,
+                    context: "ternary operator branches".to_string(),
+                })
             }
         }
-        SemaExpr::Cast(cast) => {
-            // キャストの型は明示的に指定された型
-            *cast.r#type.clone()
-        }
+        SemaExpr::Cast(cast) => Ok(*cast.r#type.clone()),
         SemaExpr::Comma(comma) => {
-            // コンマ演算子の型は最後の式の型
             if let Some(last_expr) = comma.assigns.last() {
                 infer_type(&last_expr.r#expr, session)
             } else {
-                Type::Void
+                Ok(Type::Void)
             }
         }
-        SemaExpr::Sizeof(_) => Type::Int,
+        SemaExpr::Sizeof(_) => Ok(Type::Int),
     }
 }
 
-fn infer_binary_type(binary: &Binary, session: &mut Session) -> Type {
-    let lhs_type = infer_type(&binary.lhs.r#expr, session);
-    let rhs_type = infer_type(&binary.rhs.r#expr, session);
+fn infer_binary_type(binary: &Binary, session: &mut Session) -> TypeResult<Type> {
+    let lhs_type = infer_type(&binary.lhs.r#expr, session)?;
+    let rhs_type = infer_type(&binary.rhs.r#expr, session)?;
 
     match binary.op {
         BinaryOp::Comparison(_) | BinaryOp::Logical(_) => {
-            // 比較・論理演算の結果は int (0 or 1)
-            Type::Int
+            // 比較・論理演算は結果がint型
+            Ok(Type::Int)
         }
         BinaryOp::Arithmetic(_) => {
-            // 算術演算は型促進ルールに従う
-            promote_types(&lhs_type, &rhs_type)
-        }
-    }
-}
-
-fn infer_unary_type(unary: &Unary, session: &mut Session) -> Type {
-    let operand_type = infer_type(&unary.expr.r#expr, session);
-
-    match unary.op {
-        UnaryOp::Bang => Type::Int,     // ! の結果は int (0 or 1)
-        UnaryOp::Tilde => operand_type, // ~ は元の型を保持
-        UnaryOp::Ampersand => {
-            // & はポインタ型を生成
-            Type::Pointer(Box::new(operand_type))
-        }
-        UnaryOp::Asterisk => {
-            // * はポインタを逆参照
-            if let Type::Pointer(inner) = operand_type {
-                *inner
+            // 算術演算では両オペランドの型が一致している必要がある
+            if lhs_type == rhs_type {
+                Ok(lhs_type)
             } else {
-                panic!("ポインタでないものを逆参照しています")
+                Err(TypeError::IncompatibleTypes {
+                    expected: lhs_type,
+                    found: rhs_type,
+                    context: "arithmetic operation".to_string(),
+                })
             }
         }
     }
 }
 
-fn promote_types(lhs: &Type, rhs: &Type) -> Type {
-    // 簡単な型促進ルール
-    match (lhs, rhs) {
-        (Type::Double, _) | (_, Type::Double) => Type::Double,
-        (Type::Int, Type::Int) => Type::Int,
-        (Type::Int, Type::Char) | (Type::Char, Type::Int) => Type::Int,
-        (Type::Char, Type::Char) => Type::Char,
-        _ => lhs.clone(), // その他の場合は左の型を採用
+fn infer_unary_type(unary: &Unary, session: &mut Session) -> TypeResult<Type> {
+    let operand_type = infer_type(&unary.expr.r#expr, session)?;
+
+    match unary.op {
+        UnaryOp::Bang => Ok(Type::Int),
+        UnaryOp::Tilde => Ok(operand_type),
+        UnaryOp::Ampersand => Ok(Type::Pointer(Box::new(operand_type))),
+        UnaryOp::Asterisk => {
+            if let Type::Pointer(inner) = operand_type {
+                Ok(*inner)
+            } else {
+                Err(TypeError::InvalidOperation {
+                    op: "dereference".to_string(),
+                    operand_type,
+                })
+            }
+        }
+        _ => Ok(operand_type), // その他の単項演算子
     }
 }
+
+// promote_types関数は削除（暗黙変換を行わないため）

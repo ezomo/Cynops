@@ -45,7 +45,7 @@ fn main() {
 
             println!("_______________________________________________");
             let new_pragram = sema::r#type::program(&new_pragram, &mut session);
-            println!("{:#?}", new_pragram);
+            println!("{:#?}", new_pragram.unwrap());
         }
         "codegen" => {
             // codegen::generate_program(program.clone(), &mut codegen::CodeGenStatus::new());
