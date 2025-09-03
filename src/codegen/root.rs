@@ -47,7 +47,7 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
     // return用の変数とラベルを設定
 
     let return_type = function.sig.ty.as_func().unwrap().return_type.clone();
-    let return_label = "return_label".to_string();
+    let return_label = cgs.name_gen.label();
     let return_ptr = cgs.name_gen.register();
 
     if !return_type.is_void() {
@@ -71,10 +71,10 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
     }
 
     // 常にreturn_labelにジャンプ（return文がない場合のため）
-    println!("br label %{}", return_label);
+    println!("br label %{}", return_label.to_string());
 
     // return_labelとreturn処理
-    println!("{}:", return_label);
+    println!("{}:", return_label.to_string());
 
     if !return_type.is_void() {
         println!(

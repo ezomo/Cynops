@@ -51,6 +51,7 @@ fn main() {
         }
         "codegen" => {
             let mut session = sema::ast::Session::new();
+            sema::simplification::program(&mut program);
             let new_pragram = sema::convert::program(&program, &mut session);
             let new_program = sema::r#type::program(&new_pragram, &mut session);
             match new_program {

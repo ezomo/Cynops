@@ -7,12 +7,9 @@ pub struct CodeGenStatus {
     pub name_gen: NameGenerator,
     pub variables: HashMap<Ident, String>,
     pub return_value_ptr: Option<String>,
-    pub return_label: Option<String>,
-    pub break_labels: Vec<String>,    // break用ラベルのスタック
-    pub continue_labels: Vec<String>, // continue用ラベルのスタック
-    pub string_literals: HashMap<String, String>, // 文字列リテラルのキャッシュ
-    pub global_counter: usize,        // グローバル変数用カウンタ
-    pub label_counter: usize,         // ラベル用カウンタ
+    pub return_label: Option<LLVMValue>,
+    pub break_labels: Vec<LLVMValue>,    // break用ラベルのスタック
+    pub continue_labels: Vec<LLVMValue>, // continue用ラベルのスタック
 }
 
 impl Block {
@@ -30,13 +27,10 @@ impl CodeGenStatus {
             return_label: None,
             break_labels: Vec::new(),
             continue_labels: Vec::new(),
-            string_literals: HashMap::new(),
-            global_counter: 0,
-            label_counter: 0,
         }
     }
 
-    pub fn push_loop_labels(&mut self, break_label: String, continue_label: String) {
+    pub fn push_loop_labels(&mut self, break_label: LLVMValue, continue_label: LLVMValue) {
         self.break_labels.push(break_label);
         self.continue_labels.push(continue_label);
     }
@@ -46,39 +40,12 @@ impl CodeGenStatus {
         self.continue_labels.pop();
     }
 
-    pub fn current_break_label(&self) -> Option<&String> {
+    pub fn current_break_label(&self) -> Option<&LLVMValue> {
         self.break_labels.last()
     }
 
-    pub fn current_continue_label(&self) -> Option<&String> {
+    pub fn current_continue_label(&self) -> Option<&LLVMValue> {
         self.continue_labels.last()
-    }
-
-    pub fn next_label(&mut self, prefix: &str) -> String {
-        let label = format!("{}_{}", prefix, self.label_counter);
-        self.label_counter += 1;
-        label
-    }
-
-    pub fn get_or_create_string_literal(&mut self, s: &str) -> String {
-        if let Some(existing) = self.string_literals.get(s) {
-            existing.clone()
-        } else {
-            let global_name = format!("str_{}", self.global_counter);
-            self.global_counter += 1;
-
-            // グローバル文字列定数を宣言
-            println!(
-                "@{} = private unnamed_addr constant [{}x i8] c\"{}\\00\"",
-                global_name,
-                s.len() + 1,
-                s
-            );
-
-            self.string_literals
-                .insert(s.to_string(), global_name.clone());
-            global_name
-        }
     }
 }
 
@@ -129,7 +96,7 @@ impl NameGenerator {
 
     pub fn register(&mut self) -> LLVMValue {
         LLVMValue {
-            variable: format!("%tmp{}", self.next()),
+            variable: format!("%{}", self.next()),
             ty: LLVMType::Register,
         }
     }
@@ -143,7 +110,7 @@ impl NameGenerator {
 
     pub fn variable(&mut self) -> LLVMValue {
         LLVMValue {
-            variable: format!("%tmp{}", self.next()),
+            variable: format!("%{}", self.next()),
             ty: LLVMType::Variable,
         }
     }

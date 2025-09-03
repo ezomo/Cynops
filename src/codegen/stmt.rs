@@ -120,7 +120,7 @@ fn control(control: Control, cgs: &mut CodeGenStatus) {
 
 fn r#break(cgs: &mut CodeGenStatus) {
     if let Some(break_label) = cgs.current_break_label() {
-        println!("  br label %{}", break_label);
+        println!("  br label %{}", break_label.to_string());
     } else {
         panic!("break statement outside of loop");
     }
@@ -128,7 +128,7 @@ fn r#break(cgs: &mut CodeGenStatus) {
 
 fn r#continue(cgs: &mut CodeGenStatus) {
     if let Some(continue_label) = cgs.current_continue_label() {
-        println!("  br label %{}", continue_label);
+        println!("  br label %{}", continue_label.to_string());
     } else {
         panic!("continue statement outside of loop");
     }
@@ -153,7 +153,7 @@ fn r#return(ret: Return, cgs: &mut CodeGenStatus) {
 
     // return_labelにジャンプ
     if let Some(ref return_label) = cgs.return_label {
-        println!("br label %{}", return_label);
+        println!("br label %{}", return_label.to_string());
     }
 }
 
@@ -171,9 +171,9 @@ mod controls {
     use super::*;
 
     pub fn r#if(if_stmt: If, cgs: &mut CodeGenStatus) {
-        let then_label = cgs.next_label("then");
-        let else_label = cgs.next_label("else");
-        let end_label = cgs.next_label("end");
+        let then_label = cgs.name_gen.label();
+        let else_label = cgs.name_gen.label();
+        let end_label = cgs.name_gen.label();
 
         // 条件の評価（TypedExprなのでtodo!()）
         let cond_result = new_load(gen_expr, *if_stmt.cond, cgs).i64toi1(cgs); // todo!()で条件式を評価した結果
@@ -183,105 +183,105 @@ mod controls {
             println!(
                 "  br i1 {}, label %{}, label %{}",
                 cond_result.to_string(),
-                then_label,
-                else_label
+                then_label.to_string(),
+                else_label.to_string()
             );
         } else {
             println!(
                 "  br i1 {}, label %{}, label %{}",
                 cond_result.to_string(),
-                then_label,
-                end_label
+                then_label.to_string(),
+                end_label.to_string()
             );
         }
 
         // then ブロック
-        println!("{}:", then_label);
+        println!("{}:", then_label.to_string());
         stmt(*if_stmt.then_branch, cgs);
-        println!("  br label %{}", end_label);
+        println!("  br label %{}", end_label.to_string());
 
         // else ブロック（存在する場合）
         if let Some(else_branch) = if_stmt.else_branch {
-            println!("{}:", else_label);
+            println!("{}:", else_label.to_string());
             stmt(*else_branch, cgs);
-            println!("  br label %{}", end_label);
+            println!("  br label %{}", end_label.to_string());
         }
 
         // 終了ラベル
-        println!("{}:", end_label);
+        println!("{}:", end_label.to_string());
     }
 
     pub fn r#while(while_stmt: While, cgs: &mut CodeGenStatus) {
-        let cond_label = cgs.next_label("while_cond");
-        let body_label = cgs.next_label("while_body");
-        let end_label = cgs.next_label("while_end");
+        let cond_label = cgs.name_gen.label();
+        let body_label = cgs.name_gen.label();
+        let end_label = cgs.name_gen.label();
 
         // ループラベルをプッシュ
         cgs.push_loop_labels(end_label.clone(), cond_label.clone());
 
         // 条件の評価へジャンプ
-        println!("  br label %{}", cond_label);
+        println!("  br label %{}", cond_label.to_string());
 
         // 条件評価ラベル
-        println!("{}:", cond_label);
+        println!("{}:", cond_label.to_string());
         let cond_result = new_load(gen_expr, *while_stmt.cond, cgs).i64toi1(cgs); // todo!()で条件式を評価した結果
         println!(
             "  br i1 {}, label %{}, label %{}",
             cond_result.to_string(),
-            body_label,
-            end_label
+            body_label.to_string(),
+            end_label.to_string()
         );
 
         // 本体ラベル
-        println!("{}:", body_label);
+        println!("{}:", body_label.to_string());
         stmt(*while_stmt.body, cgs);
-        println!("  br label %{}", cond_label);
+        println!("  br label %{}", cond_label.to_string());
 
         // 終了ラベル
-        println!("{}:", end_label);
+        println!("{}:", end_label.to_string());
 
         // ループラベルをポップ
         cgs.pop_loop_labels();
     }
 
     pub fn r#do_while(do_while_stmt: DoWhile, cgs: &mut CodeGenStatus) {
-        let body_label = cgs.next_label("do_body");
-        let cond_label = cgs.next_label("do_cond");
-        let end_label = cgs.next_label("do_end");
+        let body_label = cgs.name_gen.label();
+        let cond_label = cgs.name_gen.label();
+        let end_label = cgs.name_gen.label();
 
         // ループラベルをプッシュ
         cgs.push_loop_labels(end_label.clone(), cond_label.clone());
 
         // 本体へジャンプ
-        println!("  br label %{}", body_label);
+        println!("  br label %{}", body_label.to_string());
 
         // 本体ラベル
-        println!("{}:", body_label);
+        println!("{}:", body_label.to_string());
         stmt(*do_while_stmt.body, cgs);
-        println!("  br label %{}", cond_label);
+        println!("  br label %{}", cond_label.to_string());
 
         // 条件評価ラベル
-        println!("{}:", cond_label);
+        println!("{}:", cond_label.to_string());
         let cond_result = new_load(gen_expr, *do_while_stmt.cond, cgs).i64toi1(cgs); // todo!()で条件式を評価した結果
         println!(
             "  br i1 {}, label %{}, label %{}",
             cond_result.to_string(),
-            body_label,
-            end_label
+            body_label.to_string(),
+            end_label.to_string()
         );
 
         // 終了ラベル
-        println!("{}:", end_label);
+        println!("{}:", end_label.to_string());
 
         // ループラベルをポップ
         cgs.pop_loop_labels();
     }
 
     pub fn r#for(for_stmt: For, cgs: &mut CodeGenStatus) {
-        let cond_label = cgs.next_label("for_cond");
-        let body_label = cgs.next_label("for_body");
-        let step_label = cgs.next_label("for_step");
-        let end_label = cgs.next_label("for_end");
+        let cond_label = cgs.name_gen.label();
+        let body_label = cgs.name_gen.label();
+        let step_label = cgs.name_gen.label();
+        let end_label = cgs.name_gen.label();
 
         // ループラベルをプッシュ（continueはstepラベルへ）
         cgs.push_loop_labels(end_label.clone(), step_label.clone());
@@ -292,45 +292,45 @@ mod controls {
         }
 
         // 条件の評価へジャンプ
-        println!("  br label %{}", cond_label);
+        println!("  br label %{}", cond_label.to_string());
 
         // 条件評価ラベル
-        println!("{}:", cond_label);
+        println!("{}:", cond_label.to_string());
         if let Some(_cond) = for_stmt.cond {
             let cond_result = new_load(gen_expr, *_cond, cgs).i64toi1(cgs); // todo!()で条件式を評価した結果
             println!(
                 "  br i1 {}, label %{}, label %{}",
                 cond_result.to_string(),
-                body_label,
-                end_label
+                body_label.to_string(),
+                end_label.to_string()
             );
         } else {
             // 条件なし（無限ループ）
-            println!("  br label %{}", body_label);
+            println!("  br label %{}", body_label.to_string());
         }
 
         // 本体ラベル
-        println!("{}:", body_label);
+        println!("{}:", body_label.to_string());
         stmt(*for_stmt.body, cgs);
-        println!("  br label %{}", step_label);
+        println!("  br label %{}", step_label.to_string());
 
         // ステップラベル
-        println!("{}:", step_label);
+        println!("{}:", step_label.to_string());
         if let Some(_step) = for_stmt.step {
             new_load(gen_expr, *_step, cgs);
         }
-        println!("  br label %{}", cond_label);
+        println!("  br label %{}", cond_label.to_string());
 
         // 終了ラベル
-        println!("{}:", end_label);
+        println!("{}:", end_label.to_string());
 
         // ループラベルをポップ
         cgs.pop_loop_labels();
     }
 
     pub fn r#switch(switch_stmt: Switch, cgs: &mut CodeGenStatus) {
-        let end_label = cgs.next_label("switch_end");
-        let default_label = cgs.next_label("switch_default");
+        let end_label = cgs.name_gen.label();
+        let default_label = cgs.name_gen.label();
 
         // breakラベルをプッシュ（switchではcontinueは使用不可なので空文字列）
         cgs.break_labels.push(end_label.clone());
@@ -341,20 +341,24 @@ mod controls {
         print!(
             "  switch i64 {}, label %{} [",
             cond_result.to_string(),
-            default_label
+            default_label.to_string()
         );
 
         let mut case_labels = Vec::new();
         let mut has_default = false;
 
         // ケースラベルの生成
-        for (i, case) in switch_stmt.cases.iter().enumerate() {
+        for case in switch_stmt.cases.iter() {
             match case {
                 SwitchCase::Case(case_stmt) => {
-                    let case_label = cgs.next_label(&format!("case_{}", i));
+                    let case_label = cgs.name_gen.label();
                     case_labels.push((case_label.clone(), case));
                     let case_value = case_stmt.const_expr.consume_const(); // todo!()でcase値を評価
-                    print!("\n    i64 {}, label %{}", case_value, case_label);
+                    print!(
+                        "\n    i64 {}, label %{}",
+                        case_value,
+                        case_label.to_string()
+                    );
                 }
                 SwitchCase::Default(_) => {
                     has_default = true;
@@ -367,19 +371,19 @@ mod controls {
         for i in 0..case_labels.len() {
             let (label, case) = &case_labels[i];
             if let SwitchCase::Case(case_stmt) = case {
-                println!("{}:", label);
+                println!("{}:", label.to_string());
                 for stmt in &case_stmt.stmts {
                     super::stmt(*stmt.clone(), cgs);
                 }
                 // break文が無い場合は次のcaseへfall through
                 if i < case_labels.len() - 1 {
-                    println!("  br label %{}", case_labels[i + 1].0);
+                    println!("  br label %{}", case_labels[i + 1].0.to_string());
                 }
             }
         }
 
         // defaultケースの処理
-        println!("{}:", default_label);
+        println!("{}:", default_label.to_string());
         if has_default {
             for case in &switch_stmt.cases {
                 if let SwitchCase::Default(default_case) = case {
@@ -390,10 +394,10 @@ mod controls {
                 }
             }
         }
-        println!("  br label %{}", end_label);
+        println!("  br label %{}", end_label.to_string());
 
         // 終了ラベル
-        println!("{}:", end_label);
+        println!("{}:", end_label.to_string());
 
         // breakラベルをポップ
         cgs.break_labels.pop();
