@@ -433,7 +433,7 @@ impl Visualize for FunctionDef {
                 let is_last_param = i == self.param_names.len() - 1;
                 print_branch(
                     "Param",
-                    &param.name,
+                    &param.ident.name,
                     indent + 2,
                     is_last_param,
                     &param_prefix,

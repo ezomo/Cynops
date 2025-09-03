@@ -2,7 +2,7 @@ use super::*;
 use crate::sema::ast::*;
 
 fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
-    let args: Vec<(Ident, Type)> = (0..function.param_names.len())
+    let args: Vec<(Symbol, Type)> = (0..function.param_names.len())
         .map(|i| {
             (
                 function.param_names[i].clone(),
@@ -22,7 +22,7 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
             .to_llvm_format(),
         function.sig.ident.get_fnc_name(),
         args.iter()
-            .map(|x| format!("{} %{}", x.1.to_llvm_format(), x.0.get_name()))
+            .map(|x| format!("{} %{}", x.1.to_llvm_format(), x.0.ident.get_name()))
             .collect::<Vec<_>>()
             .join(", "),
     );
@@ -31,15 +31,15 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
         for (ident, ty) in &args {
             let ptr = cgs.name_gen.register();
             println!("{} = alloca {}", ptr.to_string(), ty.to_llvm_format());
-            cgs.variables.insert(ident.clone(), ptr.to_string());
+            cgs.register_variable(ident.clone(), ptr.to_string());
         }
         for (ident, ty) in &args {
             println!(
                 "store {} %{}, {}* {}",
                 ty.to_llvm_format(),
-                ident.get_name(),
+                ident.ident.get_name(),
                 ty.to_llvm_format(),
-                cgs.variables[&ident]
+                cgs.get_variable(ident).unwrap()
             );
         }
     }
@@ -92,7 +92,6 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
     // 関数終了時にreturn関連の情報をクリア
     cgs.return_value_ptr = None;
     cgs.return_label = None;
-    cgs.variables.clear();
 }
 
 #[allow(dead_code)]

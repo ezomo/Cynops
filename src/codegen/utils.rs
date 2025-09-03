@@ -16,9 +16,7 @@ impl CodeGenSpace {
 }
 
 pub struct CodeGenStatus {
-    pub session: Session,
     pub name_gen: NameGenerator,
-    pub variables: HashMap<Ident, String>,
     pub return_value_ptr: Option<String>,
     pub return_label: Option<LLVMValue>,
     pub break_labels: Vec<LLVMValue>,    // break用ラベルのスタック
@@ -32,11 +30,9 @@ impl Block {
 }
 
 impl CodeGenStatus {
-    pub fn new(session: Session) -> Self {
+    pub fn new() -> Self {
         Self {
-            session,
             name_gen: NameGenerator::new(),
-            variables: HashMap::new(),
             return_value_ptr: None,
             return_label: None,
             break_labels: Vec::new(),
@@ -60,6 +56,29 @@ impl CodeGenStatus {
 
     pub fn current_continue_label(&self) -> Option<&LLVMValue> {
         self.continue_labels.last()
+    }
+
+    pub fn register_variable(&self, sybmol: Symbol, string: String) {
+        sybmol
+            .scope
+            .upgrade()
+            .unwrap()
+            .borrow_mut()
+            .codege_space
+            .variables
+            .insert(sybmol.ident, string);
+    }
+
+    pub fn get_variable(&self, sybmol: &Symbol) -> Option<String> {
+        sybmol
+            .scope
+            .upgrade()
+            .unwrap()
+            .borrow()
+            .codege_space
+            .variables
+            .get(&sybmol.ident)
+            .cloned()
     }
 }
 

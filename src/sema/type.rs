@@ -93,7 +93,7 @@ fn resolve_function_def(func_def: &FunctionDef, session: &mut Session) -> TypeRe
 
     if let Some(func_type) = func_def.sig.ty.as_func() {
         for (param_name, param_type) in func_def.param_names.iter().zip(&func_type.params) {
-            session.register_symbols(param_name.clone(), param_type.clone());
+            session.register_symbols(param_name.ident.clone(), param_type.clone());
         }
     }
 

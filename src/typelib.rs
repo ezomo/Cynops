@@ -1,4 +1,4 @@
-use crate::ast::{Array, Expr, Func, Ident, Type, expr};
+use crate::ast::{Array, Expr, Func, Ident, Type};
 use crate::parser::ParseSession;
 use crate::parser::expr;
 use crate::token::Token;

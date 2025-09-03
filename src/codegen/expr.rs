@@ -182,16 +182,17 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
             var_name
         }
         SemaExpr::Ident(ident) => match typed_expr.r#type {
-            Type::Array(_) => {
-                LLVMValue::new(cgs.variables[&ident.name].clone(), LLVMType::Variable)
-            }
-            Type::Pointer(_) => {
-                LLVMValue::new(cgs.variables[&ident.name].clone(), LLVMType::Variable)
-            }
+            Type::Array(_) => LLVMValue::new(
+                cgs.get_variable(&ident).unwrap().clone(),
+                LLVMType::Variable,
+            ),
+            Type::Pointer(_) => LLVMValue::new(
+                cgs.get_variable(&ident).unwrap().clone(),
+                LLVMType::Variable,
+            ),
             _ => LLVMValue::new(
-                cgs.variables
-                    .get(&ident.name)
-                    .unwrap_or(&ident.name.get_fnc_name()),
+                cgs.get_variable(&ident)
+                    .unwrap_or(ident.ident.get_fnc_name()),
                 LLVMType::Variable,
             ),
         },

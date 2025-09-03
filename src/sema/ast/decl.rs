@@ -100,7 +100,7 @@ impl EnumMember {
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct FunctionDef {
     pub sig: FunctionSig,
-    pub param_names: Vec<Ident>,
+    pub param_names: Vec<Symbol>,
     pub body: Block,
 }
 

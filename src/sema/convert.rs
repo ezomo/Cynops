@@ -44,10 +44,15 @@ fn convert_function_def(
     // 新しいスコープを作成して関数本体を処理
     session.push_scope();
 
+    let mut symbols = Vec::new();
     // パラメータを現在のスコープに登録
     if let Some(func_type) = sig.ty.as_func() {
         for (param_name, param_type) in func_def.param_names.iter().zip(&func_type.params) {
             session.register_symbols(param_name.as_same(), param_type.clone());
+            symbols.push(Symbol::new(
+                param_name.as_same(),
+                Rc::downgrade(&session.current_scope),
+            ));
         }
     }
 
@@ -57,7 +62,7 @@ fn convert_function_def(
 
     new_ast::FunctionDef {
         sig,
-        param_names: func_def.param_names.iter().map(|p| p.as_same()).collect(),
+        param_names: symbols,
         body: *body,
     }
 }

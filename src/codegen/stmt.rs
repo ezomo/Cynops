@@ -45,8 +45,7 @@ fn declare_variable(init: Init, cgs: &mut CodeGenStatus) {
     println!("{} = alloca {}", var_name.to_string(), llvm_type);
 
     // 変数名をマップに登録
-    cgs.variables
-        .insert(init.r.ident.clone(), var_name.clone().to_string());
+    cgs.register_variable(init.r.sympl, var_name.clone().to_string());
 
     // 初期化子がある場合は初期化
     if let Some(init_data) = init.l {

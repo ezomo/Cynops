@@ -3,6 +3,7 @@ use std::{env, fs, process};
 
 mod ast;
 // mod codegen;
+mod codegen;
 mod lexer;
 mod op;
 mod parser;
@@ -56,7 +57,7 @@ fn main() {
             let new_program = sema::r#type::program(&new_pragram, &mut session);
             match new_program {
                 Ok(program) => {
-                    // codegen::generate_program(program, &mut codegen::CodeGenStatus::new(session));
+                    codegen::generate_program(program, &mut codegen::CodeGenStatus::new());
                 }
                 Err(e) => {
                     eprintln!("型エラー: {}", e);
@@ -72,22 +73,5 @@ fn main() {
             eprintln!("不明なモード: {}", mode);
             process::exit(1);
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_extract_exprs() {
-        use crate::ast::*;
-
-        // let expr = Expr::Binary(Binary {
-        //     op: BinaryOp::plus(),
-        //     lhs: Box::new(Expr::NumInt(1)),
-        //     rhs: Box::new(Expr::NumInt(2)),
-        // });
-        // expr.oneline(); // 木構造で表示される
     }
 }
