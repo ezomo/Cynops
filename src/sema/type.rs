@@ -1,4 +1,5 @@
 use super::ast::*;
+use crate::op::*;
 
 #[derive(Debug, Clone)]
 pub enum TypeError {
@@ -473,8 +474,8 @@ fn infer_type(expr: &SemaExpr, session: &mut Session) -> TypeResult<Type> {
         SemaExpr::MemberAccess(member) => {
             let base_type = infer_type(&member.base.r#expr, session)?;
             let actual_type = match &member.kind {
-                crate::ast::MemberAccessOp::Dot => base_type.clone(),
-                crate::ast::MemberAccessOp::MinusGreater => {
+                MemberAccessOp::Dot => base_type.clone(),
+                MemberAccessOp::MinusGreater => {
                     if let Type::Pointer(inner) = base_type.clone() {
                         *inner
                     } else {
@@ -484,6 +485,7 @@ fn infer_type(expr: &SemaExpr, session: &mut Session) -> TypeResult<Type> {
                         });
                     }
                 }
+                _ => unreachable!(""),
             };
 
             match actual_type {

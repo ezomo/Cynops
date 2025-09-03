@@ -12,6 +12,23 @@ pub enum Arithmetic {
     Ampersand,      // '&'
 }
 
+impl ToString for Arithmetic {
+    fn to_string(&self) -> String {
+        match self {
+            Arithmetic::Plus => "+".to_string(),
+            Arithmetic::Minus => "-".to_string(),
+            Arithmetic::Asterisk => "*".to_string(),
+            Arithmetic::Slash => "/".to_string(),
+            Arithmetic::Percent => "%".to_string(),
+            Arithmetic::Caret => "^".to_string(),
+            Arithmetic::Pipe => "|".to_string(),
+            Arithmetic::LessLess => "<<".to_string(),
+            Arithmetic::GreaterGreater => ">>".to_string(),
+            Arithmetic::Ampersand => "&".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum Comparison {
     EqualEqual,   // '=='
@@ -22,10 +39,32 @@ pub enum Comparison {
     GreaterEqual, // '>='
 }
 
+impl ToString for Comparison {
+    fn to_string(&self) -> String {
+        match self {
+            Comparison::EqualEqual => "==".to_string(),
+            Comparison::NotEqual => "!=".to_string(),
+            Comparison::Less => "<".to_string(),
+            Comparison::LessEqual => "<=".to_string(),
+            Comparison::Greater => ">".to_string(),
+            Comparison::GreaterEqual => ">=".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum Logical {
     AmpersandAmpersand, // '&&'
     PipePipe,           // '||'
+}
+
+impl ToString for Logical {
+    fn to_string(&self) -> String {
+        match self {
+            Logical::AmpersandAmpersand => "&&".to_string(),
+            Logical::PipePipe => "||".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
@@ -34,6 +73,17 @@ pub enum BinaryOp {
     Comparison(Comparison),
     Logical(Logical),
 }
+
+impl ToString for BinaryOp {
+    fn to_string(&self) -> String {
+        match self {
+            BinaryOp::Arithmetic(op) => op.to_string(),
+            BinaryOp::Comparison(op) => op.to_string(),
+            BinaryOp::Logical(op) => op.to_string(),
+        }
+    }
+}
+
 impl BinaryOp {
     pub fn plus() -> Self {
         BinaryOp::Arithmetic(Arithmetic::Plus)
@@ -115,6 +165,25 @@ pub enum AssignOp {
     GreaterGreaterEqual, // '>>='
     AmpersandEqual,      // '&='
 }
+
+impl ToString for AssignOp {
+    fn to_string(&self) -> String {
+        match self {
+            AssignOp::Equal => "=".to_string(),
+            AssignOp::PlusEqual => "+=".to_string(),
+            AssignOp::MinusEqual => "-=".to_string(),
+            AssignOp::AsteriskEqual => "*=".to_string(),
+            AssignOp::SlashEqual => "/=".to_string(),
+            AssignOp::PercentEqual => "%=".to_string(),
+            AssignOp::CaretEqual => "^=".to_string(),
+            AssignOp::PipeEqual => "|=".to_string(),
+            AssignOp::LessLessEqual => "<<=".to_string(),
+            AssignOp::GreaterGreaterEqual => ">>=".to_string(),
+            AssignOp::AmpersandEqual => "&=".to_string(),
+        }
+    }
+}
+
 impl AssignOp {
     pub fn equal() -> Self {
         AssignOp::Equal
@@ -171,6 +240,21 @@ pub enum UnaryOp {
     PlusPlus,   // ++x
     MinusMinus, // --x
 }
+
+impl ToString for UnaryOp {
+    fn to_string(&self) -> String {
+        match self {
+            UnaryOp::Minus => "-".to_string(),
+            UnaryOp::Bang => "!".to_string(),
+            UnaryOp::Tilde => "~".to_string(),
+            UnaryOp::Ampersand => "&".to_string(),
+            UnaryOp::Asterisk => "*".to_string(),
+            UnaryOp::PlusPlus => "++".to_string(),
+            UnaryOp::MinusMinus => "--".to_string(),
+        }
+    }
+}
+
 impl UnaryOp {
     pub fn minus() -> Self {
         UnaryOp::Minus // -x
@@ -205,6 +289,16 @@ pub enum PostfixOp {
     PlusPlus,   // x++
     MinusMinus, // x--
 }
+
+impl ToString for PostfixOp {
+    fn to_string(&self) -> String {
+        match self {
+            PostfixOp::PlusPlus => "++".to_string(),
+            PostfixOp::MinusMinus => "--".to_string(),
+        }
+    }
+}
+
 impl PostfixOp {
     pub fn plus_plus() -> Self {
         PostfixOp::PlusPlus // x++
@@ -219,6 +313,15 @@ impl PostfixOp {
 pub enum MemberAccessOp {
     Dot,
     MinusGreater,
+}
+
+impl ToString for MemberAccessOp {
+    fn to_string(&self) -> String {
+        match self {
+            MemberAccessOp::Dot => ".".to_string(),
+            MemberAccessOp::MinusGreater => "->".to_string(),
+        }
+    }
 }
 
 impl MemberAccessOp {

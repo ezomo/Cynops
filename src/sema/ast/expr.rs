@@ -1,5 +1,5 @@
-use super::{AssignOp, BinaryOp, Ident, ScopeNode, Type, UnaryOp};
-use crate::ast::MemberAccessOp;
+use super::{Ident, ScopeNode, Type};
+use crate::op::*;
 use ordered_float::OrderedFloat;
 use std::cell::RefCell;
 use std::hash::{Hash, Hasher};

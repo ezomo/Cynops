@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 
-use crate::ast::{Enum, EnumMember};
-use crate::token::{Keyword, Token};
-
 use crate::ast::*;
+use crate::ast::{Enum, EnumMember};
+use crate::op::*;
+use crate::token::{Keyword, Token};
 use crate::typelib;
 #[derive(Debug)]
 

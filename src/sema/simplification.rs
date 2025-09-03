@@ -1,4 +1,5 @@
 use crate::ast::*;
+use crate::op::*;
 
 pub fn program(program: &mut Program) {
     for top_level in program.items.iter_mut() {

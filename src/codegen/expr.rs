@@ -1,6 +1,7 @@
 use ordered_float::OrderedFloat;
 
 use super::*;
+use crate::op::*;
 use crate::sema::ast::*;
 
 pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
@@ -124,6 +125,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                 );
                 rhs
             }
+            _ => unreachable!(),
         },
         SemaExpr::NumInt(num) => LLVMValue::new(num, LLVMType::Const),
         SemaExpr::NumFloat(num) => {
@@ -284,6 +286,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                     );
                     name
                 }
+                _ => unreachable!("use simplification"),
             }
         }
         SemaExpr::Ternary(ternary) => {

@@ -1,4 +1,3 @@
-use super::Struct;
 use super::*;
 use crate::ast;
 
@@ -111,7 +110,13 @@ impl Type {
                 format!("*{}", inner.to_rust_format())
             }
             Type::Array(arr) => {
-                format!("[{}; {:?}]", arr.array_of.to_rust_format(), arr.length)
+                format!(
+                    "[{}; {}]",
+                    arr.array_of.to_rust_format(),
+                    arr.length
+                        .as_ref()
+                        .map_or("None".to_string(), |len| len.oneline())
+                )
             }
             Type::Typedef(t) => t.to_string(),
         }

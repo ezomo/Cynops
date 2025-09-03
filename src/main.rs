@@ -2,10 +2,9 @@
 use std::{env, fs, process};
 
 mod ast;
-#[allow(dead_code)]
-mod ast_visualizer;
 mod codegen;
 mod lexer;
+mod op;
 mod parser;
 mod preprocessor;
 mod sema;
@@ -13,6 +12,8 @@ mod test_cases;
 mod token;
 mod typelib;
 use normalize_line_endings::normalized;
+mod visualize;
+use visualize::*;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -37,16 +38,16 @@ fn main() {
 
     match mode.as_str() {
         "ast" => {
-            ast_visualizer::visualize_program(&program);
+            program.visualize();
             sema::simplification::program(&mut program);
-            ast_visualizer::visualize_program(&program);
+            program.visualize();
             let mut session = sema::ast::Session::new();
             let new_pragram = sema::convert::program(&program, &mut session);
-            println!("{:#?}", new_pragram);
+            new_pragram.visualize();
 
             println!("_______________________________________________");
             let new_pragram = sema::r#type::program(&new_pragram, &mut session);
-            println!("{:#?}", new_pragram.unwrap());
+            new_pragram.unwrap().visualize();
         }
         "codegen" => {
             let mut session = sema::ast::Session::new();
@@ -63,7 +64,7 @@ fn main() {
             }
         }
         "both" => {
-            ast_visualizer::visualize_program(&program);
+            // ast_visualizer::visualize_program(&program);
             // codegen::generate_program(program.clone(), &mut codegen::CodeGenStatus::new());
         }
         _ => {
@@ -79,26 +80,13 @@ mod tests {
 
     #[test]
     fn test_extract_exprs() {
-        let mut input = "
-            int printf(char *, char*);
+        use crate::ast::*;
 
-            int main(void){
-                char input1[4] = {'%','s','\n','\0'};
-                char input2[50] = {'N','o','w',' ','i','t',' ','h','o','l','d','s',' ','t','h','e',' ','p','o','w','e','r',' ','t','o',' ','d','e','m','o','n','s','t','r','a','t','e',' ','i','t','s',' ','m','i','g','h','t','.','\n','\0'};
-
-                printf(&input1[0],&input2[0]);
-            }
-
-        "
-        .to_string();
-        preprocessor::remove_comments(&mut input);
-        preprocessor::unescape_char_literals(&mut input);
-
-        let mut token = lexer::tokenize(&input);
-        let mut session = parser::ParseSession::new();
-        let a = parser::program(&mut session, &mut token);
-
-        // codegen::generate_program(a.clone(), &mut codegen::CodeGenStatus::new());
-        ast_visualizer::visualize_program(&a);
+        // let expr = Expr::Binary(Binary {
+        //     op: BinaryOp::plus(),
+        //     lhs: Box::new(Expr::NumInt(1)),
+        //     rhs: Box::new(Expr::NumInt(2)),
+        // });
+        // expr.oneline(); // 木構造で表示される
     }
 }

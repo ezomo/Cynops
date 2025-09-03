@@ -402,12 +402,12 @@ fn convert_init_data(data: &old_ast::InitData, session: &mut Session) -> new_ast
 fn convert_expr(expr: &old_ast::Expr, session: &mut Session) -> new_ast::TypedExpr {
     let sema_expr = match expr {
         old_ast::Expr::Assign(assign) => new_ast::SemaExpr::Assign(new_ast::Assign {
-            op: assign.op.as_same(),
+            op: assign.op,
             lhs: Box::new(convert_expr(&assign.lhs, session)),
             rhs: Box::new(convert_expr(&assign.rhs, session)),
         }),
         old_ast::Expr::Binary(binary) => new_ast::SemaExpr::Binary(new_ast::Binary {
-            op: binary.op.as_same(),
+            op: binary.op,
             lhs: Box::new(convert_expr(&binary.lhs, session)),
             rhs: Box::new(convert_expr(&binary.rhs, session)),
         }),
@@ -456,7 +456,7 @@ fn convert_expr(expr: &old_ast::Expr, session: &mut Session) -> new_ast::TypedEx
             else_branch: Box::new(convert_expr(&ternary.else_branch, session)),
         }),
         old_ast::Expr::Unary(unary) => new_ast::SemaExpr::Unary(new_ast::Unary {
-            op: unary.op.as_same(),
+            op: unary.op,
             expr: Box::new(convert_expr(&unary.expr, session)),
         }),
         old_ast::Expr::Sizeof(sizeof) => {

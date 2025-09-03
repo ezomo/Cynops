@@ -1,5 +1,6 @@
 //TypedExprに対応した定数計算モジュール
 use super::ast::*;
+use crate::op::*;
 use crate::sema::{ast::SemaExpr, ast::TypedExpr};
 
 impl TypedExpr {
@@ -90,6 +91,7 @@ fn eval_typed_unary(unary: &crate::sema::ast::Unary) -> Result<isize, String> {
         UnaryOp::Tilde => Ok(!operand),
         UnaryOp::Ampersand => Err("アドレス演算子は定数計算できません".to_string()),
         UnaryOp::Asterisk => Err("間接参照演算子は定数計算できません".to_string()),
+        _ => unreachable!("use simplification before"),
     }
 }
 

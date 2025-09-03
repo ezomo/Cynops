@@ -1,5 +1,6 @@
-use super::{AssignOp, BinaryOp, Ident, PostfixOp, UnaryOp};
-use crate::ast::{MemberAccessOp, Type};
+use super::Ident;
+use crate::ast::Type;
+use crate::op::*;
 use ordered_float::OrderedFloat;
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Postfix {
