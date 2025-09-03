@@ -1,5 +1,6 @@
 use super::ast::*;
 use crate::op::*;
+use crate::visualize::*;
 
 #[derive(Debug, Clone)]
 pub enum TypeError {
@@ -270,7 +271,7 @@ fn check_init_compatibility(
     match init_data {
         InitData::Expr(expr) => {
             let expr_type = &expr.r#type;
-            if !are_types_compatible(var_type, expr_type) {
+            if var_type != expr_type {
                 return Err(TypeError::IncompatibleTypes {
                     expected: var_type.clone(),
                     found: expr_type.clone(),
@@ -289,19 +290,6 @@ fn check_init_compatibility(
         }
     }
     Ok(())
-}
-
-// 完全一致を原則とする新しいare_types_compatible関数
-fn are_types_compatible(target: &Type, source: &Type) -> bool {
-    match (target, source) {
-        // 同じ型は互換性がある（完全一致）
-        (a, b) if a == b => true,
-
-        // ポインタ型の互換性（要素型も完全一致が必要）
-        (Type::Pointer(a), Type::Pointer(b)) => are_types_compatible(a, b),
-        // その他の場合は互換性なし（暗黙変換禁止）
-        _ => false,
-    }
 }
 
 fn infer_array_length(array_type: &mut Type, init_data: &InitData, session: &mut Session) {
@@ -358,7 +346,7 @@ fn resolve_sema_expr(expr: &SemaExpr, session: &mut Session) -> TypeResult<SemaE
             let rhs = resolve_typed_expr(&assign.rhs, session)?;
 
             // 代入の型互換性チェック（完全一致を要求）
-            if !are_types_compatible(&lhs.r#type, &rhs.r#type) {
+            if &lhs.r#type != &rhs.r#type {
                 return Err(TypeError::IncompatibleTypes {
                     expected: lhs.r#type.clone(),
                     found: rhs.r#type.clone(),
@@ -386,16 +374,22 @@ fn resolve_sema_expr(expr: &SemaExpr, session: &mut Session) -> TypeResult<SemaE
             then_branch: Box::new(resolve_typed_expr(&ternary.then_branch, session)?),
             else_branch: Box::new(resolve_typed_expr(&ternary.else_branch, session)?),
         })),
-        SemaExpr::Call(call) => Ok(SemaExpr::Call(Call {
-            func: Box::new(resolve_typed_expr(&call.func, session)?),
-            args: {
-                let mut args = Vec::new();
-                for a in &call.args {
-                    args.push(Box::new(resolve_typed_expr(a, session)?));
-                }
-                args
-            },
-        })),
+        SemaExpr::Call(call) => {
+            let resolved_func = resolve_typed_expr(&call.func, session)?;
+            let mut resolved_args = Vec::new();
+
+            for arg in &call.args {
+                resolved_args.push(Box::new(resolve_typed_expr(arg, session)?));
+            }
+
+            // 関数呼び出しの型チェック
+            check_function_call(&resolved_func, &resolved_args, session)?;
+
+            Ok(SemaExpr::Call(Call {
+                func: Box::new(resolved_func),
+                args: resolved_args,
+            }))
+        }
         SemaExpr::Subscript(subscript) => Ok(SemaExpr::Subscript(Subscript {
             subject: Box::new(resolve_typed_expr(&subscript.subject, session)?),
             index: Box::new(resolve_typed_expr(&subscript.index, session)?),
@@ -428,6 +422,54 @@ fn resolve_sema_expr(expr: &SemaExpr, session: &mut Session) -> TypeResult<SemaE
             Ok(SemaExpr::Sizeof(resolved_sizeof))
         }
         _ => Ok(expr.clone()),
+    }
+}
+
+fn check_function_call(
+    func_expr: &TypedExpr,
+    args: &[Box<TypedExpr>],
+    session: &mut Session,
+) -> TypeResult<()> {
+    let func_type = &func_expr.r#type;
+
+    if let Type::Func(func) = func_type {
+        // 引数の数をチェック
+        if func.params.last().unwrap() != &Type::Void && func.params.len() != args.len() {
+            return Err(TypeError::IncompatibleTypes {
+                expected: Type::Func(func.clone()),
+                found: Type::Func(Func {
+                    return_type: func.return_type.clone(),
+                    params: args.iter().map(|arg| arg.r#type.clone()).collect(),
+                }),
+                context: format!(
+                    "function call argument count: expected {}, found {}",
+                    func.params.len(),
+                    args.len()
+                ),
+            });
+        }
+
+        // 各引数の型をチェック
+        for (i, (expected_param, actual_arg)) in func.params.iter().zip(args.iter()).enumerate() {
+            if expected_param == &Type::DotDotDot {
+                break;
+            }
+            if expected_param != &actual_arg.r#type {
+                return Err(TypeError::IncompatibleTypes {
+                    expected: expected_param.clone(),
+                    found: actual_arg.r#type.clone(),
+                    context: format!("function call argument {} ({})", i + 1, func_expr.oneline()),
+                });
+            }
+        }
+
+        Ok(())
+    } else {
+        // 関数型でない場合のエラー
+        Err(TypeError::InvalidOperation {
+            op: "function call".to_string(),
+            operand_type: func_type.clone(),
+        })
     }
 }
 
@@ -586,5 +628,3 @@ fn infer_unary_type(unary: &Unary, session: &mut Session) -> TypeResult<Type> {
         _ => Ok(operand_type), // その他の単項演算子
     }
 }
-
-// promote_types関数は削除（暗黙変換を行わないため）

@@ -12,4 +12,3 @@ pub use root::*;
 pub use scope::*;
 pub use stmt::*;
 pub use types::*;
-pub use visualize::*;
