@@ -1,5 +1,6 @@
 use super::*;
 use crate::ast;
+use crate::visualize::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Array {
