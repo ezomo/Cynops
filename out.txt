@@ -1,0 +1,603 @@
+Program
+└── FunctionDef: main
+    ├── Type: fn(void) -> void
+    ├── Body
+        ├── DeclStmt: InitVec
+        │   └── Init: a
+        │       ├── Type: [int; Some(Binary(Binary { op: Arithmetic(Plus), lhs: NumInt(1), rhs: NumInt(2) }))]
+        │       └── Initializer
+        │           └── Compound
+        │               ├── Number: 1
+        │               ├── Number: 2
+        │               └── Number: 3
+        ├── ExprStmt
+        │   └── Binary: Arithmetic(Plus)
+        │       ├── Left
+        │       │   └── ArrayAccess
+        │       │       ├── Array
+        │       │       │   └── Identifier: a
+        │       │       └── Index
+        │       │           └── Number: 1
+        │       └── Right
+        │           └── Number: 1
+        └── DeclStmt: InitVec
+            └── Init: b
+                ├── Type: *[int; Some(Binary(Binary { op: Arithmetic(Plus), lhs: NumInt(1), rhs: NumInt(2) }))]
+                └── Initializer
+                    └── Unary: Ampersand
+                        └── Operand
+                            └── Identifier: a
+Program
+└── FunctionDef: main
+    ├── Type: fn(void) -> void
+    ├── Body
+        ├── DeclStmt: InitVec
+        │   └── Init: a
+        │       ├── Type: [int; Some(Binary(Binary { op: Arithmetic(Plus), lhs: NumInt(1), rhs: NumInt(2) }))]
+        │       └── Initializer
+        │           └── Compound
+        │               ├── Number: 1
+        │               ├── Number: 2
+        │               └── Number: 3
+        ├── ExprStmt
+        │   └── Binary: Arithmetic(Plus)
+        │       ├── Left
+        │       │   └── ArrayAccess
+        │       │       ├── Array
+        │       │       │   └── Identifier: a
+        │       │       └── Index
+        │       │           └── Number: 1
+        │       └── Right
+        │           └── Number: 1
+        └── DeclStmt: InitVec
+            └── Init: b
+                ├── Type: *[int; Some(Binary(Binary { op: Arithmetic(Plus), lhs: NumInt(1), rhs: NumInt(2) }))]
+                └── Initializer
+                    └── Unary: Ampersand
+                        └── Operand
+                            └── Identifier: a
+Program {
+    items: [
+        FunctionDef(
+            FunctionDef {
+                sig: FunctionSig {
+                    ty: Func(
+                        Func {
+                            return_type: Void,
+                            params: [
+                                Void,
+                            ],
+                        },
+                    ),
+                    ident: Ident {
+                        name: "main",
+                    },
+                },
+                param_names: [],
+                body: Block {
+                    statements: [
+                        DeclStmt(
+                            InitVec(
+                                [
+                                    Init {
+                                        r: MemberDecl {
+                                            ident: Ident {
+                                                name: "a",
+                                            },
+                                            ty: Array(
+                                                Array {
+                                                    array_of: Int,
+                                                    length: Some(
+                                                        TypedExpr {
+                                                            type: Int,
+                                                            expr: NumInt(
+                                                                3,
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                        l: Some(
+                                            Compound(
+                                                [
+                                                    Expr(
+                                                        TypedExpr {
+                                                            type: Unresolved,
+                                                            expr: NumInt(
+                                                                1,
+                                                            ),
+                                                        },
+                                                    ),
+                                                    Expr(
+                                                        TypedExpr {
+                                                            type: Unresolved,
+                                                            expr: NumInt(
+                                                                2,
+                                                            ),
+                                                        },
+                                                    ),
+                                                    Expr(
+                                                        TypedExpr {
+                                                            type: Unresolved,
+                                                            expr: NumInt(
+                                                                3,
+                                                            ),
+                                                        },
+                                                    ),
+                                                ],
+                                            ),
+                                        ),
+                                    },
+                                ],
+                            ),
+                        ),
+                        ExprStmt(
+                            TypedExpr {
+                                type: Unresolved,
+                                expr: Binary(
+                                    Binary {
+                                        op: Arithmetic(
+                                            Plus,
+                                        ),
+                                        lhs: TypedExpr {
+                                            type: Unresolved,
+                                            expr: Subscript(
+                                                Subscript {
+                                                    subject: TypedExpr {
+                                                        type: Unresolved,
+                                                        expr: Ident(
+                                                            Symbol {
+                                                                name: Ident {
+                                                                    name: "a",
+                                                                },
+                                                                scope: ScopeNode {
+                                                                    symbols: {
+                                                                        Ident {
+                                                                            name: "a",
+                                                                        }: Array(
+                                                                            Array {
+                                                                                array_of: Int,
+                                                                                length: Some(
+                                                                                    TypedExpr {
+                                                                                        type: Int,
+                                                                                        expr: NumInt(
+                                                                                            3,
+                                                                                        ),
+                                                                                    },
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                        Ident {
+                                                                            name: "b",
+                                                                        }: Pointer(
+                                                                            Array(
+                                                                                Array {
+                                                                                    array_of: Int,
+                                                                                    length: Some(
+                                                                                        TypedExpr {
+                                                                                            type: Int,
+                                                                                            expr: NumInt(
+                                                                                                3,
+                                                                                            ),
+                                                                                        },
+                                                                                    ),
+                                                                                },
+                                                                            ),
+                                                                        ),
+                                                                    },
+                                                                    parent: Some(
+                                                                        (Weak),
+                                                                    ),
+                                                                    children: [],
+                                                                },
+                                                            },
+                                                        ),
+                                                    },
+                                                    index: TypedExpr {
+                                                        type: Unresolved,
+                                                        expr: NumInt(
+                                                            1,
+                                                        ),
+                                                    },
+                                                },
+                                            ),
+                                        },
+                                        rhs: TypedExpr {
+                                            type: Unresolved,
+                                            expr: NumInt(
+                                                1,
+                                            ),
+                                        },
+                                    },
+                                ),
+                            },
+                        ),
+                        DeclStmt(
+                            InitVec(
+                                [
+                                    Init {
+                                        r: MemberDecl {
+                                            ident: Ident {
+                                                name: "b",
+                                            },
+                                            ty: Pointer(
+                                                Array(
+                                                    Array {
+                                                        array_of: Int,
+                                                        length: Some(
+                                                            TypedExpr {
+                                                                type: Int,
+                                                                expr: NumInt(
+                                                                    3,
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            ),
+                                        },
+                                        l: Some(
+                                            Expr(
+                                                TypedExpr {
+                                                    type: Unresolved,
+                                                    expr: Unary(
+                                                        Unary {
+                                                            op: Ampersand,
+                                                            expr: TypedExpr {
+                                                                type: Unresolved,
+                                                                expr: Ident(
+                                                                    Symbol {
+                                                                        name: Ident {
+                                                                            name: "a",
+                                                                        },
+                                                                        scope: ScopeNode {
+                                                                            symbols: {
+                                                                                Ident {
+                                                                                    name: "a",
+                                                                                }: Array(
+                                                                                    Array {
+                                                                                        array_of: Int,
+                                                                                        length: Some(
+                                                                                            TypedExpr {
+                                                                                                type: Int,
+                                                                                                expr: NumInt(
+                                                                                                    3,
+                                                                                                ),
+                                                                                            },
+                                                                                        ),
+                                                                                    },
+                                                                                ),
+                                                                                Ident {
+                                                                                    name: "b",
+                                                                                }: Pointer(
+                                                                                    Array(
+                                                                                        Array {
+                                                                                            array_of: Int,
+                                                                                            length: Some(
+                                                                                                TypedExpr {
+                                                                                                    type: Int,
+                                                                                                    expr: NumInt(
+                                                                                                        3,
+                                                                                                    ),
+                                                                                                },
+                                                                                            ),
+                                                                                        },
+                                                                                    ),
+                                                                                ),
+                                                                            },
+                                                                            parent: Some(
+                                                                                (Weak),
+                                                                            ),
+                                                                            children: [],
+                                                                        },
+                                                                    },
+                                                                ),
+                                                            },
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                    },
+                                ],
+                            ),
+                        ),
+                    ],
+                },
+            },
+        ),
+    ],
+}
+_______________________________________________
+Program {
+    items: [
+        FunctionDef(
+            FunctionDef {
+                sig: FunctionSig {
+                    ty: Func(
+                        Func {
+                            return_type: Void,
+                            params: [
+                                Void,
+                            ],
+                        },
+                    ),
+                    ident: Ident {
+                        name: "main",
+                    },
+                },
+                param_names: [],
+                body: Block {
+                    statements: [
+                        DeclStmt(
+                            InitVec(
+                                [
+                                    Init {
+                                        r: MemberDecl {
+                                            ident: Ident {
+                                                name: "a",
+                                            },
+                                            ty: Array(
+                                                Array {
+                                                    array_of: Int,
+                                                    length: Some(
+                                                        TypedExpr {
+                                                            type: Int,
+                                                            expr: NumInt(
+                                                                3,
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                        l: Some(
+                                            Compound(
+                                                [
+                                                    Expr(
+                                                        TypedExpr {
+                                                            type: Int,
+                                                            expr: NumInt(
+                                                                1,
+                                                            ),
+                                                        },
+                                                    ),
+                                                    Expr(
+                                                        TypedExpr {
+                                                            type: Int,
+                                                            expr: NumInt(
+                                                                2,
+                                                            ),
+                                                        },
+                                                    ),
+                                                    Expr(
+                                                        TypedExpr {
+                                                            type: Int,
+                                                            expr: NumInt(
+                                                                3,
+                                                            ),
+                                                        },
+                                                    ),
+                                                ],
+                                            ),
+                                        ),
+                                    },
+                                ],
+                            ),
+                        ),
+                        ExprStmt(
+                            TypedExpr {
+                                type: Int,
+                                expr: Binary(
+                                    Binary {
+                                        op: Arithmetic(
+                                            Plus,
+                                        ),
+                                        lhs: TypedExpr {
+                                            type: Int,
+                                            expr: Subscript(
+                                                Subscript {
+                                                    subject: TypedExpr {
+                                                        type: Array(
+                                                            Array {
+                                                                array_of: Int,
+                                                                length: Some(
+                                                                    TypedExpr {
+                                                                        type: Int,
+                                                                        expr: NumInt(
+                                                                            3,
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                        expr: Ident(
+                                                            Symbol {
+                                                                name: Ident {
+                                                                    name: "a",
+                                                                },
+                                                                scope: ScopeNode {
+                                                                    symbols: {
+                                                                        Ident {
+                                                                            name: "a",
+                                                                        }: Array(
+                                                                            Array {
+                                                                                array_of: Int,
+                                                                                length: Some(
+                                                                                    TypedExpr {
+                                                                                        type: Int,
+                                                                                        expr: NumInt(
+                                                                                            3,
+                                                                                        ),
+                                                                                    },
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                        Ident {
+                                                                            name: "b",
+                                                                        }: Pointer(
+                                                                            Array(
+                                                                                Array {
+                                                                                    array_of: Int,
+                                                                                    length: Some(
+                                                                                        TypedExpr {
+                                                                                            type: Int,
+                                                                                            expr: NumInt(
+                                                                                                3,
+                                                                                            ),
+                                                                                        },
+                                                                                    ),
+                                                                                },
+                                                                            ),
+                                                                        ),
+                                                                    },
+                                                                    parent: Some(
+                                                                        (Weak),
+                                                                    ),
+                                                                    children: [],
+                                                                },
+                                                            },
+                                                        ),
+                                                    },
+                                                    index: TypedExpr {
+                                                        type: Int,
+                                                        expr: NumInt(
+                                                            1,
+                                                        ),
+                                                    },
+                                                },
+                                            ),
+                                        },
+                                        rhs: TypedExpr {
+                                            type: Int,
+                                            expr: NumInt(
+                                                1,
+                                            ),
+                                        },
+                                    },
+                                ),
+                            },
+                        ),
+                        DeclStmt(
+                            InitVec(
+                                [
+                                    Init {
+                                        r: MemberDecl {
+                                            ident: Ident {
+                                                name: "b",
+                                            },
+                                            ty: Pointer(
+                                                Array(
+                                                    Array {
+                                                        array_of: Int,
+                                                        length: Some(
+                                                            TypedExpr {
+                                                                type: Int,
+                                                                expr: NumInt(
+                                                                    3,
+                                                                ),
+                                                            },
+                                                        ),
+                                                    },
+                                                ),
+                                            ),
+                                        },
+                                        l: Some(
+                                            Expr(
+                                                TypedExpr {
+                                                    type: Pointer(
+                                                        Array(
+                                                            Array {
+                                                                array_of: Int,
+                                                                length: Some(
+                                                                    TypedExpr {
+                                                                        type: Int,
+                                                                        expr: NumInt(
+                                                                            3,
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                            },
+                                                        ),
+                                                    ),
+                                                    expr: Unary(
+                                                        Unary {
+                                                            op: Ampersand,
+                                                            expr: TypedExpr {
+                                                                type: Array(
+                                                                    Array {
+                                                                        array_of: Int,
+                                                                        length: Some(
+                                                                            TypedExpr {
+                                                                                type: Int,
+                                                                                expr: NumInt(
+                                                                                    3,
+                                                                                ),
+                                                                            },
+                                                                        ),
+                                                                    },
+                                                                ),
+                                                                expr: Ident(
+                                                                    Symbol {
+                                                                        name: Ident {
+                                                                            name: "a",
+                                                                        },
+                                                                        scope: ScopeNode {
+                                                                            symbols: {
+                                                                                Ident {
+                                                                                    name: "a",
+                                                                                }: Array(
+                                                                                    Array {
+                                                                                        array_of: Int,
+                                                                                        length: Some(
+                                                                                            TypedExpr {
+                                                                                                type: Int,
+                                                                                                expr: NumInt(
+                                                                                                    3,
+                                                                                                ),
+                                                                                            },
+                                                                                        ),
+                                                                                    },
+                                                                                ),
+                                                                                Ident {
+                                                                                    name: "b",
+                                                                                }: Pointer(
+                                                                                    Array(
+                                                                                        Array {
+                                                                                            array_of: Int,
+                                                                                            length: Some(
+                                                                                                TypedExpr {
+                                                                                                    type: Int,
+                                                                                                    expr: NumInt(
+                                                                                                        3,
+                                                                                                    ),
+                                                                                                },
+                                                                                            ),
+                                                                                        },
+                                                                                    ),
+                                                                                ),
+                                                                            },
+                                                                            parent: Some(
+                                                                                (Weak),
+                                                                            ),
+                                                                            children: [],
+                                                                        },
+                                                                    },
+                                                                ),
+                                                            },
+                                                        },
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                    },
+                                ],
+                            ),
+                        ),
+                    ],
+                },
+            },
+        ),
+    ],
+}

@@ -323,12 +323,16 @@ impl Visualize for TypedExpr {
             &format!("Type: {}", self.r#type.to_rust_format()),
             indent,
             is_last,
-            &prefix,
+            prefix,
         );
-        self.expr.visualize_with_context(indent, is_last, prefix);
+
+        // Update prefix for child node - !is_last because we have a child
+        let new_prefix = extend_prefix(prefix, !is_last);
+
+        self.r#expr
+            .visualize_with_context(indent + 1, true, &new_prefix);
     }
 }
-
 // Implementation for Program and TopLevel
 impl Visualize for Program {
     fn visualize(&self) {
@@ -1061,12 +1065,6 @@ impl Visualize for Type {
     fn visualize_with_context(&self, indent: usize, is_last: bool, prefix: &[bool]) {
         print_branch(&self.to_rust_format(), "", indent, is_last, prefix);
     }
-}
-
-use super::*; // 必要なimportを追加
-
-pub trait OneLine {
-    fn oneline(&self) -> String;
 }
 
 // Implementation for PostfixChain
