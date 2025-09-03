@@ -308,7 +308,7 @@ impl Visualize for Symbol {
     }
 
     fn visualize_with_context(&self, indent: usize, is_last: bool, prefix: &[bool]) {
-        self.name.visualize_with_context(indent, is_last, prefix);
+        self.ident.visualize_with_context(indent, is_last, prefix);
     }
 }
 
@@ -871,7 +871,7 @@ impl Visualize for Init {
     }
 
     fn visualize_with_context(&self, indent: usize, is_last: bool, prefix: &[bool]) {
-        print_branch("Init", &self.r.ident.name, indent, is_last, prefix);
+        print_branch("Init", &self.r.sympl.ident.name, indent, is_last, prefix);
         let next_prefix = extend_prefix(prefix, !is_last);
 
         print_branch(
@@ -1025,7 +1025,7 @@ impl Visualize for MemberDecl {
     fn visualize_with_context(&self, indent: usize, is_last: bool, prefix: &[bool]) {
         print_branch(
             "Member",
-            &format!("{}: {}", self.ident.name, self.ty.to_rust_format()),
+            &format!("{}: {}", self.sympl.ident.name, self.ty.to_rust_format()),
             indent,
             is_last,
             prefix,
@@ -1185,7 +1185,7 @@ impl OneLine for Comma {
 
 impl OneLine for Symbol {
     fn oneline(&self) -> String {
-        self.name.name.clone()
+        self.ident.name.clone()
     }
 }
 

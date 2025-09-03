@@ -99,8 +99,8 @@ pub struct Comma {
 
 #[derive(Clone)]
 pub struct Symbol {
-    pub name: Ident,
-    pub scope: Weak<RefCell<ScopeNode>>, // どこのスコープで解決されたか
+    pub ident: Ident,
+    pub scope: Weak<RefCell<ScopeNode>>, // どこのスコープで定義されたか
 }
 
 use std::fmt;
@@ -109,12 +109,12 @@ impl fmt::Debug for Symbol {
         if let Some(scope_rc) = self.scope.upgrade() {
             let scope = scope_rc.borrow();
             f.debug_struct("Symbol")
-                .field("name", &self.name)
+                .field("name", &self.ident)
                 .field("scope", &scope) // ScopeNode も Debug impl 必要
                 .finish()
         } else {
             f.debug_struct("Symbol")
-                .field("name", &self.name)
+                .field("name", &self.ident)
                 .field("scope", &"<dropped>")
                 .finish()
         }
@@ -123,19 +123,19 @@ impl fmt::Debug for Symbol {
 
 impl Symbol {
     pub fn new(name: Ident, scope: Weak<RefCell<ScopeNode>>) -> Self {
-        Symbol { name, scope }
+        Symbol { ident: name, scope }
     }
 }
 
 impl Hash for Symbol {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name.hash(state); // スコープは無視
+        self.ident.hash(state); // スコープは無視
     }
 }
 
 impl PartialEq for Symbol {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
+        self.ident == other.ident
     }
 }
 

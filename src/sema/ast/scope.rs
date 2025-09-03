@@ -1,10 +1,11 @@
 use super::*;
+// use crate::codegen::CodeGenSpace;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
-
 #[derive(Debug)]
 pub struct ScopeNode {
+    // pub codege_space: CodeGenSpace,
     pub symbols: HashMap<Ident, Type>,
     pub parent: Option<Weak<RefCell<ScopeNode>>>,
     pub children: Vec<Rc<RefCell<ScopeNode>>>,
@@ -20,6 +21,7 @@ impl ScopeNode {
     pub fn new(parent: Option<Rc<RefCell<ScopeNode>>>) -> Rc<RefCell<Self>> {
         let weak_parent = parent.as_ref().map(|p| Rc::downgrade(p));
         Rc::new(RefCell::new(ScopeNode {
+            // codege_space: CodeGenSpace::new(),
             symbols: HashMap::new(),
             parent: weak_parent,
             children: Vec::new(),

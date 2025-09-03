@@ -1,3 +1,5 @@
+use crate::sema::ast::Symbol;
+
 use super::TypedExpr;
 
 use super::{
@@ -37,13 +39,13 @@ impl DeclStmt {
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct MemberDecl {
-    pub ident: Ident,
+    pub sympl: Symbol,
     pub ty: Type,
 }
 
 impl MemberDecl {
-    pub fn new(ident: Ident, ty: Type) -> Self {
-        MemberDecl { ident, ty }
+    pub fn new(ident: Symbol, ty: Type) -> Self {
+        MemberDecl { sympl: ident, ty }
     }
 }
 
@@ -125,7 +127,7 @@ pub struct Init {
 }
 
 impl Init {
-    pub fn new(mut r: MemberDecl, l: Option<InitData>) -> Self {
+    pub fn new(r: MemberDecl, l: Option<InitData>) -> Self {
         Init { r, l }
     }
 }

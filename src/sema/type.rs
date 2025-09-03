@@ -237,7 +237,7 @@ fn resolve_init(init: &Init, session: &mut Session) -> TypeResult<Init> {
     }
 
     let resolved_member_decl = MemberDecl {
-        ident: init.r.ident.clone(),
+        sympl: init.r.sympl.clone(),
         ty: resolved_type.clone(),
     };
 
@@ -249,7 +249,7 @@ fn resolve_init(init: &Init, session: &mut Session) -> TypeResult<Init> {
 
     // 変数をセッションに登録
     session.register_symbols(
-        resolved_member_decl.ident.clone(),
+        resolved_member_decl.sympl.ident.clone(),
         resolved_member_decl.ty.clone(),
     );
 
@@ -486,8 +486,8 @@ fn infer_type(expr: &SemaExpr, session: &mut Session) -> TypeResult<Type> {
             ))),
         })),
         SemaExpr::Ident(symbol) => session
-            .get_variable(&symbol.name)
-            .ok_or_else(|| TypeError::UndefinedVariable(symbol.name.name.clone())),
+            .get_variable(&symbol.ident)
+            .ok_or_else(|| TypeError::UndefinedVariable(symbol.ident.name.clone())),
         SemaExpr::Binary(binary) => infer_binary_type(binary, session),
         SemaExpr::Unary(unary) => infer_unary_type(unary, session),
         SemaExpr::Assign(assign) => Ok(infer_type(&assign.lhs.r#expr, session)?),

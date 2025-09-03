@@ -1,8 +1,7 @@
 use super::ast as new_ast;
 use super::ast::*;
 use crate::ast as old_ast;
-use std::cell::RefCell;
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 
 pub fn program(program: &old_ast::Program, session: &mut Session) -> new_ast::Program {
     let mut new_items = Vec::new();
@@ -189,8 +188,10 @@ fn convert_enum(e: &old_ast::Enum, session: &mut Session) -> new_ast::Enum {
 }
 
 fn convert_member_decl(m: &old_ast::MemberDecl, session: &mut Session) -> new_ast::MemberDecl {
+    let ty = convert_type(&m.ty, session);
+    session.register_symbols(m.ident.as_same(), ty);
     new_ast::MemberDecl {
-        ident: m.ident.as_same(),
+        sympl: Symbol::new(m.ident.as_same(), Rc::downgrade(&session.current_scope)),
         ty: convert_type(&m.ty, session),
     }
 }
@@ -379,7 +380,6 @@ fn convert_init(init: &old_ast::Init, session: &mut Session) -> new_ast::Init {
     }
 
     // 変数をsessionに登録
-    session.register_symbols(member_decl.ident.clone(), member_decl.ty.clone());
 
     new_ast::Init {
         r: member_decl,

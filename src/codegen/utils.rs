@@ -2,8 +2,21 @@ use crate::op::*;
 use crate::sema::ast::*;
 use std::collections::HashMap;
 
-// CodeGenStatus の定義
+#[derive(Debug)]
+pub struct CodeGenSpace {
+    pub variables: HashMap<Ident, String>,
+}
+
+impl CodeGenSpace {
+    pub fn new() -> Self {
+        Self {
+            variables: HashMap::new(),
+        }
+    }
+}
+
 pub struct CodeGenStatus {
+    pub session: Session,
     pub name_gen: NameGenerator,
     pub variables: HashMap<Ident, String>,
     pub return_value_ptr: Option<String>,
@@ -19,8 +32,9 @@ impl Block {
 }
 
 impl CodeGenStatus {
-    pub fn new() -> Self {
+    pub fn new(session: Session) -> Self {
         Self {
+            session,
             name_gen: NameGenerator::new(),
             variables: HashMap::new(),
             return_value_ptr: None,
