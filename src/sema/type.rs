@@ -298,10 +298,6 @@ fn are_types_compatible(target: &Type, source: &Type) -> bool {
 
         // ポインタ型の互換性（要素型も完全一致が必要）
         (Type::Pointer(a), Type::Pointer(b)) => are_types_compatible(a, b),
-
-        // 配列からポインタへの変換は禁止（安全C方言のルール）
-        (Type::Pointer(_), Type::Array(_)) => false,
-
         // その他の場合は互換性なし（暗黙変換禁止）
         _ => false,
     }
