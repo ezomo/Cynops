@@ -434,7 +434,10 @@ fn check_function_call(
 
     if let Type::Func(func) = func_type {
         // 引数の数をチェック
-        if func.params.last().unwrap() != &Type::Void && func.params.len() != args.len() {
+        if func.params.last().unwrap() != &Type::Void
+            && func.params.last().unwrap() != &Type::DotDotDot
+            && func.params.len() != args.len()
+        {
             return Err(TypeError::IncompatibleTypes {
                 expected: Type::Func(func.clone()),
                 found: Type::Func(Func {
