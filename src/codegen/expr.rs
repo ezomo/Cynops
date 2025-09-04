@@ -351,24 +351,28 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
         }
         SemaExpr::MemberAccess(member_access) => {
             // 構造体メンバアクセス
-            let base = gen_expr(*member_access.base, cgs);
+            let base = gen_expr(*member_access.base.clone(), cgs);
             match member_access.kind {
                 MemberAccessOp::Dot => {
                     // obj.member
-                    let name = cgs.name_gen.register();
+                    let name = cgs.name_gen.variable();
                     println!(
-                        "{} = getelementptr inbounds struct, ptr {}, i64 0, i64 {}",
+                        "{} = getelementptr inbounds {}, {}* {}, i32 0, i32 {}",
                         name.to_string(),
+                        member_access.base.r#type.to_llvm_format(),
+                        member_access.base.r#type.to_llvm_format(),
                         base.to_string(),
-                        0
-                    ); // 簡略化のため0番目として扱う
-                    let result = cgs.name_gen.register();
-                    println!(
-                        "{} = load i64, ptr {}",
-                        result.to_string(),
-                        name.to_string()
+                        member_access
+                            .base
+                            .r#type
+                            .as_struct()
+                            .unwrap()
+                            .member
+                            .iter()
+                            .position(|x| x.sympl.ident == member_access.member)
+                            .unwrap()
                     );
-                    result
+                    name
                 } // MemberAccessOp::MinusGreater => {
                 //     // ptr->member
                 //     let name = cgs.name_gen.register();
