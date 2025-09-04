@@ -319,11 +319,18 @@ fn subscript(subscript: Subscript) -> Expr {
 }
 
 fn member_access(member_access: MemberAccess) -> Expr {
-    Expr::member_access(
-        _expr(*member_access.base),
-        member_access.member,
-        member_access.kind,
-    )
+    match member_access.kind {
+        MemberAccessOp::MinusGreater => Expr::member_access(
+            *Expr::unary(UnaryOp::asterisk(), member_access.base),
+            member_access.member,
+            MemberAccessOp::dot(),
+        ),
+        _ => Expr::member_access(
+            _expr(*member_access.base),
+            member_access.member,
+            member_access.kind,
+        ),
+    }
 }
 
 fn ternary(ternary: Ternary) -> Expr {
