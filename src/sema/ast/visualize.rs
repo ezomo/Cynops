@@ -265,7 +265,7 @@ impl Visualize for SemaExpr {
                 let s: String = chars.iter().collect();
                 print_branch("String", &format!("\"{:?}\"", s), indent, is_last, prefix);
             }
-            SemaExpr::Ident(ident) => {
+            SemaExpr::Symbol(ident) => {
                 ident.visualize_with_context(indent, is_last, prefix);
             }
             SemaExpr::Binary(binary) => {
@@ -1200,7 +1200,7 @@ impl OneLine for SemaExpr {
                 let s: String = chars.iter().collect();
                 format!("\"{}\"", s)
             }
-            SemaExpr::Ident(symbol) => symbol.oneline(),
+            SemaExpr::Symbol(symbol) => symbol.oneline(),
             SemaExpr::Binary(binary) => binary.oneline(),
             SemaExpr::Unary(unary) => unary.oneline(),
             SemaExpr::Call(call) => call.oneline(),

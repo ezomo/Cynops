@@ -1,6 +1,7 @@
 use super::ast as new_ast;
 use super::ast::*;
 use crate::ast as old_ast;
+use std::process::id;
 use std::rc::Rc;
 
 pub fn program(program: &old_ast::Program, session: &mut Session) -> new_ast::Program {
@@ -101,7 +102,9 @@ fn convert_type(ty: &old_ast::Type, session: &mut Session) -> new_ast::Type {
                 .map(|p| convert_type(p, session))
                 .collect(),
         }),
-        old_ast::Type::Struct(s) => new_ast::Type::Struct(convert_struct(s, session)),
+        old_ast::Type::Struct(s) => session
+            .get_variable(&s.ident.clone().as_ref().unwrap().as_same())
+            .unwrap(),
         old_ast::Type::Union(u) => new_ast::Type::Union(convert_union(u, session)),
         old_ast::Type::Enum(e) => new_ast::Type::Enum(convert_enum(e, session)),
         old_ast::Type::Pointer(inner) => {
@@ -141,12 +144,19 @@ fn convert_struct(s: &old_ast::Struct, session: &mut Session) -> new_ast::Struct
 
     let converted = new_ast::Struct {
         ident: s.ident.as_ref().map(|i| i.as_same()),
+        type_ident: s
+            .ident
+            .as_ref()
+            .unwrap()
+            .as_same()
+            .with_suffix(session.id()),
+        scope_ptr: ScopePar::new(Rc::downgrade(&session.current_scope)),
         member: members,
     };
 
     // 名前がある場合はsessionに登録
     if let Some(ref ident) = converted.ident {
-        session.register_symbols(ident.clone(), new_ast::Type::Struct(converted.clone()));
+        session.register_symbols(ident.clone(), new_ast::Type::r#struct(converted.clone()));
     }
 
     converted
@@ -432,7 +442,7 @@ fn convert_expr(expr: &old_ast::Expr, session: &mut Session) -> new_ast::TypedEx
                 ident.as_same(),
                 Rc::downgrade(&session.get_scope(&ident.as_same())),
             );
-            new_ast::SemaExpr::Ident(symbol)
+            new_ast::SemaExpr::Symbol(symbol)
         }
         old_ast::Expr::NumInt(n) => new_ast::SemaExpr::NumInt(*n),
         old_ast::Expr::NumFloat(f) => new_ast::SemaExpr::NumFloat(*f),

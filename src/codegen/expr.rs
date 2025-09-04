@@ -181,7 +181,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
 
             var_name
         }
-        SemaExpr::Ident(ident) => match typed_expr.r#type {
+        SemaExpr::Symbol(ident) => match typed_expr.r#type {
             Type::Array(_) => LLVMValue::new(
                 cgs.get_variable(&ident).unwrap().clone(),
                 LLVMType::Variable,
@@ -350,45 +350,44 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
             array_access(subscript, cgs)
         }
         SemaExpr::MemberAccess(member_access) => {
-            todo!()
             // 構造体メンバアクセス
-            // let base = gen_expr(*member_access.base, cgs);
-            // match member_access.kind {
-            //     MemberAccessOp::Dot => {
-            //         // obj.member
-            //         let name = cgs.name_gen.register();
-            //         println!(
-            //             "{} = getelementptr inbounds struct, ptr {}, i64 0, i64 {}",
-            //             name.to_string(),
-            //             base.to_string(),
-            //             0
-            //         ); // 簡略化のため0番目として扱う
-            //         let result = cgs.name_gen.register();
-            //         println!(
-            //             "{} = load i64, ptr {}",
-            //             result.to_string(),
-            //             name.to_string()
-            //         );
-            //         result
-            //     }
-            //     MemberAccessOp::MinusGreater => {
-            //         // ptr->member
-            //         let name = cgs.name_gen.register();
-            //         println!(
-            //             "{} = getelementptr inbounds struct, ptr {}, i64 0, i64 {}",
-            //             name.to_string(),
-            //             base.to_string(),
-            //             0
-            //         ); // 簡略化のため0番目として扱う
-            //         let result = cgs.name_gen.register();
-            //         println!(
-            //             "{} = load i64, ptr {}",
-            //             result.to_string(),
-            //             name.to_string()
-            //         );
-            //         result
-            //     }
-            // }
+            let base = gen_expr(*member_access.base, cgs);
+            match member_access.kind {
+                MemberAccessOp::Dot => {
+                    // obj.member
+                    let name = cgs.name_gen.register();
+                    println!(
+                        "{} = getelementptr inbounds struct, ptr {}, i64 0, i64 {}",
+                        name.to_string(),
+                        base.to_string(),
+                        0
+                    ); // 簡略化のため0番目として扱う
+                    let result = cgs.name_gen.register();
+                    println!(
+                        "{} = load i64, ptr {}",
+                        result.to_string(),
+                        name.to_string()
+                    );
+                    result
+                } // MemberAccessOp::MinusGreater => {
+                //     // ptr->member
+                //     let name = cgs.name_gen.register();
+                //     println!(
+                //         "{} = getelementptr inbounds struct, ptr {}, i64 0, i64 {}",
+                //         name.to_string(),
+                //         base.to_string(),
+                //         0
+                //     ); // 簡略化のため0番目として扱う
+                //     let result = cgs.name_gen.register();
+                //     println!(
+                //         "{} = load i64, ptr {}",
+                //         result.to_string(),
+                //         name.to_string()
+                //     );
+                //     result
+                // }
+                _ => todo!(),
+            }
         }
         SemaExpr::Sizeof(_sizeof) => {
             // sizeof演算子 - 簡略化のため4（intのサイズ）を返す

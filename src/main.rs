@@ -2,7 +2,6 @@
 use std::{env, fs, process};
 
 mod ast;
-// mod codegen;
 mod codegen;
 mod lexer;
 mod op;

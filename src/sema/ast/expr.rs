@@ -97,49 +97,44 @@ pub struct Comma {
     pub assigns: Vec<TypedExpr>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Symbol {
     pub ident: Ident,
-    pub scope: Weak<RefCell<ScopeNode>>, // どこのスコープで定義されたか
-}
-
-use std::fmt;
-impl fmt::Debug for Symbol {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(scope_rc) = self.scope.upgrade() {
-            let scope = scope_rc.borrow();
-            f.debug_struct("Symbol")
-                .field("name", &self.ident)
-                .field("scope", &scope) // ScopeNode も Debug impl 必要
-                .finish()
-        } else {
-            f.debug_struct("Symbol")
-                .field("name", &self.ident)
-                .field("scope", &"<dropped>")
-                .finish()
-        }
-    }
+    pub scope: ScopePar, // どこのスコープで定義されたか
 }
 
 impl Symbol {
     pub fn new(name: Ident, scope: Weak<RefCell<ScopeNode>>) -> Self {
-        Symbol { ident: name, scope }
+        Symbol {
+            ident: name,
+            scope: ScopePar::new(scope),
+        }
     }
 }
 
-impl Hash for Symbol {
+#[derive(Clone, Debug)]
+pub struct ScopePar {
+    pub ptr: Weak<RefCell<ScopeNode>>,
+}
+impl ScopePar {
+    pub fn new(ptr: Weak<RefCell<ScopeNode>>) -> Self {
+        ScopePar { ptr }
+    }
+}
+
+impl Hash for ScopePar {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.ident.hash(state); // スコープは無視
+        self.ptr.as_ptr().hash(state);
     }
 }
 
-impl PartialEq for Symbol {
+impl PartialEq for ScopePar {
     fn eq(&self, other: &Self) -> bool {
-        self.ident == other.ident
+        self.ptr.as_ptr() == other.ptr.as_ptr()
     }
 }
 
-impl Eq for Symbol {}
+impl Eq for ScopePar {}
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum SemaExpr {
@@ -148,7 +143,7 @@ pub enum SemaExpr {
     Call(Call),
     Char(char),
     String(Vec<char>),
-    Ident(Symbol),
+    Symbol(Symbol),
     NumInt(usize),
     NumFloat(OrderedFloat<f64>),
     Subscript(Subscript),
@@ -178,7 +173,7 @@ impl SemaExpr {
     }
 
     pub fn ident(name: Symbol) -> Self {
-        SemaExpr::Ident(name)
+        SemaExpr::Symbol(name)
     }
 
     pub fn unary(op: UnaryOp, expr: Box<TypedExpr>) -> Box<Self> {

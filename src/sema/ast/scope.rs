@@ -3,8 +3,27 @@ use crate::codegen::CodeGenSpace;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScopeId(pub Vec<usize>);
+impl ScopeId {
+    pub fn root() -> Self {
+        ScopeId(vec![])
+    }
+    pub fn child_of(&self, index: usize) -> Self {
+        let mut new = self.0.clone();
+        new.push(index);
+        ScopeId(new)
+    }
+
+    pub fn id(&self) -> Vec<usize> {
+        self.0.clone()
+    }
+}
+
 #[derive(Debug)]
 pub struct ScopeNode {
+    pub id: ScopeId,
     pub codege_space: CodeGenSpace,
     pub symbols: HashMap<Ident, Type>,
     pub parent: Option<Weak<RefCell<ScopeNode>>>,
@@ -16,19 +35,31 @@ pub struct Session {
     pub root_scope: Rc<RefCell<ScopeNode>>,
     pub current_scope: Rc<RefCell<ScopeNode>>,
 }
-
 impl ScopeNode {
     pub fn new(parent: Option<Rc<RefCell<ScopeNode>>>) -> Rc<RefCell<Self>> {
-        let weak_parent = parent.as_ref().map(|p| Rc::downgrade(p));
+        let id = if let Some(ref p) = parent {
+            let parent_id = &p.borrow().id;
+            let index = p.borrow().children.len();
+            parent_id.child_of(index)
+        } else {
+            ScopeId::root()
+        };
+
         Rc::new(RefCell::new(ScopeNode {
+            id,
             codege_space: CodeGenSpace::new(),
             symbols: HashMap::new(),
-            parent: weak_parent,
+            parent: parent.as_ref().map(|p| Rc::downgrade(p)),
             children: Vec::new(),
         }))
     }
-}
 
+    pub fn add_child(parent: &Rc<RefCell<Self>>) -> Rc<RefCell<Self>> {
+        let child = ScopeNode::new(Some(Rc::clone(parent)));
+        parent.borrow_mut().children.push(Rc::clone(&child));
+        child
+    }
+}
 impl Session {
     pub fn new() -> Self {
         let root = ScopeNode::new(None);
@@ -38,13 +69,8 @@ impl Session {
         }
     }
 
-    // 新しいスコープを作って移動
     pub fn push_scope(&mut self) {
-        let new_scope = ScopeNode::new(Some(Rc::clone(&self.current_scope)));
-        self.current_scope
-            .borrow_mut()
-            .children
-            .push(Rc::clone(&new_scope));
+        let new_scope = ScopeNode::add_child(&self.current_scope);
         self.current_scope = new_scope;
     }
 
@@ -90,5 +116,16 @@ impl Session {
 
     pub fn register_function(&mut self, name: Ident, variants: Type) {
         self.root_scope.borrow_mut().symbols.insert(name, variants);
+    }
+
+    pub fn id(&self) -> String {
+        self.current_scope
+            .borrow()
+            .id
+            .id()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>()
+            .join(".")
     }
 }

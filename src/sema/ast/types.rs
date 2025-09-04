@@ -88,12 +88,7 @@ impl Type {
 
                 format!("fn({}) -> {}", params, return_type)
             }
-            Type::Struct(s) => format!(
-                "struct {}",
-                s.ident
-                    .as_ref()
-                    .map_or("Anonymous".to_string(), |n| n.name.clone())
-            ),
+            Type::Struct(s) => format!("struct {}", s.type_ident.to_string()),
             Type::Union(u) => format!(
                 "union {}",
                 u.ident
@@ -197,6 +192,10 @@ impl Ident {
     /// 新しく Ident を作る（&str, String 両方対応）
     pub fn new(name: impl Into<String>) -> Self {
         Self { name: name.into() }
+    }
+
+    pub fn with_suffix(&self, add: impl Into<String>) -> Self {
+        Self::new(format!("{}_{}", self.to_string(), add.into()))
     }
 }
 

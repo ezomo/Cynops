@@ -485,7 +485,7 @@ fn infer_type(expr: &SemaExpr, session: &mut Session) -> TypeResult<Type> {
                 SemaExpr::NumInt(this.len()),
             ))),
         })),
-        SemaExpr::Ident(symbol) => session
+        SemaExpr::Symbol(symbol) => session
             .get_variable(&symbol.ident)
             .ok_or_else(|| TypeError::UndefinedVariable(symbol.ident.name.clone())),
         SemaExpr::Binary(binary) => infer_binary_type(binary, session),
@@ -531,19 +531,19 @@ fn infer_type(expr: &SemaExpr, session: &mut Session) -> TypeResult<Type> {
             };
 
             match actual_type {
-                // Type::Struct(s) => s
-                //     .member
-                //     .iter()
-                //     .find(|m| m.ident.name == member.member.name)
-                //     .map(|m| m.ty.clone())
-                //     .ok_or_else(|| TypeError::InvalidMemberAccess {
-                //         base_type: actual_type.clone(),
-                //         member: member.member.name.clone(),
-                //     }),
+                Type::Struct(ref s) => s
+                    .member
+                    .iter()
+                    .find(|m| m.sympl.ident.name == member.member.name)
+                    .map(|m| m.ty.clone())
+                    .ok_or_else(|| TypeError::InvalidMemberAccess {
+                        base_type: actual_type.clone(),
+                        member: member.member.name.clone(),
+                    }),
                 // Type::Union(u) => u
                 //     .member
                 //     .iter()
-                //     .find(|m| m.ident.name == member.member.name)
+                //     .find(|m| m.sympl.ident.name == member.member.name)
                 //     .map(|m| m.ty.clone())
                 //     .ok_or_else(|| TypeError::InvalidMemberAccess {
                 //         base_type: actual_type,

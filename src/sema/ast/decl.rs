@@ -1,9 +1,9 @@
-use crate::sema::ast::Symbol;
-
 use super::TypedExpr;
+use crate::sema::ast::Symbol;
+use std::{hash::Hash, ptr};
 
 use super::{
-    Block, Ident, Typedef,
+    Block, Ident, ScopePar,
     types::{FunctionSig, Type},
 };
 
@@ -48,12 +48,24 @@ impl MemberDecl {
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Struct {
     pub ident: Option<Ident>,
+    pub type_ident: Ident,
+    pub scope_ptr: ScopePar,
     pub member: Vec<MemberDecl>,
 }
 
 impl Struct {
-    pub fn new(ident: Option<Ident>, member: Vec<MemberDecl>) -> Self {
-        Struct { ident, member }
+    pub fn new(
+        ident: Option<Ident>,
+        type_ident: Ident,
+        scope_ptr: ScopePar,
+        member: Vec<MemberDecl>,
+    ) -> Self {
+        Struct {
+            ident,
+            type_ident,
+            scope_ptr,
+            member,
+        }
     }
 }
 

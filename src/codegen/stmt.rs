@@ -31,6 +31,7 @@ fn declstmt(declstmt: DeclStmt, cgs: &mut CodeGenStatus) {
             }
         }
         DeclStmt::Typedef => {}
+        DeclStmt::Struct(this) => declare_struct(this, cgs),
         _ => {
             // Struct, Union, Enum, Typedef は今回は対象外
             todo!("構造体、共用体、列挙型、typedef は未対応")
@@ -52,6 +53,20 @@ fn declare_variable(init: Init, cgs: &mut CodeGenStatus) {
     if let Some(init_data) = init.l {
         initialize_variable(&var_name.to_string(), init_data, &init.r.ty, cgs);
     }
+}
+
+fn declare_struct(init: Struct, cgs: &mut CodeGenStatus) {
+    // 変数を割り当て
+    println!(
+        "{} = type {{{}}}",
+        init.scope_ptr.ptr.upgrade().unwrap().borrow().symbols[&init.ident.unwrap()]
+            .to_llvm_format(),
+        init.member
+            .iter()
+            .map(|x| x.ty.to_llvm_format())
+            .collect::<Vec<String>>()
+            .join(",")
+    );
 }
 
 fn initialize_variable(

@@ -61,6 +61,7 @@ impl CodeGenStatus {
     pub fn register_variable(&self, sybmol: Symbol, string: String) {
         sybmol
             .scope
+            .ptr
             .upgrade()
             .unwrap()
             .borrow_mut()
@@ -72,6 +73,7 @@ impl CodeGenStatus {
     pub fn get_variable(&self, sybmol: &Symbol) -> Option<String> {
         sybmol
             .scope
+            .ptr
             .upgrade()
             .unwrap()
             .borrow()
@@ -314,6 +316,7 @@ impl Type {
                         .join(","),
                 )
             }
+            Type::Struct(this) => format!("%{}", this.type_ident.to_string()),
             _ => todo!("未対応の型: {:?}", self),
         }
     }

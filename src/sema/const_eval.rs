@@ -67,7 +67,7 @@ fn eval_sema_expr(expr: &SemaExpr, expr_type: &Type) -> Result<isize, String> {
         SemaExpr::Sizeof(sizeof) => eval_typed_sizeof(sizeof),
 
         // 実行時要素は処理しない
-        SemaExpr::Ident(_) => Err("変数は定数計算できません".to_string()),
+        SemaExpr::Symbol(_) => Err("変数は定数計算できません".to_string()),
         SemaExpr::Call(_) => Err("関数呼び出しは定数計算できません".to_string()),
         SemaExpr::Subscript(_) => Err("配列添え字は定数計算できません".to_string()),
         SemaExpr::MemberAccess(_) => Err("メンバアクセスは定数計算できません".to_string()),
