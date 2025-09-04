@@ -51,7 +51,7 @@ fn declare_variable(init: Init, cgs: &mut CodeGenStatus) {
 
     // 初期化子がある場合は初期化
     if let Some(init_data) = init.l {
-        initialize_variable(&var_name.to_string(), init_data, &init.r.ty, cgs);
+        initialize_variable(var_name, init_data, &init.r.ty, cgs);
     }
 }
 
@@ -70,7 +70,7 @@ fn declare_struct(init: Struct, cgs: &mut CodeGenStatus) {
 }
 
 fn initialize_variable(
-    var_name: &str,
+    var_name: LLVMValue,
     init_data: InitData,
     var_type: &Type,
     cgs: &mut CodeGenStatus,
@@ -89,7 +89,7 @@ fn initialize_variable(
                 llvm_type,
                 value.to_string(),
                 llvm_type,
-                var_name
+                var_name.to_string()
             );
         }
         InitData::Compound(compound_list) => {
@@ -108,15 +108,30 @@ fn initialize_variable(
                             element_ptr.to_string(),
                             array_type,
                             array_type,
-                            var_name,
+                            var_name.to_string(),
                             index
                         );
 
-                        initialize_variable(&element_ptr.to_string(), element, &arr.array_of, cgs);
+                        initialize_variable(element_ptr, element, &arr.array_of, cgs);
+                    }
+                }
+                Type::Struct(stru) => {
+                    for (index, element) in compound_list.into_iter().enumerate() {
+                        let element_ptr = cgs.name_gen.variable();
+                        println!(
+                            "  {} = getelementptr inbounds {}, {}* {}, i32 0, i32 {}",
+                            element_ptr.to_string(),
+                            var_type.to_llvm_format(),
+                            var_type.to_llvm_format(),
+                            var_name.to_string(),
+                            index
+                        );
+
+                        initialize_variable(element_ptr, element, &stru.member[index].ty, cgs);
                     }
                 }
                 _ => {
-                    todo!("構造体・共用体の複合初期化は未対応")
+                    todo!("共用体の複合初期化は未対応")
                 }
             }
         }
