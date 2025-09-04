@@ -30,6 +30,7 @@ fn declstmt(declstmt: DeclStmt, cgs: &mut CodeGenStatus) {
                 declare_variable(init, cgs);
             }
         }
+        DeclStmt::Typedef => {}
         _ => {
             // Struct, Union, Enum, Typedef は今回は対象外
             todo!("構造体、共用体、列挙型、typedef は未対応")

@@ -13,7 +13,7 @@ pub enum DeclStmt {
     Struct(Struct),
     Union(Union),
     Enum(Enum),
-    Typedef(Typedef),
+    Typedef,
 }
 impl DeclStmt {
     pub fn init_vec(vec: Vec<Init>) -> Self {
@@ -30,10 +30,6 @@ impl DeclStmt {
 
     pub fn r#enum(enm: Enum) -> Self {
         DeclStmt::Enum(enm)
-    }
-
-    pub fn typedef(typedef: Typedef) -> Self {
-        DeclStmt::Typedef(typedef)
     }
 }
 

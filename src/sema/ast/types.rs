@@ -51,7 +51,6 @@ pub enum Type {
     Enum(Enum),
     Pointer(Box<Type>),
     Array(Array),
-    Typedef(Ident),
     Unresolved, //後でなくすかも
 }
 
@@ -119,7 +118,6 @@ impl Type {
                         .map_or("None".to_string(), |len| len.oneline())
                 )
             }
-            Type::Typedef(t) => t.to_string(),
         }
     }
 }

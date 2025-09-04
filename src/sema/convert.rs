@@ -128,7 +128,7 @@ fn convert_type(ty: &old_ast::Type, session: &mut Session) -> new_ast::Type {
                 ))
             },
         )),
-        old_ast::Type::Typedef(ident) => new_ast::Type::Typedef(ident.as_same()),
+        old_ast::Type::Typedef(ident) => session.get_variable(&ident.as_same()).unwrap(),
     }
 }
 
@@ -333,7 +333,7 @@ fn convert_decl_stmt(decl: &old_ast::DeclStmt, session: &mut Session) -> new_ast
             // typedefをsessionに登録
             session.register_symbols(converted.type_name.clone(), *converted.actual_type.clone());
 
-            new_ast::DeclStmt::Typedef(converted)
+            new_ast::DeclStmt::Typedef
         }
     }
 }
