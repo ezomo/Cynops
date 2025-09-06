@@ -15,6 +15,8 @@ use normalize_line_endings::normalized;
 mod visualize;
 use visualize::*;
 
+use crate::sema::simplification::Session;
+
 fn main() {
     let mut args: Vec<String> = env::args().collect();
     process(&mut args);
@@ -43,7 +45,7 @@ fn process(args: &mut Vec<String>) {
         "ast" => {
             println!("parse");
             program.visualize();
-            sema::simplification::program(&mut program);
+            sema::simplification::program(&mut program, &mut Session::new());
             println!("simplification");
             program.visualize();
             let mut session = sema::ast::Session::new();
@@ -56,7 +58,7 @@ fn process(args: &mut Vec<String>) {
         }
         "codegen" => {
             let mut session = sema::ast::Session::new();
-            sema::simplification::program(&mut program);
+            sema::simplification::program(&mut program, &mut Session::new());
             let new_pragram = sema::convert::program(&program, &mut session);
             let new_program = sema::r#type::program(&new_pragram, &mut session);
             match new_program {

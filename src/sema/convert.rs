@@ -149,7 +149,7 @@ fn convert_struct(s: &old_ast::Struct, session: &mut Session) -> new_ast::Struct
             .as_ref()
             .unwrap()
             .as_same()
-            .with_suffix(session.id()),
+            .with_suffix(session.scope_id()),
         scope_ptr: ScopePar::new(Rc::downgrade(&session.current_scope)),
         member: members,
     };
@@ -343,7 +343,7 @@ fn convert_decl_stmt(decl: &old_ast::DeclStmt, session: &mut Session) -> new_ast
             // typedefをsessionに登録
             session.register_symbols(converted.type_name.clone(), *converted.actual_type.clone());
 
-            new_ast::DeclStmt::Typedef
+            new_ast::DeclStmt::Typedef(converted)
         }
     }
 }

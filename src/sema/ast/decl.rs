@@ -1,11 +1,11 @@
 use super::TypedExpr;
-use crate::sema::ast::Symbol;
-use std::{hash::Hash, ptr};
-
+use super::Typedef;
 use super::{
     Block, Ident, ScopePar,
     types::{FunctionSig, Type},
 };
+use crate::sema::ast::Symbol;
+use std::hash::Hash;
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum DeclStmt {
@@ -13,7 +13,7 @@ pub enum DeclStmt {
     Struct(Struct),
     Union(Union),
     Enum(Enum),
-    Typedef,
+    Typedef(Typedef),
 }
 impl DeclStmt {
     pub fn init_vec(vec: Vec<Init>) -> Self {

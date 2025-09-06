@@ -858,8 +858,8 @@ impl Visualize for DeclStmt {
             DeclStmt::Enum(enum_decl) => {
                 enum_decl.visualize_with_context(indent, is_last, prefix);
             }
-            DeclStmt::Typedef => {
-                // typedef.visualize_with_context(indent, is_last, prefix);
+            DeclStmt::Typedef(typedef) => {
+                typedef.visualize_with_context(indent, is_last, prefix);
             }
         }
     }

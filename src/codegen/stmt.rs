@@ -30,7 +30,7 @@ fn declstmt(declstmt: DeclStmt, cgs: &mut CodeGenStatus) {
                 declare_variable(init, cgs);
             }
         }
-        DeclStmt::Typedef => {}
+        DeclStmt::Typedef(_) => {}
         DeclStmt::Struct(this) => declare_struct(this, cgs),
         _ => {
             // Struct, Union, Enum, Typedef は今回は対象外

@@ -29,12 +29,6 @@ pub struct ScopeNode {
     pub parent: Option<Weak<RefCell<ScopeNode>>>,
     pub children: Vec<Rc<RefCell<ScopeNode>>>,
 }
-
-#[derive(Debug)]
-pub struct Session {
-    pub root_scope: Rc<RefCell<ScopeNode>>,
-    pub current_scope: Rc<RefCell<ScopeNode>>,
-}
 impl ScopeNode {
     pub fn new(parent: Option<Rc<RefCell<ScopeNode>>>) -> Rc<RefCell<Self>> {
         let id = if let Some(ref p) = parent {
@@ -60,12 +54,20 @@ impl ScopeNode {
         child
     }
 }
+#[derive(Debug)]
+pub struct Session {
+    pub root_scope: Rc<RefCell<ScopeNode>>,
+    pub current_scope: Rc<RefCell<ScopeNode>>,
+    pub id: usize,
+}
+
 impl Session {
     pub fn new() -> Self {
         let root = ScopeNode::new(None);
         Self {
             root_scope: Rc::clone(&root),
             current_scope: root,
+            id: 0,
         }
     }
 
@@ -118,7 +120,12 @@ impl Session {
         self.root_scope.borrow_mut().symbols.insert(name, variants);
     }
 
-    pub fn id(&self) -> String {
+    pub fn id(&mut self) -> usize {
+        self.id += 1;
+        self.id
+    }
+
+    pub fn scope_id(&self) -> String {
         self.current_scope
             .borrow()
             .id
