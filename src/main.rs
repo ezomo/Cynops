@@ -16,8 +16,11 @@ mod visualize;
 use visualize::*;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let mut args: Vec<String> = env::args().collect();
+    process(&mut args);
+}
 
+fn process(args: &mut Vec<String>) {
     if args.len() != 3 {
         eprintln!("使い方: {} <入力ファイル> <ast|codegen>", args[0]);
         process::exit(1);
@@ -38,15 +41,17 @@ fn main() {
 
     match mode.as_str() {
         "ast" => {
+            println!("parse");
             program.visualize();
             sema::simplification::program(&mut program);
+            println!("simplification");
             program.visualize();
             let mut session = sema::ast::Session::new();
             let new_pragram = sema::convert::program(&program, &mut session);
+            println!("convert");
             new_pragram.visualize();
-
-            println!("_______________________________________________");
             let new_pragram = sema::r#type::program(&new_pragram, &mut session);
+            println!("typed");
             new_pragram.unwrap().visualize();
         }
         "codegen" => {
@@ -73,4 +78,14 @@ fn main() {
             process::exit(1);
         }
     }
+}
+
+#[test]
+fn test() {
+    let mut args: Vec<String> = ["", "./test.c", "ast"]
+        .iter()
+        .map(|x| x.to_string())
+        .collect();
+
+    process(&mut args);
 }
