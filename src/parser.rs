@@ -551,7 +551,7 @@ fn enum_def(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Enum 
 
     let em = Enum::new(idn.clone(), {
         consume(Token::LBrace, tokens);
-        let tmp = enum_member(tokens);
+        let tmp = enum_member(_parse_session, tokens);
         consume(Token::RBrace, tokens);
         consume(Token::Semicolon, tokens);
         tmp
@@ -563,7 +563,7 @@ fn enum_def(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Enum 
     em
 }
 
-fn enum_member(tokens: &mut Vec<Token>) -> Vec<EnumMember> {
+fn enum_member(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Vec<EnumMember> {
     let mut members = Vec::new();
 
     loop {
@@ -581,7 +581,8 @@ fn enum_member(tokens: &mut Vec<Token>) -> Vec<EnumMember> {
             None
         };
 
-        members.push(EnumMember::new(name, value));
+        members.push(EnumMember::new(name.clone(), value));
+        _parse_session.register_variable(name);
 
         if !consume(Token::Comma, tokens) {
             break;

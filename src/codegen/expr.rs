@@ -373,24 +373,8 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                             .unwrap()
                     );
                     name
-                } // MemberAccessOp::MinusGreater => {
-                //     // ptr->member
-                //     let name = cgs.name_gen.register();
-                //     println!(
-                //         "{} = getelementptr inbounds struct, ptr {}, i64 0, i64 {}",
-                //         name.to_string(),
-                //         base.to_string(),
-                //         0
-                //     ); // 簡略化のため0番目として扱う
-                //     let result = cgs.name_gen.register();
-                //     println!(
-                //         "{} = load i64, ptr {}",
-                //         result.to_string(),
-                //         name.to_string()
-                //     );
-                //     result
-                // }
-                _ => todo!(),
+                }
+                _ => unreachable!(),
             }
         }
         SemaExpr::Sizeof(_sizeof) => {

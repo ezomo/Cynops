@@ -95,13 +95,16 @@ impl Enum {
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct EnumMember {
-    pub ident: Ident,
+    pub symbol: Symbol,
     pub value: Option<usize>, // 明示的な値がある場合
 }
 
 impl EnumMember {
-    pub fn new(ident: Ident, value: Option<usize>) -> Self {
-        EnumMember { ident, value }
+    pub fn new(ident: Symbol, value: Option<usize>) -> Self {
+        EnumMember {
+            symbol: ident,
+            value,
+        }
     }
 }
 

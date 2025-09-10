@@ -533,30 +533,29 @@ fn infer_type(expr: &SemaExpr, session: &mut Session) -> TypeResult<Type> {
                 _ => unreachable!(""),
             };
 
-            match actual_type {
+            match actual_type.clone() {
                 Type::Struct(ref s) => s
                     .member
                     .iter()
                     .find(|m| m.sympl.ident.name == member.member.name)
                     .map(|m| m.ty.clone())
                     .ok_or_else(|| TypeError::InvalidMemberAccess {
-                        base_type: actual_type.clone(),
+                        base_type: actual_type,
                         member: member.member.name.clone(),
                     }),
-                // Type::Union(u) => u
-                //     .member
-                //     .iter()
-                //     .find(|m| m.sympl.ident.name == member.member.name)
-                //     .map(|m| m.ty.clone())
-                //     .ok_or_else(|| TypeError::InvalidMemberAccess {
-                //         base_type: actual_type,
-                //         member: member.member.name.clone(),
-                //     }),
-                // _ => Err(TypeError::InvalidMemberAccess {
-                //     base_type: actual_type,
-                //     member: member.member.name.clone(),
-                // }),
-                _ => todo!(),
+                Type::Union(u) => u
+                    .member
+                    .iter()
+                    .find(|m| m.sympl.ident.name == member.member.name)
+                    .map(|m| m.ty.clone())
+                    .ok_or_else(|| TypeError::InvalidMemberAccess {
+                        base_type: actual_type,
+                        member: member.member.name.clone(),
+                    }),
+                _ => Err(TypeError::InvalidMemberAccess {
+                    base_type: actual_type,
+                    member: member.member.name.clone(),
+                }),
             }
         }
         SemaExpr::Ternary(ternary) => {

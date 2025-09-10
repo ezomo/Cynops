@@ -1010,8 +1010,8 @@ impl Visualize for EnumMember {
 
     fn visualize_with_context(&self, indent: usize, is_last: bool, prefix: &[bool]) {
         let variant_info = match &self.value {
-            Some(value) => format!("{} = {}", self.ident.name, value),
-            None => self.ident.name.clone(),
+            Some(value) => format!("{} = {}", self.symbol.ident.name, value),
+            None => self.symbol.ident.name.clone(),
         };
         print_branch("Variant", &variant_info, indent, is_last, prefix);
     }

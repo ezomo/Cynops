@@ -1,7 +1,6 @@
 use super::ast as new_ast;
 use super::ast::*;
 use crate::ast as old_ast;
-use std::process::id;
 use std::rc::Rc;
 
 pub fn program(program: &old_ast::Program, session: &mut Session) -> new_ast::Program {
@@ -186,18 +185,27 @@ fn convert_enum(e: &old_ast::Enum, session: &mut Session) -> new_ast::Enum {
     let variants = e
         .variants
         .iter()
-        .map(|v| convert_enum_member(v, session))
+        .map(|v| new_ast::EnumMember {
+            symbol: Symbol::new(v.ident.as_same(), session.current_scope()),
+            value: v.value,
+        })
         .collect();
 
     let converted = new_ast::Enum {
         ident: e.ident.as_ref().map(|i| i.as_same()),
         variants,
     };
+    let ty = new_ast::Type::Enum(converted.clone());
 
     // 名前がある場合はsessionに登録
     if let Some(ref ident) = converted.ident {
-        session.register_symbols(ident.clone(), new_ast::Type::Enum(converted.clone()));
+        session.register_symbols(ident.clone(), ty.clone());
     }
+
+    converted
+        .variants
+        .iter()
+        .for_each(|x| session.register_symbols(x.symbol.ident.clone(), ty.clone()));
 
     converted
 }
@@ -208,13 +216,6 @@ fn convert_member_decl(m: &old_ast::MemberDecl, session: &mut Session) -> new_as
     new_ast::MemberDecl {
         sympl: Symbol::new(m.ident.as_same(), Rc::downgrade(&session.current_scope)),
         ty: convert_type(&m.ty, session),
-    }
-}
-
-fn convert_enum_member(m: &old_ast::EnumMember, session: &mut Session) -> new_ast::EnumMember {
-    new_ast::EnumMember {
-        ident: m.ident.as_same(),
-        value: m.value,
     }
 }
 

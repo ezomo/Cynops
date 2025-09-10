@@ -32,9 +32,10 @@ fn declstmt(declstmt: DeclStmt, cgs: &mut CodeGenStatus) {
         }
         DeclStmt::Typedef(_) => {}
         DeclStmt::Struct(this) => declare_struct(this, cgs),
+        DeclStmt::Enum(this) => declare_enum(this, cgs),
         _ => {
             // Struct, Union, Enum, Typedef は今回は対象外
-            todo!("構造体、共用体、列挙型、typedef は未対応")
+            todo!("共用体、列挙型、typedef は未対応")
         }
     }
 }
@@ -67,6 +68,26 @@ fn declare_struct(init: Struct, cgs: &mut CodeGenStatus) {
             .collect::<Vec<String>>()
             .join(",")
     );
+}
+
+fn declare_enum(init: Enum, cgs: &mut CodeGenStatus) {
+    let mut start = 0;
+
+    for i in 0..init.variants.len() {
+        if let Some(num) = init.variants[i].value {
+            start = num;
+        }
+
+        let name = cgs.name_gen.global_const().to_string();
+        println!(
+            "{} = constant {} {}",
+            name,
+            Type::Int.to_llvm_format(),
+            start
+        );
+        cgs.register_variable(init.variants[i].symbol.clone(), name);
+        start += 1
+    }
 }
 
 fn initialize_variable(

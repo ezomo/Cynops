@@ -71,6 +71,10 @@ impl Session {
         }
     }
 
+    pub fn current_scope(&self) -> Weak<RefCell<ScopeNode>> {
+        Rc::downgrade(&self.current_scope)
+    }
+
     pub fn push_scope(&mut self) {
         let new_scope = ScopeNode::add_child(&self.current_scope);
         self.current_scope = new_scope;

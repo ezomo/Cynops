@@ -92,6 +92,7 @@ pub struct NameGenerator {
 
 pub enum LLVMType {
     Const,
+    GrobalConst,
     Register,
     Variable,
     Label,
@@ -147,6 +148,13 @@ impl NameGenerator {
         LLVMValue {
             variable: format!("%{}", self.next()),
             ty: LLVMType::Variable,
+        }
+    }
+
+    pub fn global_const(&mut self) -> LLVMValue {
+        LLVMValue {
+            variable: format!("@{}", self.next()),
+            ty: LLVMType::GrobalConst,
         }
     }
 
@@ -317,6 +325,7 @@ impl Type {
                 )
             }
             Type::Struct(this) => format!("%{}", this.type_ident.to_string()),
+            Type::Enum(_) => Type::Int.to_llvm_format(),
             _ => todo!("未対応の型: {:?}", self),
         }
     }
