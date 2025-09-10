@@ -488,7 +488,7 @@ fn subscript(subscript: Subscript) -> Expr {
 fn member_access(member_access: MemberAccess) -> Expr {
     match member_access.kind {
         MemberAccessOp::MinusGreater => Expr::member_access(
-            *Expr::unary(UnaryOp::asterisk(), member_access.base),
+            *Expr::unary(UnaryOp::asterisk(), Box::new(_expr(*member_access.base))),
             member_access.member,
             MemberAccessOp::dot(),
         ),
