@@ -154,11 +154,11 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                 typed_expr.r#type.to_llvm_format()
             );
             let arr = typed_expr.r#type.as_array().unwrap();
-            for i in 0..arr.length.clone().unwrap().consume_const() {
+            for i in 0..arr.length.as_ref().unwrap().consume_const() {
                 let element_ptr = cgs.name_gen.register();
                 let array_type = format!(
                     "[{} x {}]",
-                    arr.length.clone().unwrap().consume_const(),
+                    arr.length.as_ref().unwrap().consume_const(),
                     &arr.array_of.to_llvm_format()
                 );
                 println!(
@@ -354,24 +354,38 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
             let base = gen_expr(*member_access.base.clone(), cgs);
             match member_access.kind {
                 MemberAccessOp::Dot => {
-                    // obj.member
                     let name = cgs.name_gen.variable();
-                    println!(
-                        "{} = getelementptr inbounds {}, {}* {}, i32 0, i32 {}",
-                        name.to_string(),
-                        member_access.base.r#type.to_llvm_format(),
-                        member_access.base.r#type.to_llvm_format(),
-                        base.to_string(),
-                        member_access
-                            .base
-                            .r#type
-                            .as_struct()
-                            .unwrap()
-                            .member
-                            .iter()
-                            .position(|x| x.sympl.ident == member_access.member)
-                            .unwrap()
-                    );
+                    match &member_access.base.r#type {
+                        Type::Union(_) => {
+                            println!(
+                                "{} = bitcast {}* {} to {}* ",
+                                name.to_string(),
+                                member_access.base.r#type.to_llvm_format(),
+                                base.to_string(),
+                                typed_expr.r#type.to_llvm_format()
+                            );
+                        }
+                        Type::Struct(_) => {
+                            println!(
+                                "{} = getelementptr inbounds {}, {}* {}, i32 0, i32 {}",
+                                name.to_string(),
+                                member_access.base.r#type.to_llvm_format(),
+                                member_access.base.r#type.to_llvm_format(),
+                                base.to_string(),
+                                member_access
+                                    .base
+                                    .r#type
+                                    .as_struct()
+                                    .unwrap()
+                                    .member
+                                    .iter()
+                                    .position(|x| x.sympl.ident == member_access.member)
+                                    .unwrap()
+                            );
+                        }
+                        _ => unreachable!(),
+                    }
+
                     name
                 }
                 _ => unreachable!(),

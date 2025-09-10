@@ -299,7 +299,7 @@ impl Type {
         match self {
             Type::Void => "void".to_string(),
             Type::DotDotDot => "...".to_string(),
-            Type::Int => "i64".to_string(),
+            Type::Int => "i32".to_string(),
             Type::Double => "double".to_string(),
             Type::Char => "i8".to_string(),
             Type::Pointer(ty) => {
@@ -308,7 +308,7 @@ impl Type {
             Type::Array(arr) => {
                 format!(
                     "[{} x {}]",
-                    arr.length.clone().unwrap().consume_const(),
+                    arr.length.as_ref().unwrap().consume_const(),
                     &arr.array_of.to_llvm_format()
                 )
             }
@@ -326,6 +326,7 @@ impl Type {
             }
             Type::Struct(this) => format!("%{}", this.type_ident.to_string()),
             Type::Enum(_) => Type::Int.to_llvm_format(),
+            Type::Union(this) => format!("%{}", this.symbol.ident.to_string()),
             _ => todo!("未対応の型: {:?}", self),
         }
     }

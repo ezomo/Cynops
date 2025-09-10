@@ -10,7 +10,6 @@ pub enum TypeError {
         context: String,
     },
     UndefinedVariable(String),
-    UndefinedFunction(String),
     InvalidOperation {
         op: String,
         operand_type: Type,
@@ -39,9 +38,6 @@ impl std::fmt::Display for TypeError {
             }
             TypeError::UndefinedVariable(name) => {
                 write!(f, "Undefined variable: {}", name)
-            }
-            TypeError::UndefinedFunction(name) => {
-                write!(f, "Undefined function: {}", name)
             }
             TypeError::InvalidOperation { op, operand_type } => {
                 write!(

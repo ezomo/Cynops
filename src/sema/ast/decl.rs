@@ -72,12 +72,17 @@ impl Struct {
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Union {
     pub ident: Option<Ident>,
+    pub symbol: Symbol,
     pub member: Vec<MemberDecl>,
 }
 
 impl Union {
-    pub fn new(ident: Option<Ident>, member: Vec<MemberDecl>) -> Self {
-        Union { ident, member }
+    pub fn new(ident: Option<Ident>, symbol: Symbol, member: Vec<MemberDecl>) -> Self {
+        Union {
+            ident,
+            symbol,
+            member,
+        }
     }
 }
 

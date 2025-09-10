@@ -33,10 +33,7 @@ fn declstmt(declstmt: DeclStmt, cgs: &mut CodeGenStatus) {
         DeclStmt::Typedef(_) => {}
         DeclStmt::Struct(this) => declare_struct(this, cgs),
         DeclStmt::Enum(this) => declare_enum(this, cgs),
-        _ => {
-            // Struct, Union, Enum, Typedef は今回は対象外
-            todo!("共用体、列挙型、typedef は未対応")
-        }
+        DeclStmt::Union(this) => declare_union(this, cgs),
     }
 }
 
@@ -70,6 +67,14 @@ fn declare_struct(init: Struct, _cgs: &mut CodeGenStatus) {
     );
 }
 
+fn declare_union(init: Union, _cgs: &mut CodeGenStatus) {
+    println!(
+        "{} = type {{[ {} x i8 ]}}",
+        init.symbol.scope.ptr.upgrade().unwrap().borrow().symbols[init.ident.as_ref().unwrap()]
+            .to_llvm_format(),
+        init.size()
+    );
+}
 fn declare_enum(init: Enum, cgs: &mut CodeGenStatus) {
     let mut start = 0;
 
@@ -121,7 +126,7 @@ fn initialize_variable(
                         let element_ptr = cgs.name_gen.variable();
                         let array_type = format!(
                             "[{} x {}]",
-                            arr.length.clone().unwrap().consume_const(),
+                            arr.length.as_ref().unwrap().consume_const(),
                             &arr.array_of.to_llvm_format()
                         );
                         println!(

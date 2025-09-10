@@ -153,7 +153,14 @@ fn convert_union(u: &old_ast::Union, session: &mut Session) -> new_ast::Union {
         .map(|m| convert_member_decl(m, session))
         .collect();
 
-    let converted = new_ast::Union::new(u.ident.as_ref().map(|i| i.as_same()), members);
+    let converted = new_ast::Union::new(
+        u.ident.as_ref().map(|i| i.as_same()),
+        Symbol::new(
+            Ident::new(session.id().to_string()),
+            session.current_scope(),
+        ),
+        members,
+    );
 
     // 名前がある場合はsessionに登録
     if let Some(ref ident) = converted.ident {
@@ -428,10 +435,8 @@ fn convert_expr(expr: &old_ast::Expr, session: &mut Session) -> new_ast::TypedEx
         }
         old_ast::Expr::Sizeof(sizeof) => {
             let converted_sizeof = match sizeof {
-                old_ast::Sizeof::Type(ty) => new_ast::Sizeof::Type(convert_type(ty, session)),
-                old_ast::Sizeof::Expr(expr) => {
-                    new_ast::Sizeof::TypedExpr(Box::new(convert_expr(expr, session)))
-                }
+                old_ast::Sizeof::Type(ty) => new_ast::Sizeof::r#type(convert_type(ty, session)),
+                old_ast::Sizeof::Expr(expr) => new_ast::Sizeof::expr(convert_expr(expr, session)),
             };
             new_ast::SemaExpr::sizeof(converted_sizeof)
         }
