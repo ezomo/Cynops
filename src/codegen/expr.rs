@@ -377,12 +377,10 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                 _ => unreachable!(),
             }
         }
-        SemaExpr::Sizeof(_sizeof) => {
-            // sizeof演算子 - 簡略化のため4（intのサイズ）を返す
-            let name = cgs.name_gen.register();
-            println!("{} = add i64 0, 4", name.to_string());
-            name
-        }
+        SemaExpr::Sizeof(sizeof) => match sizeof {
+            Sizeof::Type(ty) => LLVMValue::new(ty.size(), LLVMType::Const),
+            Sizeof::TypedExpr(num) => LLVMValue::new(num.r#type.size(), LLVMType::Const),
+        },
         SemaExpr::Cast(cast) => {
             // キャスト演算子 (type)expr
             let expr_val = gen_expr(*cast.expr, cgs);

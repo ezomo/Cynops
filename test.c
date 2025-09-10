@@ -1,8 +1,12 @@
 void printf(char*, ...);
+int (*malloc(int))[0];
 
-int main(void) {
-    int a[][2 + 2] = {{1, 2}, {3, 4}};
-    char c[] = "%d\n\0";
-    a[1][0]++;
-    printf(&c[0], a[1][0]);
+enum week { Mon, Tue = 5, Wed, Thu, Fri, Sat, Sun };
+
+void main(void) {
+    enum week wk0;
+    wk0 = Sun;
+
+    // a.a = 0;
+    printf(&"%d\n\0"[0], Mon);
 }

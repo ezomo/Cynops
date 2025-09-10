@@ -144,6 +144,35 @@ impl Type {
     }
 }
 
+impl Type {
+    pub fn size(&self) -> usize {
+        match self {
+            Type::Void => 0,       // void型はサイズなし
+            Type::Char => 1,       // char は 1 バイト
+            Type::Int => 4,        // int は 4 バイト (32bit想定)
+            Type::Double => 8,     // double は 8 バイト
+            Type::DotDotDot => 0,  // 可変長引数はサイズなし
+            Type::Unresolved => 0, // 未解決型はサイズ不明
+            Type::Pointer(_) => 8, // ポインタは 8 バイト (64bit想定)
+            Type::Array(arr) => {
+                let element_size = arr.array_of.size();
+                // 配列のサイズは要素サイズ × 要素数
+                match &arr.length {
+                    Some(len_expr) => element_size * len_expr.consume_const() as usize,
+                    None => panic!("fund none"), // 不完全配列型
+                }
+            }
+            Type::Struct(s) => s.member.iter().map(|x| x.ty.size()).sum(),
+
+            Type::Union(u) => u.member.iter().map(|x| x.ty.size()).max().unwrap(),
+
+            Type::Enum(_) => Type::Int.size(),
+
+            Type::Func(_) => Type::Void.size(),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct FunctionSig {
     pub ty: Type,
