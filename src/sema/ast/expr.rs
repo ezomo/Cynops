@@ -3,6 +3,7 @@ use crate::op::*;
 use ordered_float::OrderedFloat;
 use std::cell::RefCell;
 use std::hash::{Hash, Hasher};
+use std::rc::Rc;
 use std::rc::Weak;
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
@@ -91,6 +92,18 @@ impl Symbol {
             scope: ScopePar::new(scope),
         }
     }
+
+    // 変数検索（親も遡る）　２箇所で同じようなものがあるので良くない
+    pub fn get_type(&self) -> Option<Type> {
+        let mut scope = self.scope.upgrade(); // Weak -> Rc
+        while let Some(s) = scope {
+            if let Some(ty) = s.borrow().symbols.get(&self.ident) {
+                return Some(ty.clone());
+            }
+            scope = s.borrow().parent.as_ref().and_then(|p| p.upgrade());
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -100,6 +113,10 @@ pub struct ScopePar {
 impl ScopePar {
     pub fn new(ptr: Weak<RefCell<ScopeNode>>) -> Self {
         ScopePar { ptr }
+    }
+
+    pub fn upgrade(&self) -> Option<Rc<RefCell<ScopeNode>>> {
+        self.ptr.upgrade()
     }
 }
 

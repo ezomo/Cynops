@@ -28,8 +28,6 @@ impl ParseSession {
     pub fn push_scope(&mut self) {
         self.typedef_stack.push(HashSet::new());
         self.composite_type_stack.push(HashSet::new());
-        self.composite_type_stack.push(HashSet::new());
-        self.composite_type_stack.push(HashSet::new());
         self.variable_stack.push(HashSet::new());
     }
 
@@ -474,6 +472,10 @@ fn struct_def(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Str
         None
     };
 
+    if idn.is_some() {
+        _parse_session.register_composite_type(idn.as_ref().unwrap().clone());
+    }
+
     let st = Struct::new(idn.clone(), {
         consume(Token::LBrace, tokens);
 
@@ -487,9 +489,6 @@ fn struct_def(_parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -> Str
         ms.into_iter().flatten().collect()
     });
 
-    if idn.is_some() {
-        _parse_session.register_composite_type(idn.unwrap());
-    }
     st
 }
 

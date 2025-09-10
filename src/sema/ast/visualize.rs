@@ -876,7 +876,7 @@ impl Visualize for Init {
 
         print_branch(
             "Type",
-            &self.r.ty.to_rust_format(),
+            &self.r.sympl.get_type().unwrap().to_rust_format(),
             indent + 1,
             self.l.is_none(),
             &next_prefix,
@@ -1025,34 +1025,14 @@ impl Visualize for MemberDecl {
     fn visualize_with_context(&self, indent: usize, is_last: bool, prefix: &[bool]) {
         print_branch(
             "Member",
-            &format!("{}: {}", self.sympl.ident.name, self.ty.to_rust_format()),
+            &format!(
+                "{}: {}",
+                self.sympl.ident.name,
+                self.sympl.get_type().unwrap().to_rust_format()
+            ),
             indent,
             is_last,
             prefix,
-        );
-    }
-}
-
-impl Visualize for Typedef {
-    fn visualize(&self) {
-        self.visualize_with_context(0, true, &[]);
-    }
-
-    fn visualize_with_context(&self, indent: usize, is_last: bool, prefix: &[bool]) {
-        print_branch(
-            "TypedefDeclStmt",
-            &self.type_name.name,
-            indent,
-            is_last,
-            prefix,
-        );
-        let next_prefix = extend_prefix(prefix, !is_last);
-
-        print_branch("ActualType", "", indent + 1, true, &next_prefix);
-        self.actual_type.visualize_with_context(
-            indent + 2,
-            true,
-            &extend_prefix(&next_prefix, false),
         );
     }
 }

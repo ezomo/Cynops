@@ -92,7 +92,7 @@ impl Session {
         }
     }
     // 変数検索（親も遡る）
-    pub fn get_variable(&self, ident: &Ident) -> Option<Type> {
+    pub fn get_type(&self, ident: &Ident) -> Option<Type> {
         let mut scope = Some(Rc::clone(&self.current_scope));
         while let Some(s) = scope {
             if let Some(ty) = s.borrow().symbols.get(ident) {

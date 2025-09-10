@@ -39,17 +39,22 @@ fn declstmt(declstmt: DeclStmt, cgs: &mut CodeGenStatus) {
 
 fn declare_variable(init: Init, cgs: &mut CodeGenStatus) {
     let var_name = cgs.name_gen.register();
-    let llvm_type = &init.r.ty.to_llvm_format();
+    let llvm_type = &init.r.sympl.get_type().unwrap().to_llvm_format();
 
     // 変数を割り当て
     println!("{} = alloca {}", var_name.to_string(), llvm_type);
 
     // 変数名をマップに登録
-    cgs.register_variable(init.r.sympl, var_name.clone().to_string());
+    cgs.register_variable(init.r.sympl.clone(), var_name.clone().to_string());
 
     // 初期化子がある場合は初期化
     if let Some(init_data) = init.l {
-        initialize_variable(var_name, init_data, &init.r.ty, cgs);
+        initialize_variable(
+            var_name,
+            init_data,
+            &init.r.sympl.get_type().unwrap().clone(),
+            cgs,
+        );
     }
 }
 
@@ -61,7 +66,7 @@ fn declare_struct(init: Struct, _cgs: &mut CodeGenStatus) {
             .to_llvm_format(),
         init.member
             .iter()
-            .map(|x| x.ty.to_llvm_format())
+            .map(|x| x.sympl.get_type().unwrap().to_llvm_format())
             .collect::<Vec<String>>()
             .join(",")
     );
@@ -153,7 +158,12 @@ fn initialize_variable(
                             index
                         );
 
-                        initialize_variable(element_ptr, element, &stru.member[index].ty, cgs);
+                        initialize_variable(
+                            element_ptr,
+                            element,
+                            &stru.member[index].sympl.get_type().unwrap(),
+                            cgs,
+                        );
                     }
                 }
                 _ => {

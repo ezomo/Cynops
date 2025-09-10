@@ -44,6 +44,7 @@ fn process(args: &mut Vec<String>) {
     match mode.as_str() {
         "ast" => {
             println!("parse");
+            println!("{:#?}", program);
             program.visualize();
             sema::simplification::program(&mut program, &mut Session::new());
             println!("simplification");

@@ -87,9 +87,12 @@ fn resolve_toplevel(toplevel: &TopLevel, session: &mut Session) -> TypeResult<To
 fn resolve_function_def(func_def: &FunctionDef, session: &mut Session) -> TypeResult<FunctionDef> {
     session.push_scope();
 
-    if let Some(func_type) = func_def.sig.ty.as_func() {
+    // 関数型を平坦化してから処理
+    let flattened_func_type = func_def.sig.ty.flat();
+    if let Some(func_type) = flattened_func_type.as_func() {
         for (param_name, param_type) in func_def.param_names.iter().zip(&func_type.params) {
-            session.register_symbols(param_name.ident.clone(), param_type.clone());
+            // パラメータ型も平坦化して登録
+            session.register_symbols(param_name.ident.clone(), param_type.flat());
         }
     }
 
@@ -98,7 +101,10 @@ fn resolve_function_def(func_def: &FunctionDef, session: &mut Session) -> TypeRe
     session.pop_scope();
 
     Ok(FunctionDef {
-        sig: func_def.sig.clone(),
+        sig: FunctionSig {
+            ty: flattened_func_type,
+            ident: func_def.sig.ident.clone(),
+        },
         param_names: func_def.param_names.clone(),
         body: resolved_body,
     })
@@ -225,7 +231,8 @@ fn resolve_decl_stmt(decl: &DeclStmt, session: &mut Session) -> TypeResult<DeclS
 }
 
 fn resolve_init(init: &Init, session: &mut Session) -> TypeResult<Init> {
-    let mut resolved_type = init.r.ty.clone();
+    // 型を平坦化して取得
+    let mut resolved_type = init.r.sympl.get_type().unwrap().flat();
 
     // 配列の長さ推論
     if let Some(init_data) = &init.l {
@@ -234,7 +241,6 @@ fn resolve_init(init: &Init, session: &mut Session) -> TypeResult<Init> {
 
     let resolved_member_decl = MemberDecl {
         sympl: init.r.sympl.clone(),
-        ty: resolved_type.clone(),
     };
 
     // 初期化データがある場合、型の互換性をチェック
@@ -243,10 +249,10 @@ fn resolve_init(init: &Init, session: &mut Session) -> TypeResult<Init> {
         check_init_compatibility(&resolved_type, &init_expr, session)?;
     }
 
-    // 変数をセッションに登録
+    // 変数をセッションに平坦化された型で登録
     session.register_symbols(
         resolved_member_decl.sympl.ident.clone(),
-        resolved_member_decl.ty.clone(),
+        resolved_type.clone(),
     );
 
     Ok(Init {
@@ -266,18 +272,22 @@ fn check_init_compatibility(
 ) -> TypeResult<()> {
     match init_data {
         InitData::Expr(expr) => {
-            let expr_type = &expr.r#type;
-            if var_type != expr_type {
+            // 両方の型を平坦化して比較
+            let var_type_flat = var_type.flat();
+            let expr_type_flat = expr.r#type.flat();
+
+            if var_type_flat != expr_type_flat {
                 return Err(TypeError::IncompatibleTypes {
-                    expected: var_type.clone(),
-                    found: expr_type.clone(),
+                    expected: var_type_flat,
+                    found: expr_type_flat,
                     context: "variable initialization".to_string(),
                 });
             }
         }
         InitData::Compound(compounds) => {
             // 配列や構造体の複合初期化子の場合
-            if let Type::Array(array) = var_type {
+            let flat_var_type = var_type.flat();
+            if let Type::Array(array) = flat_var_type {
                 for compound in compounds {
                     check_init_compatibility(&array.array_of, compound, session)?;
                 }
@@ -327,7 +337,7 @@ fn resolve_init_data(data: &InitData, session: &mut Session) -> TypeResult<InitD
 
 pub fn resolve_typed_expr(expr: &TypedExpr, session: &mut Session) -> TypeResult<TypedExpr> {
     let resolved_sema_expr = resolve_sema_expr(&expr.r#expr, session)?;
-    let inferred_type = infer_type(&resolved_sema_expr, session)?;
+    let inferred_type = infer_type(&resolved_sema_expr, session)?.flat(); // 推論した型も平坦化
 
     Ok(TypedExpr {
         r#type: inferred_type,
@@ -341,11 +351,14 @@ fn resolve_sema_expr(expr: &SemaExpr, session: &mut Session) -> TypeResult<SemaE
             let lhs = resolve_typed_expr(&assign.lhs, session)?;
             let rhs = resolve_typed_expr(&assign.rhs, session)?;
 
-            // 代入の型互換性チェック（完全一致を要求）
-            if &lhs.r#type != &rhs.r#type {
+            // 代入の型互換性チェック（平坦化された型で比較）
+            let lhs_flat = lhs.r#type.flat();
+            let rhs_flat = rhs.r#type.flat();
+
+            if lhs_flat != rhs_flat {
                 return Err(TypeError::IncompatibleTypes {
-                    expected: lhs.r#type.clone(),
-                    found: rhs.r#type.clone(),
+                    expected: lhs_flat,
+                    found: rhs_flat,
                     context: "assignment".to_string(),
                 });
             }
@@ -395,10 +408,14 @@ fn resolve_sema_expr(expr: &SemaExpr, session: &mut Session) -> TypeResult<SemaE
             member: member.member.clone(),
             kind: member.kind.clone(),
         })),
-        SemaExpr::Cast(cast) => Ok(SemaExpr::Cast(Cast {
-            r#type: cast.r#type.clone(),
-            expr: Box::new(resolve_typed_expr(&cast.expr, session)?),
-        })),
+        SemaExpr::Cast(cast) => {
+            // キャスト型も平坦化
+            let flattened_cast_type = cast.r#type.flat();
+            Ok(SemaExpr::Cast(Cast {
+                r#type: Box::new(flattened_cast_type),
+                expr: Box::new(resolve_typed_expr(&cast.expr, session)?),
+            }))
+        }
         SemaExpr::Comma(comma) => Ok(SemaExpr::Comma(Comma {
             assigns: {
                 let mut assigns = Vec::new();
@@ -410,7 +427,7 @@ fn resolve_sema_expr(expr: &SemaExpr, session: &mut Session) -> TypeResult<SemaE
         })),
         SemaExpr::Sizeof(sizeof) => {
             let resolved_sizeof = match sizeof {
-                Sizeof::Type(ty) => Sizeof::Type(ty.clone()),
+                Sizeof::Type(ty) => Sizeof::Type(ty.flat()), // sizeof内の型も平坦化
                 Sizeof::TypedExpr(expr) => {
                     Sizeof::TypedExpr(Box::new(resolve_typed_expr(expr, session)?))
                 }
@@ -426,9 +443,10 @@ fn check_function_call(
     args: &[Box<TypedExpr>],
     _session: &mut Session,
 ) -> TypeResult<()> {
-    let func_type = &func_expr.r#type;
+    // 関数型も平坦化してチェック
+    let func_type_flat = func_expr.r#type.flat();
 
-    if let Type::Func(func) = func_type {
+    if let Type::Func(func) = func_type_flat {
         // 引数の数をチェック
         if func.params.last().unwrap() != &Type::Void
             && func.params.last().unwrap() != &Type::DotDotDot
@@ -448,15 +466,18 @@ fn check_function_call(
             });
         }
 
-        // 各引数の型をチェック
+        // 各引数の型をチェック（平坦化して比較）
         for (i, (expected_param, actual_arg)) in func.params.iter().zip(args.iter()).enumerate() {
             if expected_param == &Type::DotDotDot {
                 break;
             }
-            if expected_param != &actual_arg.r#type {
+            let expected_flat = expected_param.flat();
+            let actual_flat = actual_arg.r#type.flat();
+
+            if expected_flat != actual_flat {
                 return Err(TypeError::IncompatibleTypes {
-                    expected: expected_param.clone(),
-                    found: actual_arg.r#type.clone(),
+                    expected: expected_flat,
+                    found: actual_flat,
                     context: format!("function call argument {} ({})", i + 1, func_expr.oneline()),
                 });
             }
@@ -467,7 +488,7 @@ fn check_function_call(
         // 関数型でない場合のエラー
         Err(TypeError::InvalidOperation {
             op: "function call".to_string(),
-            operand_type: func_type.clone(),
+            operand_type: func_type_flat,
         })
     }
 }
@@ -485,15 +506,16 @@ fn infer_type(expr: &SemaExpr, session: &mut Session) -> TypeResult<Type> {
             ))),
         })),
         SemaExpr::Symbol(symbol) => session
-            .get_variable(&symbol.ident)
+            .get_type(&symbol.ident)
+            .map(|t| t.flat()) // シンボルの型も平坦化
             .ok_or_else(|| TypeError::UndefinedVariable(symbol.ident.name.clone())),
         SemaExpr::Binary(binary) => infer_binary_type(binary, session),
         SemaExpr::Unary(unary) => infer_unary_type(unary, session),
         SemaExpr::Assign(assign) => Ok(infer_type(&assign.lhs.r#expr, session)?),
         SemaExpr::Call(call) => {
-            let func_type = infer_type(&call.func.r#expr, session)?;
+            let func_type = infer_type(&call.func.r#expr, session)?.flat();
             if let Type::Func(func) = func_type {
-                Ok(*func.return_type)
+                Ok((*func.return_type).flat()) // 戻り値型も平坦化
             } else {
                 Err(TypeError::InvalidOperation {
                     op: "function call".to_string(),
@@ -502,10 +524,10 @@ fn infer_type(expr: &SemaExpr, session: &mut Session) -> TypeResult<Type> {
             }
         }
         SemaExpr::Subscript(subscript) => {
-            let subject_type = infer_type(&subscript.subject.r#expr, session)?;
+            let subject_type = infer_type(&subscript.subject.r#expr, session)?.flat();
             match subject_type {
-                Type::Array(array) => Ok(*array.array_of),
-                Type::Pointer(inner) => Ok(*inner),
+                Type::Array(array) => Ok((*array.array_of).flat()),
+                Type::Pointer(inner) => Ok((*inner).flat()),
                 _ => Err(TypeError::InvalidOperation {
                     op: "array subscript".to_string(),
                     operand_type: subject_type,
@@ -513,29 +535,29 @@ fn infer_type(expr: &SemaExpr, session: &mut Session) -> TypeResult<Type> {
             }
         }
         SemaExpr::MemberAccess(member) => {
-            let base_type = infer_type(&member.base.r#expr, session)?;
+            let base_type = infer_type(&member.base.r#expr, session)?.flat();
             let actual_type = match &member.kind {
                 MemberAccessOp::Dot => base_type.clone(),
                 _ => unreachable!(),
             };
 
-            match actual_type.clone() {
+            match actual_type.flat() {
                 Type::Struct(ref s) => s
                     .member
                     .iter()
                     .find(|m| m.sympl.ident.name == member.member.name)
-                    .map(|m| m.ty.clone())
+                    .map(|m| m.sympl.get_type().unwrap().flat()) // メンバー型も平坦化
                     .ok_or_else(|| TypeError::InvalidMemberAccess {
-                        base_type: actual_type,
+                        base_type: actual_type.clone(),
                         member: member.member.name.clone(),
                     }),
                 Type::Union(u) => u
                     .member
                     .iter()
                     .find(|m| m.sympl.ident.name == member.member.name)
-                    .map(|m| m.ty.clone())
+                    .map(|m| m.sympl.get_type().unwrap().flat()) // メンバー型も平坦化
                     .ok_or_else(|| TypeError::InvalidMemberAccess {
-                        base_type: actual_type,
+                        base_type: actual_type.clone(),
                         member: member.member.name.clone(),
                     }),
                 _ => Err(TypeError::InvalidMemberAccess {
@@ -545,10 +567,10 @@ fn infer_type(expr: &SemaExpr, session: &mut Session) -> TypeResult<Type> {
             }
         }
         SemaExpr::Ternary(ternary) => {
-            let then_type = infer_type(&ternary.then_branch.r#expr, session)?;
-            let else_type = infer_type(&ternary.else_branch.r#expr, session)?;
+            let then_type = infer_type(&ternary.then_branch.r#expr, session)?.flat();
+            let else_type = infer_type(&ternary.else_branch.r#expr, session)?.flat();
 
-            // 三項演算子でも完全一致を要求
+            // 三項演算子でも完全一致を要求（平坦化後で比較）
             if then_type == else_type {
                 Ok(then_type)
             } else {
@@ -560,7 +582,7 @@ fn infer_type(expr: &SemaExpr, session: &mut Session) -> TypeResult<Type> {
                 })
             }
         }
-        SemaExpr::Cast(cast) => Ok(*cast.r#type.clone()),
+        SemaExpr::Cast(cast) => Ok(cast.r#type.flat()), // キャストの結果型も平坦化
         SemaExpr::Comma(comma) => {
             if let Some(last_expr) = comma.assigns.last() {
                 infer_type(&last_expr.r#expr, session)
@@ -573,8 +595,8 @@ fn infer_type(expr: &SemaExpr, session: &mut Session) -> TypeResult<Type> {
 }
 
 fn infer_binary_type(binary: &Binary, session: &mut Session) -> TypeResult<Type> {
-    let lhs_type = infer_type(&binary.lhs.r#expr, session)?;
-    let rhs_type = infer_type(&binary.rhs.r#expr, session)?;
+    let lhs_type = infer_type(&binary.lhs.r#expr, session)?.flat();
+    let rhs_type = infer_type(&binary.rhs.r#expr, session)?.flat();
 
     match binary.op {
         BinaryOp::Comparison(_) | BinaryOp::Logical(_) => {
@@ -582,7 +604,7 @@ fn infer_binary_type(binary: &Binary, session: &mut Session) -> TypeResult<Type>
             Ok(Type::Int)
         }
         BinaryOp::Arithmetic(_) => {
-            // 算術演算では両オペランドの型が一致している必要がある
+            // 算術演算では両オペランドの型が一致している必要がある（平坦化後で比較）
             if lhs_type == rhs_type {
                 Ok(lhs_type)
             } else {
@@ -597,7 +619,7 @@ fn infer_binary_type(binary: &Binary, session: &mut Session) -> TypeResult<Type>
 }
 
 fn infer_unary_type(unary: &Unary, session: &mut Session) -> TypeResult<Type> {
-    let operand_type = infer_type(&unary.expr.r#expr, session)?;
+    let operand_type = infer_type(&unary.expr.r#expr, session)?.flat();
 
     match unary.op {
         UnaryOp::Bang => Ok(Type::Int),
@@ -605,7 +627,7 @@ fn infer_unary_type(unary: &Unary, session: &mut Session) -> TypeResult<Type> {
         UnaryOp::Ampersand => Ok(Type::Pointer(Box::new(operand_type))),
         UnaryOp::Asterisk => {
             if let Type::Pointer(inner) = operand_type {
-                Ok(*inner)
+                Ok((*inner).flat()) // デリファレンス結果も平坦化
             } else {
                 Err(TypeError::InvalidOperation {
                     op: "dereference".to_string(),

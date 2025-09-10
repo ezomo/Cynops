@@ -90,7 +90,7 @@ fn convert_type(ty: &old_ast::Type, session: &mut Session) -> new_ast::Type {
                 .collect(),
         }),
         old_ast::Type::Struct(s) => session
-            .get_variable(&s.ident.clone().as_ref().unwrap().as_same())
+            .get_type(&s.ident.clone().as_ref().unwrap().as_same())
             .unwrap(),
         old_ast::Type::Union(u) => new_ast::Type::union(convert_union(u, session)),
         old_ast::Type::Enum(e) => new_ast::Type::r#enum(convert_enum(e, session)),
@@ -116,11 +116,24 @@ fn convert_type(ty: &old_ast::Type, session: &mut Session) -> new_ast::Type {
                 ))
             },
         )),
-        old_ast::Type::Typedef(ident) => session.get_variable(&ident.as_same()).unwrap(),
+        old_ast::Type::Typedef(ident) => session.get_type(&ident.as_same()).unwrap(),
     }
 }
 
 fn convert_struct(s: &old_ast::Struct, session: &mut Session) -> new_ast::Struct {
+    // 内部で同じ方を参照している可能性があるのでダミー
+    // struct a{
+    //     struct a *hoge;
+    // }
+
+    let ident = s.ident.as_ref().map(|i| i.as_same());
+    if let Some(ref ident) = ident {
+        session.register_symbols(
+            ident.clone(),
+            new_ast::Type::Typedef(Symbol::new(ident.clone(), session.current_scope())),
+        );
+    }
+
     let members = s
         .member
         .iter()
@@ -128,7 +141,7 @@ fn convert_struct(s: &old_ast::Struct, session: &mut Session) -> new_ast::Struct
         .collect();
 
     let converted = new_ast::Struct::new(
-        s.ident.as_ref().map(|i| i.as_same()),
+        s.ident.as_ref().map(|i: &old_ast::Ident| i.as_same()),
         s.ident
             .as_ref()
             .unwrap()
@@ -201,10 +214,7 @@ fn convert_enum(e: &old_ast::Enum, session: &mut Session) -> new_ast::Enum {
 fn convert_member_decl(m: &old_ast::MemberDecl, session: &mut Session) -> new_ast::MemberDecl {
     let ty = convert_type(&m.ty, session);
     session.register_symbols(m.ident.as_same(), ty);
-    new_ast::MemberDecl::new(
-        Symbol::new(m.ident.as_same(), session.current_scope()),
-        convert_type(&m.ty, session),
-    )
+    new_ast::MemberDecl::new(Symbol::new(m.ident.as_same(), session.current_scope()))
 }
 
 fn convert_stmt(stmt: &old_ast::Stmt, session: &mut Session) -> new_ast::Stmt {
@@ -306,13 +316,12 @@ fn convert_decl_stmt(decl: &old_ast::DeclStmt, session: &mut Session) -> new_ast
         old_ast::DeclStmt::Union(u) => new_ast::DeclStmt::union(convert_union(u, session)),
         old_ast::DeclStmt::Enum(e) => new_ast::DeclStmt::r#enum(convert_enum(e, session)),
         old_ast::DeclStmt::Typedef(typedef) => {
-            let converted = new_ast::Typedef::new(
-                typedef.type_name.as_same(),
-                convert_type(&typedef.actual_type, session),
-            );
+            let converted =
+                new_ast::Symbol::new(typedef.type_name.as_same(), session.current_scope());
 
             // typedefをsessionに登録
-            session.register_symbols(converted.type_name.clone(), *converted.actual_type.clone());
+            let ty = convert_type(&typedef.actual_type, session);
+            session.register_symbols(converted.ident.clone(), ty);
 
             new_ast::DeclStmt::Typedef(converted)
         }
@@ -331,13 +340,14 @@ fn infer_array_length(init_data: &new_ast::InitData) -> Option<usize> {
 }
 
 fn convert_init(init: &old_ast::Init, session: &mut Session) -> new_ast::Init {
-    let mut member_decl = convert_member_decl(&init.r, session);
+    let member_decl = convert_member_decl(&init.r, session);
     let converted_init_data = init.l.as_ref().map(|data| convert_init_data(data, session));
 
     // 配列の長さ推論を実行
-    if let (Some(init_data), new_ast::Type::Array(array)) =
-        (&converted_init_data, &mut member_decl.ty)
-    {
+    if let (Some(init_data), new_ast::Type::Array(array)) = (
+        &converted_init_data,
+        &mut member_decl.sympl.get_type().unwrap().clone(),
+    ) {
         // 配列の長さがNoneの場合のみ推論
         if array.length.is_none() {
             if let Some(inferred_length) = infer_array_length(init_data) {

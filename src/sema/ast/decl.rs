@@ -1,9 +1,5 @@
 use super::TypedExpr;
-use super::Typedef;
-use super::{
-    Block, Ident, ScopePar,
-    types::{FunctionSig, Type},
-};
+use super::{Block, Ident, ScopePar, types::FunctionSig};
 use crate::sema::ast::Symbol;
 use std::hash::Hash;
 
@@ -13,7 +9,7 @@ pub enum DeclStmt {
     Struct(Struct),
     Union(Union),
     Enum(Enum),
-    Typedef(Typedef),
+    Typedef(Symbol),
 }
 impl DeclStmt {
     pub fn init_vec(vec: Vec<Init>) -> Self {
@@ -36,12 +32,11 @@ impl DeclStmt {
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct MemberDecl {
     pub sympl: Symbol,
-    pub ty: Type,
 }
 
 impl MemberDecl {
-    pub fn new(symbol: Symbol, ty: Type) -> Self {
-        MemberDecl { sympl: symbol, ty }
+    pub fn new(symbol: Symbol) -> Self {
+        MemberDecl { sympl: symbol }
     }
 }
 
