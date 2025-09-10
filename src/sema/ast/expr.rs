@@ -6,25 +6,6 @@ use std::hash::{Hash, Hasher};
 use std::rc::Weak;
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub struct PostfixChain {
-    pub base: TypedExpr,              // primary に相当する基の式
-    pub suffixes: Vec<PostfixSuffix>, // 後置操作の連続
-}
-
-impl PostfixChain {
-    pub fn new(base: TypedExpr, suffixes: Vec<PostfixSuffix>) -> Self {
-        PostfixChain { base, suffixes }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub enum PostfixSuffix {
-    ArrayAcsess(TypedExpr),              // [ expr ]
-    ArgList(Vec<Box<TypedExpr>>),        // ( arg_list )
-    MemberAccess(MemberAccessOp, Ident), // . ident または -> ident
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Unary {
     pub op: UnaryOp,
     pub expr: Box<TypedExpr>,
@@ -154,7 +135,6 @@ pub enum SemaExpr {
     Cast(Cast),
     Comma(Comma),
 }
-
 impl SemaExpr {
     pub fn num_int(n: usize) -> Self {
         SemaExpr::NumInt(n)
@@ -176,39 +156,47 @@ impl SemaExpr {
         SemaExpr::Symbol(name)
     }
 
-    pub fn unary(op: UnaryOp, expr: Box<TypedExpr>) -> Box<Self> {
-        Box::new(SemaExpr::Unary(Unary { op, expr }))
-    }
-
-    pub fn binary(op: BinaryOp, lhs: Box<TypedExpr>, rhs: Box<TypedExpr>) -> Box<Self> {
-        Box::new(SemaExpr::Binary(Binary { op, lhs, rhs }))
-    }
-
-    pub fn ternary(
-        cond: Box<TypedExpr>,
-        then_branch: TypedExpr,
-        else_branch: TypedExpr,
-    ) -> Box<Self> {
-        Box::new(SemaExpr::Ternary(Ternary {
-            cond,
-            then_branch: Box::new(then_branch),
-            else_branch: Box::new(else_branch),
-        }))
-    }
-
-    pub fn assign(op: AssignOp, lhs: Box<TypedExpr>, rhs: Box<TypedExpr>) -> Box<Self> {
-        Box::new(SemaExpr::Assign(Assign { op, lhs, rhs }))
-    }
-
-    pub fn call(func: TypedExpr, args: Vec<Box<TypedExpr>>) -> Self {
-        SemaExpr::Call(Call {
-            func: Box::new(func),
-            args,
+    pub fn unary(op: UnaryOp, expr: TypedExpr) -> Self {
+        SemaExpr::Unary(Unary {
+            op,
+            expr: Box::new(expr),
         })
     }
-    pub fn subscript(name: TypedExpr, index: TypedExpr) -> Self {
+
+    pub fn binary(op: BinaryOp, lhs: TypedExpr, rhs: TypedExpr) -> Self {
+        SemaExpr::Binary(Binary {
+            op,
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
+        })
+    }
+
+    pub fn ternary(cond: TypedExpr, then_branch: TypedExpr, else_branch: TypedExpr) -> Self {
+        SemaExpr::Ternary(Ternary {
+            cond: Box::new(cond),
+            then_branch: Box::new(then_branch),
+            else_branch: Box::new(else_branch),
+        })
+    }
+
+    pub fn assign(op: AssignOp, lhs: TypedExpr, rhs: TypedExpr) -> Self {
+        SemaExpr::Assign(Assign {
+            op,
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
+        })
+    }
+
+    pub fn call(func: TypedExpr, args: Vec<TypedExpr>) -> Self {
+        SemaExpr::Call(Call {
+            func: Box::new(func),
+            args: args.into_iter().map(Box::new).collect(),
+        })
+    }
+
+    pub fn subscript(subject: TypedExpr, index: TypedExpr) -> Self {
         SemaExpr::Subscript(Subscript {
-            subject: Box::new(name),
+            subject: Box::new(subject),
             index: Box::new(index),
         })
     }
@@ -216,27 +204,26 @@ impl SemaExpr {
     pub fn member_access(base: TypedExpr, member: Ident, kind: MemberAccessOp) -> Self {
         SemaExpr::MemberAccess(MemberAccess {
             base: Box::new(base),
-            member: member,
+            member,
             kind,
         })
     }
 
-    pub fn sizeof(sizeof: Sizeof) -> Box<Self> {
-        Box::new(SemaExpr::Sizeof(sizeof))
+    pub fn sizeof(sizeof: Sizeof) -> Self {
+        SemaExpr::Sizeof(sizeof)
     }
 
-    pub fn cast(r#type: Type, expr: TypedExpr) -> Box<Self> {
-        Box::new(SemaExpr::Cast(Cast {
+    pub fn cast(r#type: Type, expr: TypedExpr) -> Self {
+        SemaExpr::Cast(Cast {
             r#type: Box::new(r#type),
             expr: Box::new(expr),
-        }))
+        })
     }
 
     pub fn comma(assigns: Vec<TypedExpr>) -> Self {
         SemaExpr::Comma(Comma { assigns })
     }
 }
-
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct TypedExpr {
     pub r#type: Type,

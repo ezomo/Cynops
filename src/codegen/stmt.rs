@@ -56,7 +56,7 @@ fn declare_variable(init: Init, cgs: &mut CodeGenStatus) {
     }
 }
 
-fn declare_struct(init: Struct, cgs: &mut CodeGenStatus) {
+fn declare_struct(init: Struct, _cgs: &mut CodeGenStatus) {
     // 変数を割り当て
     println!(
         "{} = type {{{}}}",

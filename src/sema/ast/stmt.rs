@@ -4,8 +4,8 @@ pub struct Block {
     pub statements: Vec<Box<Stmt>>,
 }
 impl Block {
-    pub fn new(statements: Vec<Box<Stmt>>) -> Box<Self> {
-        Box::new(Self { statements })
+    pub fn new(statements: Vec<Box<Stmt>>) -> Self {
+        Self { statements }
     }
 }
 
@@ -96,6 +96,50 @@ pub enum Control {
     Switch(Switch),
 }
 
+impl Control {
+    pub fn r#if(cond: TypedExpr, then_branch: Stmt, else_branch: Option<Stmt>) -> Self {
+        Self::If(If {
+            cond: Box::new(cond),
+            then_branch: Box::new(then_branch),
+            else_branch: else_branch.map(Box::new),
+        })
+    }
+
+    pub fn r#switch(cond: TypedExpr, cases: Vec<SwitchCase>) -> Self {
+        Self::Switch(Switch {
+            cond: Box::new(cond),
+            cases,
+        })
+    }
+
+    pub fn r#while(cond: TypedExpr, body: Stmt) -> Self {
+        Self::While(While {
+            cond: Box::new(cond),
+            body: Box::new(body),
+        })
+    }
+    pub fn r#do_while(body: Stmt, cond: TypedExpr) -> Self {
+        Self::DoWhile(DoWhile {
+            body: Box::new(body),
+            cond: Box::new(cond),
+        })
+    }
+
+    pub fn r#for(
+        init: Option<TypedExpr>,
+        cond: Option<TypedExpr>,
+        step: Option<TypedExpr>,
+        body: Stmt,
+    ) -> Self {
+        Self::For(For {
+            init: init.map(|e| Box::new(e)),
+            cond: cond.map(|e| Box::new(e)),
+            step: step.map(|e| Box::new(e)),
+            body: Box::new(body),
+        })
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum Stmt {
     ExprStmt(TypedExpr), // 式文（関数呼び出し、代入など）
@@ -109,80 +153,44 @@ pub enum Stmt {
     Continue,
 }
 impl Stmt {
-    pub fn expr(expr: TypedExpr) -> Box<Self> {
-        Box::new(Stmt::ExprStmt(expr))
+    pub fn expr(expr: TypedExpr) -> Self {
+        Stmt::ExprStmt(expr)
     }
 
-    pub fn decl_stmt(decl_stmt: DeclStmt) -> Box<Self> {
-        Box::new(Stmt::DeclStmt(decl_stmt))
+    pub fn decl_stmt(decl_stmt: DeclStmt) -> Self {
+        Stmt::DeclStmt(decl_stmt)
     }
 
-    pub fn r#if(cond: TypedExpr, then_branch: Stmt, else_branch: Option<Stmt>) -> Box<Self> {
-        Box::new(Stmt::Control(Control::If(If {
-            cond: Box::new(cond),
-            then_branch: Box::new(then_branch),
-            else_branch: else_branch.map(Box::new),
-        })))
+    pub fn control(control: Control) -> Self {
+        Stmt::Control(control)
     }
 
-    pub fn r#switch(cond: TypedExpr, cases: Vec<SwitchCase>) -> Box<Self> {
-        Box::new(Stmt::Control(Control::Switch(Switch {
-            cond: Box::new(cond),
-            cases,
-        })))
-    }
-
-    pub fn r#while(cond: TypedExpr, body: Stmt) -> Box<Self> {
-        Box::new(Stmt::Control(Control::While(While {
-            cond: Box::new(cond),
-            body: Box::new(body),
-        })))
-    }
-    pub fn r#do_while(body: Stmt, cond: TypedExpr) -> Box<Self> {
-        Box::new(Stmt::Control(Control::DoWhile(DoWhile {
-            body: Box::new(body),
-            cond: Box::new(cond),
-        })))
-    }
-
-    pub fn r#for(
-        init: Option<TypedExpr>,
-        cond: Option<TypedExpr>,
-        step: Option<TypedExpr>,
-        body: Stmt,
-    ) -> Box<Self> {
-        Box::new(Stmt::Control(Control::For(For {
-            init: init.map(|e| Box::new(e)),
-            cond: cond.map(|e| Box::new(e)),
-            step: step.map(|e| Box::new(e)),
-            body: Box::new(body),
-        })))
-    }
-
-    pub fn r#return(value: Option<TypedExpr>) -> Box<Self> {
-        Box::new(Stmt::Return(Return {
+    pub fn r#return(value: Option<TypedExpr>) -> Self {
+        Stmt::Return(Return {
             value: value.map(|v| Box::new(v)),
-        }))
+        })
     }
 
-    pub fn goto(label: Ident) -> Box<Self> {
-        Box::new(Stmt::Goto(Goto { label }))
+    pub fn goto(label: Ident) -> Self {
+        Stmt::Goto(Goto { label })
     }
 
-    pub fn label(name: Ident, stmt: Stmt) -> Box<Self> {
-        Box::new(Stmt::Label(Label {
+    pub fn label(name: Ident, stmt: Stmt) -> Self {
+        Stmt::Label(Label {
             name,
             stmt: Box::new(stmt),
-        }))
+        })
     }
 
-    pub fn block(block: Block) -> Box<Self> {
-        Box::new(Stmt::Block(block))
+    pub fn block(block: Block) -> Self {
+        Stmt::Block(block)
     }
-    pub fn r#break() -> Box<Self> {
-        Box::new(Stmt::Break)
+
+    pub fn r#break() -> Self {
+        Stmt::Break
     }
-    pub fn r#continue() -> Box<Self> {
-        Box::new(Stmt::Continue)
+
+    pub fn r#continue() -> Self {
+        Stmt::Continue
     }
 }

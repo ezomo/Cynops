@@ -13,7 +13,7 @@ pub fn program(program: &old_ast::Program, session: &mut Session) -> new_ast::Pr
         }
     }
 
-    new_ast::Program { items: new_items }
+    new_ast::Program::new(new_items)
 }
 
 fn convert_toplevel(
@@ -21,20 +21,18 @@ fn convert_toplevel(
     session: &mut Session,
 ) -> Option<new_ast::TopLevel> {
     match toplevel {
-        old_ast::TopLevel::FunctionDef(func_def) => Some(new_ast::TopLevel::FunctionDef(
-            convert_function_def(func_def, session),
-        )),
-        old_ast::TopLevel::FunctionProto(func_proto) => Some(new_ast::TopLevel::FunctionProto(
-            convert_function_proto(func_proto, session),
-        )),
-        old_ast::TopLevel::Stmt(stmt) => Some(new_ast::TopLevel::Stmt(convert_stmt(stmt, session))),
+        old_ast::TopLevel::FunctionDef(func_def) => Some(convert_function_def(func_def, session)),
+        old_ast::TopLevel::FunctionProto(func_proto) => {
+            Some(convert_function_proto(func_proto, session))
+        }
+        old_ast::TopLevel::Stmt(stmt) => Some(new_ast::TopLevel::stmt(convert_stmt(stmt, session))),
     }
 }
 
 fn convert_function_def(
     func_def: &old_ast::FunctionDef,
     session: &mut Session,
-) -> new_ast::FunctionDef {
+) -> new_ast::TopLevel {
     // 関数シグニチャを変換
     let sig = convert_function_sig(&func_def.sig, session);
 
@@ -49,10 +47,7 @@ fn convert_function_def(
     if let Some(func_type) = sig.ty.as_func() {
         for (param_name, param_type) in func_def.param_names.iter().zip(&func_type.params) {
             session.register_symbols(param_name.as_same(), param_type.clone());
-            symbols.push(Symbol::new(
-                param_name.as_same(),
-                Rc::downgrade(&session.current_scope),
-            ));
+            symbols.push(Symbol::new(param_name.as_same(), session.current_scope()));
         }
     }
 
@@ -60,30 +55,23 @@ fn convert_function_def(
 
     session.pop_scope();
 
-    new_ast::FunctionDef {
-        sig,
-        param_names: symbols,
-        body: *body,
-    }
+    new_ast::TopLevel::function_def(sig, symbols, *body)
 }
 
 fn convert_function_proto(
     func_proto: &old_ast::FunctionProto,
     session: &mut Session,
-) -> new_ast::FunctionProto {
+) -> new_ast::TopLevel {
     let sig = convert_function_sig(&func_proto.sig, session);
 
     // プロトタイプもsessionに登録
     session.register_function(sig.ident.clone(), sig.ty.clone());
 
-    new_ast::FunctionProto { sig }
+    new_ast::TopLevel::function_proto(sig)
 }
 
 fn convert_function_sig(sig: &old_ast::FunctionSig, session: &mut Session) -> new_ast::FunctionSig {
-    new_ast::FunctionSig {
-        ty: convert_type(&sig.ty, session),
-        ident: sig.ident.as_same(),
-    }
+    new_ast::FunctionSig::new(convert_type(&sig.ty, session), sig.ident.as_same())
 }
 
 fn convert_type(ty: &old_ast::Type, session: &mut Session) -> new_ast::Type {
@@ -104,11 +92,9 @@ fn convert_type(ty: &old_ast::Type, session: &mut Session) -> new_ast::Type {
         old_ast::Type::Struct(s) => session
             .get_variable(&s.ident.clone().as_ref().unwrap().as_same())
             .unwrap(),
-        old_ast::Type::Union(u) => new_ast::Type::Union(convert_union(u, session)),
-        old_ast::Type::Enum(e) => new_ast::Type::Enum(convert_enum(e, session)),
-        old_ast::Type::Pointer(inner) => {
-            new_ast::Type::Pointer(Box::new(convert_type(inner, session)))
-        }
+        old_ast::Type::Union(u) => new_ast::Type::union(convert_union(u, session)),
+        old_ast::Type::Enum(e) => new_ast::Type::r#enum(convert_enum(e, session)),
+        old_ast::Type::Pointer(inner) => new_ast::Type::pointer(convert_type(inner, session)),
         old_ast::Type::Array(arr) => new_ast::Type::Array(Array::new(
             convert_type(&arr.array_of, session),
             if arr.length.is_none() {
@@ -141,17 +127,16 @@ fn convert_struct(s: &old_ast::Struct, session: &mut Session) -> new_ast::Struct
         .map(|m| convert_member_decl(m, session))
         .collect();
 
-    let converted = new_ast::Struct {
-        ident: s.ident.as_ref().map(|i| i.as_same()),
-        type_ident: s
-            .ident
+    let converted = new_ast::Struct::new(
+        s.ident.as_ref().map(|i| i.as_same()),
+        s.ident
             .as_ref()
             .unwrap()
             .as_same()
             .with_suffix(session.scope_id()),
-        scope_ptr: ScopePar::new(Rc::downgrade(&session.current_scope)),
-        member: members,
-    };
+        ScopePar::new(session.current_scope()),
+        members,
+    );
 
     // 名前がある場合はsessionに登録
     if let Some(ref ident) = converted.ident {
@@ -168,10 +153,7 @@ fn convert_union(u: &old_ast::Union, session: &mut Session) -> new_ast::Union {
         .map(|m| convert_member_decl(m, session))
         .collect();
 
-    let converted = new_ast::Union {
-        ident: u.ident.as_ref().map(|i| i.as_same()),
-        member: members,
-    };
+    let converted = new_ast::Union::new(u.ident.as_ref().map(|i| i.as_same()), members);
 
     // 名前がある場合はsessionに登録
     if let Some(ref ident) = converted.ident {
@@ -185,16 +167,15 @@ fn convert_enum(e: &old_ast::Enum, session: &mut Session) -> new_ast::Enum {
     let variants = e
         .variants
         .iter()
-        .map(|v| new_ast::EnumMember {
-            symbol: Symbol::new(v.ident.as_same(), session.current_scope()),
-            value: v.value,
+        .map(|v| {
+            new_ast::EnumMember::new(
+                Symbol::new(v.ident.as_same(), session.current_scope()),
+                v.value,
+            )
         })
         .collect();
 
-    let converted = new_ast::Enum {
-        ident: e.ident.as_ref().map(|i| i.as_same()),
-        variants,
-    };
+    let converted = new_ast::Enum::new(e.ident.as_ref().map(|i| i.as_same()), variants);
     let ty = new_ast::Type::Enum(converted.clone());
 
     // 名前がある場合はsessionに登録
@@ -213,35 +194,29 @@ fn convert_enum(e: &old_ast::Enum, session: &mut Session) -> new_ast::Enum {
 fn convert_member_decl(m: &old_ast::MemberDecl, session: &mut Session) -> new_ast::MemberDecl {
     let ty = convert_type(&m.ty, session);
     session.register_symbols(m.ident.as_same(), ty);
-    new_ast::MemberDecl {
-        sympl: Symbol::new(m.ident.as_same(), Rc::downgrade(&session.current_scope)),
-        ty: convert_type(&m.ty, session),
-    }
+    new_ast::MemberDecl::new(
+        Symbol::new(m.ident.as_same(), session.current_scope()),
+        convert_type(&m.ty, session),
+    )
 }
 
 fn convert_stmt(stmt: &old_ast::Stmt, session: &mut Session) -> new_ast::Stmt {
     match stmt {
-        old_ast::Stmt::ExprStmt(expr) => new_ast::Stmt::ExprStmt(convert_expr(expr, session)),
-        old_ast::Stmt::DeclStmt(decl) => new_ast::Stmt::DeclStmt(convert_decl_stmt(decl, session)),
+        old_ast::Stmt::ExprStmt(expr) => new_ast::Stmt::expr(convert_expr(expr, session)),
+        old_ast::Stmt::DeclStmt(decl) => new_ast::Stmt::decl_stmt(convert_decl_stmt(decl, session)),
         old_ast::Stmt::Control(control) => {
-            new_ast::Stmt::Control(convert_control(control, session))
+            new_ast::Stmt::control(convert_control(control, session))
         }
-        old_ast::Stmt::Return(ret) => new_ast::Stmt::Return(new_ast::Return {
-            value: ret
-                .value
-                .as_ref()
-                .map(|v| Box::new(convert_expr(v, session))),
-        }),
-        old_ast::Stmt::Goto(goto) => new_ast::Stmt::Goto(new_ast::Goto {
-            label: goto.label.as_same(),
-        }),
-        old_ast::Stmt::Label(label) => new_ast::Stmt::Label(new_ast::Label {
-            name: label.name.as_same(),
-            stmt: Box::new(convert_stmt(&label.stmt, session)),
-        }),
-        old_ast::Stmt::Block(block) => new_ast::Stmt::Block(*convert_block(block, session)),
-        old_ast::Stmt::Break => new_ast::Stmt::Break,
-        old_ast::Stmt::Continue => new_ast::Stmt::Continue,
+        old_ast::Stmt::Return(ret) => {
+            new_ast::Stmt::r#return(ret.value.as_ref().map(|v| convert_expr(v, session)))
+        }
+        old_ast::Stmt::Goto(goto) => new_ast::Stmt::goto(goto.label.as_same()),
+        old_ast::Stmt::Label(label) => {
+            new_ast::Stmt::label(label.name.as_same(), convert_stmt(&label.stmt, session))
+        }
+        old_ast::Stmt::Block(block) => new_ast::Stmt::block(*convert_block(block, session)),
+        old_ast::Stmt::Break => new_ast::Stmt::r#break(),
+        old_ast::Stmt::Continue => new_ast::Stmt::r#continue(),
     }
 }
 
@@ -256,70 +231,58 @@ fn convert_block(block: &old_ast::Block, session: &mut Session) -> Box<new_ast::
 
     session.pop_scope();
 
-    Box::new(new_ast::Block { statements })
+    Box::new(new_ast::Block::new(statements))
 }
 
 fn convert_control(control: &old_ast::Control, session: &mut Session) -> new_ast::Control {
     match control {
-        old_ast::Control::If(if_stmt) => new_ast::Control::If(new_ast::If {
-            cond: Box::new(convert_expr(&if_stmt.cond, session)),
-            then_branch: Box::new(convert_stmt(&if_stmt.then_branch, session)),
-            else_branch: if_stmt
+        old_ast::Control::If(if_stmt) => new_ast::Control::r#if(
+            convert_expr(&if_stmt.cond, session),
+            convert_stmt(&if_stmt.then_branch, session),
+            if_stmt
                 .else_branch
                 .as_ref()
-                .map(|e| Box::new(convert_stmt(e, session))),
-        }),
-        old_ast::Control::While(while_stmt) => new_ast::Control::While(new_ast::While {
-            cond: Box::new(convert_expr(&while_stmt.cond, session)),
-            body: Box::new(convert_stmt(&while_stmt.body, session)),
-        }),
-        old_ast::Control::DoWhile(do_while) => new_ast::Control::DoWhile(new_ast::DoWhile {
-            body: Box::new(convert_stmt(&do_while.body, session)),
-            cond: Box::new(convert_expr(&do_while.cond, session)),
-        }),
-        old_ast::Control::For(for_stmt) => new_ast::Control::For(new_ast::For {
-            init: for_stmt
-                .init
-                .as_ref()
-                .map(|i| Box::new(convert_expr(i, session))),
-            cond: for_stmt
-                .cond
-                .as_ref()
-                .map(|c| Box::new(convert_expr(c, session))),
-            step: for_stmt
-                .step
-                .as_ref()
-                .map(|s| Box::new(convert_expr(s, session))),
-            body: Box::new(convert_stmt(&for_stmt.body, session)),
-        }),
-        old_ast::Control::Switch(switch) => new_ast::Control::Switch(new_ast::Switch {
-            cond: Box::new(convert_expr(&switch.cond, session)),
-            cases: switch
+                .map(|e| convert_stmt(e, session)),
+        ),
+        old_ast::Control::While(while_stmt) => new_ast::Control::r#while(
+            convert_expr(&while_stmt.cond, session),
+            convert_stmt(&while_stmt.body, session),
+        ),
+        old_ast::Control::DoWhile(do_while) => new_ast::Control::r#do_while(
+            convert_stmt(&do_while.body, session),
+            convert_expr(&do_while.cond, session),
+        ),
+        old_ast::Control::For(for_stmt) => new_ast::Control::r#for(
+            for_stmt.init.as_ref().map(|i| convert_expr(i, session)),
+            for_stmt.cond.as_ref().map(|c| convert_expr(c, session)),
+            for_stmt.step.as_ref().map(|s| convert_expr(s, session)),
+            convert_stmt(&for_stmt.body, session),
+        ),
+        old_ast::Control::Switch(switch) => new_ast::Control::r#switch(
+            convert_expr(&switch.cond, session),
+            switch
                 .cases
                 .iter()
                 .map(|c| convert_switch_case(c, session))
                 .collect(),
-        }),
+        ),
     }
 }
-
 fn convert_switch_case(case: &old_ast::SwitchCase, session: &mut Session) -> new_ast::SwitchCase {
     match case {
-        old_ast::SwitchCase::Case(c) => new_ast::SwitchCase::Case(new_ast::Case {
-            const_expr: convert_expr(&c.const_expr, session),
-            stmts: c
-                .stmts
+        old_ast::SwitchCase::Case(c) => new_ast::SwitchCase::case(
+            convert_expr(&c.const_expr, session),
+            c.stmts
                 .iter()
                 .map(|s| Box::new(convert_stmt(s, session)))
                 .collect(),
-        }),
-        old_ast::SwitchCase::Default(d) => new_ast::SwitchCase::Default(new_ast::DefaultCase {
-            stmts: d
-                .stmts
+        ),
+        old_ast::SwitchCase::Default(d) => new_ast::SwitchCase::default(
+            d.stmts
                 .iter()
                 .map(|s| Box::new(convert_stmt(s, session)))
                 .collect(),
-        }),
+        ),
     }
 }
 
@@ -330,16 +293,16 @@ fn convert_decl_stmt(decl: &old_ast::DeclStmt, session: &mut Session) -> new_ast
                 .iter()
                 .map(|init| convert_init(init, session))
                 .collect();
-            new_ast::DeclStmt::InitVec(converted_inits)
+            new_ast::DeclStmt::init_vec(converted_inits)
         }
-        old_ast::DeclStmt::Struct(s) => new_ast::DeclStmt::Struct(convert_struct(s, session)),
-        old_ast::DeclStmt::Union(u) => new_ast::DeclStmt::Union(convert_union(u, session)),
-        old_ast::DeclStmt::Enum(e) => new_ast::DeclStmt::Enum(convert_enum(e, session)),
+        old_ast::DeclStmt::Struct(s) => new_ast::DeclStmt::r#struct(convert_struct(s, session)),
+        old_ast::DeclStmt::Union(u) => new_ast::DeclStmt::union(convert_union(u, session)),
+        old_ast::DeclStmt::Enum(e) => new_ast::DeclStmt::r#enum(convert_enum(e, session)),
         old_ast::DeclStmt::Typedef(typedef) => {
-            let converted = new_ast::Typedef {
-                type_name: typedef.type_name.as_same(),
-                actual_type: Box::new(convert_type(&typedef.actual_type, session)),
-            };
+            let converted = new_ast::Typedef::new(
+                typedef.type_name.as_same(),
+                convert_type(&typedef.actual_type, session),
+            );
 
             // typedefをsessionに登録
             session.register_symbols(converted.type_name.clone(), *converted.actual_type.clone());
@@ -396,11 +359,7 @@ fn convert_init(init: &old_ast::Init, session: &mut Session) -> new_ast::Init {
     }
 
     // 変数をsessionに登録
-
-    new_ast::Init {
-        r: member_decl,
-        l: converted_init_data,
-    }
+    new_ast::Init::new(member_decl, converted_init_data)
 }
 
 fn convert_init_data(data: &old_ast::InitData, session: &mut Session) -> new_ast::InitData {
@@ -414,67 +373,59 @@ fn convert_init_data(data: &old_ast::InitData, session: &mut Session) -> new_ast
         ),
     }
 }
-
 fn convert_expr(expr: &old_ast::Expr, session: &mut Session) -> new_ast::TypedExpr {
     let sema_expr = match expr {
-        old_ast::Expr::Assign(assign) => new_ast::SemaExpr::Assign(new_ast::Assign {
-            op: assign.op,
-            lhs: Box::new(convert_expr(&assign.lhs, session)),
-            rhs: Box::new(convert_expr(&assign.rhs, session)),
-        }),
-        old_ast::Expr::Binary(binary) => new_ast::SemaExpr::Binary(new_ast::Binary {
-            op: binary.op,
-            lhs: Box::new(convert_expr(&binary.lhs, session)),
-            rhs: Box::new(convert_expr(&binary.rhs, session)),
-        }),
-        old_ast::Expr::Call(call) => new_ast::SemaExpr::Call(new_ast::Call {
-            func: Box::new(convert_expr(&call.func, session)),
-            args: call
-                .args
-                .iter()
-                .map(|a| Box::new(convert_expr(a, session)))
-                .collect(),
-        }),
-        old_ast::Expr::Char(c) => new_ast::SemaExpr::Char(*c),
-        old_ast::Expr::String(s) => new_ast::SemaExpr::String(s.clone()),
+        old_ast::Expr::Assign(assign) => new_ast::SemaExpr::assign(
+            assign.op,
+            convert_expr(&assign.lhs, session),
+            convert_expr(&assign.rhs, session),
+        ),
+        old_ast::Expr::Binary(binary) => new_ast::SemaExpr::binary(
+            binary.op,
+            convert_expr(&binary.lhs, session),
+            convert_expr(&binary.rhs, session),
+        ),
+        old_ast::Expr::Call(call) => new_ast::SemaExpr::call(
+            convert_expr(&call.func, session),
+            call.args.iter().map(|a| convert_expr(a, session)).collect(),
+        ),
+        old_ast::Expr::Char(c) => new_ast::SemaExpr::char_lit(*c),
+        old_ast::Expr::String(s) => new_ast::SemaExpr::string(s.clone()),
         old_ast::Expr::Ident(ident) => {
             // Identを解決してSymbolに変換
             let symbol = new_ast::Symbol::new(
                 ident.as_same(),
                 Rc::downgrade(&session.get_scope(&ident.as_same())),
             );
-            new_ast::SemaExpr::Symbol(symbol)
+            new_ast::SemaExpr::ident(symbol)
         }
-        old_ast::Expr::NumInt(n) => new_ast::SemaExpr::NumInt(*n),
-        old_ast::Expr::NumFloat(f) => new_ast::SemaExpr::NumFloat(*f),
+        old_ast::Expr::NumInt(n) => new_ast::SemaExpr::num_int(*n),
+        old_ast::Expr::NumFloat(f) => new_ast::SemaExpr::num_float(*f),
         old_ast::Expr::Postfix(_postfix) => {
             // Postfixは新しいASTでは別の形で処理する必要があります
             // とりあえずUnresolvedにしておく
             return new_ast::TypedExpr::new(
                 new_ast::Type::Unresolved,
-                new_ast::SemaExpr::NumInt(0),
+                new_ast::SemaExpr::num_int(0),
             );
         }
-        old_ast::Expr::Subscript(subscript) => new_ast::SemaExpr::Subscript(new_ast::Subscript {
-            subject: Box::new(convert_expr(&subscript.name, session)),
-            index: Box::new(convert_expr(&subscript.index, session)),
-        }),
-        old_ast::Expr::MemberAccess(member) => {
-            new_ast::SemaExpr::MemberAccess(new_ast::MemberAccess {
-                base: Box::new(convert_expr(&member.base, session)),
-                member: member.member.as_same(),
-                kind: member.kind.clone(),
-            })
+        old_ast::Expr::Subscript(subscript) => new_ast::SemaExpr::subscript(
+            convert_expr(&subscript.name, session),
+            convert_expr(&subscript.index, session),
+        ),
+        old_ast::Expr::MemberAccess(member) => new_ast::SemaExpr::member_access(
+            convert_expr(&member.base, session),
+            member.member.as_same(),
+            member.kind.clone(),
+        ),
+        old_ast::Expr::Ternary(ternary) => new_ast::SemaExpr::ternary(
+            convert_expr(&ternary.cond, session),
+            convert_expr(&ternary.then_branch, session),
+            convert_expr(&ternary.else_branch, session),
+        ),
+        old_ast::Expr::Unary(unary) => {
+            new_ast::SemaExpr::unary(unary.op, convert_expr(&unary.expr, session))
         }
-        old_ast::Expr::Ternary(ternary) => new_ast::SemaExpr::Ternary(new_ast::Ternary {
-            cond: Box::new(convert_expr(&ternary.cond, session)),
-            then_branch: Box::new(convert_expr(&ternary.then_branch, session)),
-            else_branch: Box::new(convert_expr(&ternary.else_branch, session)),
-        }),
-        old_ast::Expr::Unary(unary) => new_ast::SemaExpr::Unary(new_ast::Unary {
-            op: unary.op,
-            expr: Box::new(convert_expr(&unary.expr, session)),
-        }),
         old_ast::Expr::Sizeof(sizeof) => {
             let converted_sizeof = match sizeof {
                 old_ast::Sizeof::Type(ty) => new_ast::Sizeof::Type(convert_type(ty, session)),
@@ -482,19 +433,19 @@ fn convert_expr(expr: &old_ast::Expr, session: &mut Session) -> new_ast::TypedEx
                     new_ast::Sizeof::TypedExpr(Box::new(convert_expr(expr, session)))
                 }
             };
-            new_ast::SemaExpr::Sizeof(converted_sizeof)
+            new_ast::SemaExpr::sizeof(converted_sizeof)
         }
-        old_ast::Expr::Cast(cast) => new_ast::SemaExpr::Cast(new_ast::Cast {
-            r#type: Box::new(convert_type(&cast.r#type, session)),
-            expr: Box::new(convert_expr(&cast.expr, session)),
-        }),
-        old_ast::Expr::Comma(comma) => new_ast::SemaExpr::Comma(new_ast::Comma {
-            assigns: comma
+        old_ast::Expr::Cast(cast) => new_ast::SemaExpr::cast(
+            convert_type(&cast.r#type, session),
+            convert_expr(&cast.expr, session),
+        ),
+        old_ast::Expr::Comma(comma) => new_ast::SemaExpr::comma(
+            comma
                 .assigns
                 .iter()
                 .map(|e| convert_expr(e, session))
                 .collect(),
-        }),
+        ),
     };
 
     // とりあえずすべての式の型をUnresolvedにする

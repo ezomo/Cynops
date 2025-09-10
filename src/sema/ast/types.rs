@@ -64,6 +64,9 @@ impl Type {
     pub fn r#enum(e: Enum) -> Self {
         Type::Enum(e)
     }
+    pub fn pointer(p: Type) -> Self {
+        Type::Pointer(Box::new(p))
+    }
     /// Type を Rust 風の表記に変換する
     pub fn to_rust_format(&self) -> String {
         match self {
@@ -127,27 +130,6 @@ impl Type {
     }
     pub fn as_struct(&self) -> Option<&Struct> {
         if let Type::Struct(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-    pub fn as_union(&self) -> Option<&Union> {
-        if let Type::Union(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-    pub fn as_enum(&self) -> Option<&Enum> {
-        if let Type::Enum(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-    pub fn as_pointer(&self) -> Option<&Box<Type>> {
-        if let Type::Pointer(v) = self {
             Some(v)
         } else {
             None

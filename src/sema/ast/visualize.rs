@@ -1067,37 +1067,6 @@ impl Visualize for Type {
     }
 }
 
-// Implementation for PostfixChain
-impl OneLine for PostfixChain {
-    fn oneline(&self) -> String {
-        let mut result = self.base.oneline();
-        for suffix in &self.suffixes {
-            result.push_str(&suffix.oneline());
-        }
-        result
-    }
-}
-
-// Implementation for PostfixSuffix
-impl OneLine for PostfixSuffix {
-    fn oneline(&self) -> String {
-        match self {
-            PostfixSuffix::ArrayAcsess(expr) => format!("[{}]", expr.oneline()),
-            PostfixSuffix::ArgList(args) => {
-                let arg_strings: Vec<String> = args.iter().map(|arg| arg.oneline()).collect();
-                format!("({})", arg_strings.join(", "))
-            }
-            PostfixSuffix::MemberAccess(op, ident) => {
-                let op_str = match op {
-                    MemberAccessOp::Dot => ".",
-                    MemberAccessOp::MinusGreater => "->",
-                };
-                format!("{}{}", op_str, ident.name)
-            }
-        }
-    }
-}
-
 // Implementation for individual expression types
 impl OneLine for Binary {
     fn oneline(&self) -> String {

@@ -99,7 +99,7 @@ fn simplify_decl_stmt(decl_stmt: &mut DeclStmt, session: &mut Session) -> Vec<De
             }
             vec![decl_stmt.clone()]
         }
-        DeclStmt::Struct(struct_decl) => {
+        DeclStmt::Struct(_) => {
             vec![decl_stmt.clone()]
         }
         DeclStmt::Union(_) => {

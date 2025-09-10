@@ -126,9 +126,9 @@ fn resolve_block(block: &Block, session: &mut Session) -> TypeResult<Block> {
 
 fn resolve_stmt(stmt: &Stmt, session: &mut Session) -> TypeResult<Stmt> {
     match stmt {
-        Stmt::ExprStmt(expr) => Ok(Stmt::ExprStmt(resolve_typed_expr(expr, session)?)),
-        Stmt::DeclStmt(decl) => Ok(Stmt::DeclStmt(resolve_decl_stmt(decl, session)?)),
-        Stmt::Control(control) => Ok(Stmt::Control(resolve_control(control, session)?)),
+        Stmt::ExprStmt(expr) => Ok(Stmt::expr(resolve_typed_expr(expr, session)?)),
+        Stmt::DeclStmt(decl) => Ok(Stmt::decl_stmt(resolve_decl_stmt(decl, session)?)),
+        Stmt::Control(control) => Ok(Stmt::control(resolve_control(control, session)?)),
         Stmt::Return(ret) => Ok(Stmt::Return(Return {
             value: match &ret.value {
                 Some(v) => Some(Box::new(resolve_typed_expr(v, session)?)),
@@ -146,47 +146,47 @@ fn resolve_stmt(stmt: &Stmt, session: &mut Session) -> TypeResult<Stmt> {
 
 fn resolve_control(control: &Control, session: &mut Session) -> TypeResult<Control> {
     match control {
-        Control::If(if_stmt) => Ok(Control::If(If {
-            cond: Box::new(resolve_typed_expr(&if_stmt.cond, session)?),
-            then_branch: Box::new(resolve_stmt(&if_stmt.then_branch, session)?),
-            else_branch: match &if_stmt.else_branch {
-                Some(e) => Some(Box::new(resolve_stmt(e, session)?)),
+        Control::If(if_stmt) => Ok(Control::r#if(
+            resolve_typed_expr(&if_stmt.cond, session)?,
+            resolve_stmt(&if_stmt.then_branch, session)?,
+            match &if_stmt.else_branch {
+                Some(e) => Some(resolve_stmt(e, session)?),
                 None => None,
             },
-        })),
-        Control::While(while_stmt) => Ok(Control::While(While {
-            cond: Box::new(resolve_typed_expr(&while_stmt.cond, session)?),
-            body: Box::new(resolve_stmt(&while_stmt.body, session)?),
-        })),
-        Control::DoWhile(do_while) => Ok(Control::DoWhile(DoWhile {
-            body: Box::new(resolve_stmt(&do_while.body, session)?),
-            cond: Box::new(resolve_typed_expr(&do_while.cond, session)?),
-        })),
-        Control::For(for_stmt) => Ok(Control::For(For {
-            init: match &for_stmt.init {
-                Some(i) => Some(Box::new(resolve_typed_expr(i, session)?)),
+        )),
+        Control::While(while_stmt) => Ok(Control::r#while(
+            resolve_typed_expr(&while_stmt.cond, session)?,
+            resolve_stmt(&while_stmt.body, session)?,
+        )),
+        Control::DoWhile(do_while) => Ok(Control::r#do_while(
+            resolve_stmt(&do_while.body, session)?,
+            resolve_typed_expr(&do_while.cond, session)?,
+        )),
+        Control::For(for_stmt) => Ok(Control::r#for(
+            match &for_stmt.init {
+                Some(i) => Some(resolve_typed_expr(i, session)?),
                 None => None,
             },
-            cond: match &for_stmt.cond {
-                Some(c) => Some(Box::new(resolve_typed_expr(c, session)?)),
+            match &for_stmt.cond {
+                Some(c) => Some(resolve_typed_expr(c, session)?),
                 None => None,
             },
-            step: match &for_stmt.step {
-                Some(s) => Some(Box::new(resolve_typed_expr(s, session)?)),
+            match &for_stmt.step {
+                Some(s) => Some(resolve_typed_expr(s, session)?),
                 None => None,
             },
-            body: Box::new(resolve_stmt(&for_stmt.body, session)?),
-        })),
-        Control::Switch(switch) => Ok(Control::Switch(Switch {
-            cond: Box::new(resolve_typed_expr(&switch.cond, session)?),
-            cases: {
-                let mut cases = Vec::new();
-                for c in &switch.cases {
-                    cases.push(resolve_switch_case(c, session)?);
-                }
-                cases
-            },
-        })),
+            resolve_stmt(&for_stmt.body, session)?,
+        )),
+        Control::Switch(switch) => {
+            let mut cases = Vec::new();
+            for c in &switch.cases {
+                cases.push(resolve_switch_case(c, session)?);
+            }
+            Ok(Control::r#switch(
+                resolve_typed_expr(&switch.cond, session)?,
+                cases,
+            ))
+        }
     }
 }
 
@@ -428,7 +428,7 @@ fn resolve_sema_expr(expr: &SemaExpr, session: &mut Session) -> TypeResult<SemaE
 fn check_function_call(
     func_expr: &TypedExpr,
     args: &[Box<TypedExpr>],
-    session: &mut Session,
+    _session: &mut Session,
 ) -> TypeResult<()> {
     let func_type = &func_expr.r#type;
 
@@ -520,17 +520,7 @@ fn infer_type(expr: &SemaExpr, session: &mut Session) -> TypeResult<Type> {
             let base_type = infer_type(&member.base.r#expr, session)?;
             let actual_type = match &member.kind {
                 MemberAccessOp::Dot => base_type.clone(),
-                MemberAccessOp::MinusGreater => {
-                    if let Type::Pointer(inner) = base_type.clone() {
-                        *inner
-                    } else {
-                        return Err(TypeError::InvalidOperation {
-                            op: "-> operator".to_string(),
-                            operand_type: base_type,
-                        });
-                    }
-                }
-                _ => unreachable!(""),
+                _ => unreachable!(),
             };
 
             match actual_type.clone() {

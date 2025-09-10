@@ -40,8 +40,8 @@ pub struct MemberDecl {
 }
 
 impl MemberDecl {
-    pub fn new(ident: Symbol, ty: Type) -> Self {
-        MemberDecl { sympl: ident, ty }
+    pub fn new(symbol: Symbol, ty: Type) -> Self {
+        MemberDecl { sympl: symbol, ty }
     }
 }
 
@@ -119,16 +119,6 @@ pub struct FunctionDef {
 pub enum InitData {
     Expr(TypedExpr),
     Compound(Vec<InitData>), // 構造体・配列初期化子 {1, 2}
-}
-
-impl InitData {
-    pub fn as_compound(&self) -> Option<&Vec<InitData>> {
-        if let Self::Compound(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]

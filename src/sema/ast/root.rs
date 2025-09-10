@@ -1,16 +1,17 @@
+use crate::sema::ast::Symbol;
+
 use super::Block;
 use super::FunctionSig;
 use super::Stmt;
 use super::decl::FunctionDef;
-use crate::ast::Ident;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Program {
     pub items: Vec<TopLevel>,
 }
 impl Program {
-    pub fn new() -> Self {
-        Self { items: vec![] }
+    pub fn new(items: Vec<TopLevel>) -> Self {
+        Self { items }
     }
 }
 
@@ -26,13 +27,13 @@ pub enum TopLevel {
     Stmt(Stmt),
 }
 impl TopLevel {
-    // pub fn function_def(function_sig: FunctionSig, param_names: Vec<Ident>, stmt: Block) -> Self {
-    //     TopLevel::FunctionDef(FunctionDef {
-    //         sig: function_sig,
-    //         body: stmt,
-    //         param_names: param_names, // Provide an appropriate value for param_name
-    //     })
-    // }
+    pub fn function_def(function_sig: FunctionSig, param_names: Vec<Symbol>, stmt: Block) -> Self {
+        TopLevel::FunctionDef(FunctionDef {
+            sig: function_sig,
+            body: stmt,
+            param_names: param_names, // Provide an appropriate value for param_name
+        })
+    }
 
     pub fn stmt(stmt: Stmt) -> Self {
         TopLevel::Stmt(stmt)
