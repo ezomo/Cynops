@@ -132,7 +132,7 @@ impl NameGenerator {
 
     pub fn register(&mut self) -> LLVMValue {
         LLVMValue {
-            variable: format!("%{}", self.next()),
+            variable: format!("%tmp{}", self.next()),
             ty: LLVMType::Register,
         }
     }
@@ -146,7 +146,7 @@ impl NameGenerator {
 
     pub fn variable(&mut self) -> LLVMValue {
         LLVMValue {
-            variable: format!("%{}", self.next()),
+            variable: format!("%tmp{}", self.next()),
             ty: LLVMType::Variable,
         }
     }

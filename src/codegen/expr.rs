@@ -336,7 +336,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
 
                 let name = cgs.name_gen.variable();
                 println!(
-                    "{} = getelementptr inbounds {}, {}* {}, i64 0 ,i64 {}",
+                    "{} = getelementptr inbounds {}, {}* {}, i32 0 ,i32 {}",
                     name.to_string(),
                     inside_type,
                     inside_type,

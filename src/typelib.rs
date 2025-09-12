@@ -56,12 +56,6 @@ pub fn consume_type(parse_session: &mut ParseSession, tokens: &mut Vec<Token>) -
 }
 
 fn base(tokens: &mut Vec<Token>, parse_session: &mut ParseSession) -> Type {
-    // println!(
-    //     "{:?},{},{}",
-    //     parse_session.composite_type_stack.iter().rev(),
-    //     parse_session.cast(&tokens[0]).is_some(),
-    //     &tokens[0]
-    // );
     let base_type = parse_session.cast(tokens).unwrap();
     tokens.drain(0..base_type.1);
     p(base_type.0, tokens)
