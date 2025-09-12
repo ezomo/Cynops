@@ -253,10 +253,10 @@ impl Visualize for SemaExpr {
     fn visualize_with_context(&self, indent: usize, is_last: bool, prefix: &[bool]) {
         match self {
             SemaExpr::NumInt(n) => {
-                print_branch("Number", &n.to_string(), indent, is_last, prefix);
+                print_branch("Int_Number", &n.to_string(), indent, is_last, prefix);
             }
             SemaExpr::NumFloat(n) => {
-                print_branch("Number", &n.to_string(), indent, is_last, prefix);
+                print_branch("Float_Number", &n.to_string(), indent, is_last, prefix);
             }
             SemaExpr::Char(c) => {
                 print_branch("Character", &format!("'{}'", c), indent, is_last, prefix);
