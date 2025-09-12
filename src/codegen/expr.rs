@@ -16,7 +16,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                 println!(
                     "{} = {} {} {}, {}",
                     name.to_string(),
-                    ari.to_llvmir(),
+                    ari.to_llvmir(&typed_expr.r#type),
                     typed_expr.r#type.to_llvm_format(),
                     lhs.to_string(),
                     rhs.to_string()
@@ -31,7 +31,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                 println!(
                     "{} = {} {} {}, {}",
                     name.to_string(),
-                    com.to_llvmir(),
+                    com.to_llvmir(&typed_expr.r#type),
                     typed_expr.r#type.to_llvm_format(),
                     lhs.to_string(),
                     rhs.to_string()

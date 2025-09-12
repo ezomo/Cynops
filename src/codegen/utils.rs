@@ -167,7 +167,7 @@ impl NameGenerator {
 }
 
 pub trait ToLLVMIR {
-    fn to_llvmir(&self) -> &str;
+    fn to_llvmir(&self, ty: &Type) -> &str;
 }
 
 impl Ident {
@@ -181,41 +181,56 @@ impl Ident {
 }
 
 impl ToLLVMIR for Arithmetic {
-    fn to_llvmir(&self) -> &str {
-        match self {
-            Self::Plus => "add",
-            Self::Minus => "sub",
-            Self::Asterisk => "mul",
-            Self::Slash => "sdiv",
-            Self::Percent => "srem",
-            Self::Ampersand => "and",
-            Self::Pipe => "or",
-            Self::Caret => "xor",
-            Self::LessLess => "shl",
-            Self::GreaterGreater => "ashr",
+    fn to_llvmir(&self, ty: &Type) -> &str {
+        match ty {
+            Type::Int | Type::Char | Type::Enum(_) => match self {
+                Self::Plus => "add",
+                Self::Minus => "sub",
+                Self::Asterisk => "mul",
+                Self::Slash => "sdiv",
+                Self::Percent => "srem",
+                Self::Ampersand => "and",
+                Self::Pipe => "or",
+                Self::Caret => "xor",
+                Self::LessLess => "shl",
+                Self::GreaterGreater => "ashr",
+            },
+            Type::Double => {
+                match self {
+                    Self::Plus => "fadd",
+                    Self::Minus => "fsub",
+                    Self::Asterisk => "fmul",
+                    Self::Slash => "fdiv",
+                    Self::Percent => "frem",
+                    // Double にビット演算やシフトは無いので panic/error にする
+                    _ => panic!("invalid operator {:?} for Double", self),
+                }
+            }
+            _ => panic!("unsupported type {:?}", ty),
         }
     }
 }
 
 impl ToLLVMIR for Comparison {
-    fn to_llvmir(&self) -> &str {
-        match self {
-            Self::EqualEqual => "icmp eq",
-            Self::NotEqual => "icmp ne",
-            Self::Less => "icmp slt",
-            Self::LessEqual => "icmp sle",
-            Self::Greater => "icmp sgt",
-            Self::GreaterEqual => "icmp sge",
-        }
-    }
-}
-
-impl ToLLVMIR for UnaryOp {
-    fn to_llvmir(&self) -> &str {
-        match self {
-            Self::Bang => "icmp eq", // x == 0 として実装
-            Self::Tilde => "xor",    // x ^ -1 として実装
-            _ => "unknown",
+    fn to_llvmir(&self, ty: &Type) -> &str {
+        match ty {
+            Type::Int | Type::Char | Type::Enum(_) => match self {
+                Self::EqualEqual => "icmp eq",
+                Self::NotEqual => "icmp ne",
+                Self::Less => "icmp slt",
+                Self::LessEqual => "icmp sle",
+                Self::Greater => "icmp sgt",
+                Self::GreaterEqual => "icmp sge",
+            },
+            Type::Double => match self {
+                Self::EqualEqual => "fcmp oeq",
+                Self::NotEqual => "fcmp one",
+                Self::Less => "fcmp olt",
+                Self::LessEqual => "fcmp ole",
+                Self::Greater => "fcmp ogt",
+                Self::GreaterEqual => "fcmp oge",
+            },
+            _ => panic!("unsupported type {:?} for comparison", ty),
         }
     }
 }
