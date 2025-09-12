@@ -134,11 +134,13 @@ fn convert_struct(s: &old_ast::Struct, session: &mut Session) -> new_ast::Struct
         );
     }
 
+    session.push_scope();
     let members = s
         .member
         .iter()
         .map(|m| convert_member_decl(m, session))
         .collect();
+    session.pop_scope();
 
     let converted = new_ast::Struct::new(
         s.ident.as_ref().map(|i: &old_ast::Ident| i.as_same()),
