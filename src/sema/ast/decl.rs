@@ -1,5 +1,5 @@
 use super::TypedExpr;
-use super::{Block, Ident, ScopePar, types::FunctionSig};
+use super::{Block, Ident, types::FunctionSig};
 use crate::sema::ast::Symbol;
 use std::hash::Hash;
 

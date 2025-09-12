@@ -287,6 +287,25 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                     );
                     name
                 }
+                UnaryOp::Minus => {
+                    let rhs = load(&typed_expr.r#type, gen_expr(*unary.expr, cgs), cgs);
+
+                    let name = cgs.name_gen.register();
+
+                    println!(
+                        "{} = {} {} {}, {}",
+                        name.to_string(),
+                        Arithmetic::Minus.to_llvmir(&typed_expr.r#type),
+                        typed_expr.r#type.to_llvm_format(),
+                        if typed_expr.r#type == Type::Double {
+                            "0.0"
+                        } else {
+                            "0"
+                        },
+                        rhs.to_string()
+                    );
+                    name
+                }
                 _ => unreachable!("use simplification"),
             }
         }

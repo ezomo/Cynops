@@ -397,14 +397,14 @@ fn postfix(postfix: Postfix) -> Expr {
 
 fn unary(unary: Unary) -> Expr {
     match unary.op {
-        UnaryOp::Minus => {
-            let target = *unary.expr;
-            Expr::Binary(Binary {
-                lhs: Box::new(Expr::NumInt(0)),
-                op: BinaryOp::minus(),
-                rhs: Box::new(_expr(target)),
-            })
-        }
+        // UnaryOp::Minus => {
+        //     let target = *unary.expr;
+        //     Expr::Binary(Binary {
+        //         lhs: Box::new(Expr::NumInt(0)),
+        //         op: BinaryOp::minus(),
+        //         rhs: Box::new(_expr(target)),
+        //     })
+        // }
         UnaryOp::MinusMinus | UnaryOp::PlusPlus => {
             let simplified_expr = Box::new(_expr(*unary.expr));
 
