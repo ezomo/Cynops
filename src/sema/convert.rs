@@ -134,6 +134,7 @@ fn convert_struct(s: &old_ast::Struct, session: &mut Session) -> new_ast::Struct
         );
     }
 
+    // 構造体内部要素の名前空間は別
     session.push_scope();
     let members = s
         .member
@@ -142,14 +143,17 @@ fn convert_struct(s: &old_ast::Struct, session: &mut Session) -> new_ast::Struct
         .collect();
     session.pop_scope();
 
+    // idとして使用する固有ident
+    let ident_id = s
+        .ident
+        .as_ref()
+        .unwrap()
+        .as_same()
+        .with_suffix(session.scope_id());
+
     let converted = new_ast::Struct::new(
         s.ident.as_ref().map(|i: &old_ast::Ident| i.as_same()),
-        s.ident
-            .as_ref()
-            .unwrap()
-            .as_same()
-            .with_suffix(session.scope_id()),
-        ScopePar::new(session.current_scope()),
+        Symbol::new(ident_id.clone(), session.current_scope()),
         members,
     );
 
@@ -157,6 +161,9 @@ fn convert_struct(s: &old_ast::Struct, session: &mut Session) -> new_ast::Struct
     if let Some(ref ident) = converted.ident {
         session.register_symbols(ident.clone(), new_ast::Type::r#struct(converted.clone()));
     }
+
+    //sybmolを使用してアクセスするために登録
+    session.register_symbols(ident_id.clone(), new_ast::Type::r#struct(converted.clone()));
 
     converted
 }

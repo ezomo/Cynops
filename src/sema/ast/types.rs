@@ -164,7 +164,7 @@ impl Type {
 
                 format!("fn({}) -> {}", params, return_type)
             }
-            Type::Struct(s) => format!("struct {}", s.type_ident.to_string()),
+            Type::Struct(s) => format!("{}", s.symbol.ident.to_string()),
             Type::Union(u) => format!(
                 "union {}",
                 u.ident

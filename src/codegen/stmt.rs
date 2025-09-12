@@ -62,8 +62,7 @@ fn declare_struct(init: Struct, _cgs: &mut CodeGenStatus) {
     // 変数を割り当て
     println!(
         "{} = type {{{}}}",
-        init.scope_ptr.ptr.upgrade().unwrap().borrow().symbols[&init.ident.unwrap()]
-            .to_llvm_format(),
+        init.symbol.get_type().unwrap().to_llvm_format(),
         init.member
             .iter()
             .map(|x| x.sympl.get_type().unwrap().to_llvm_format())

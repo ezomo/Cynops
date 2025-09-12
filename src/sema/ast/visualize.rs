@@ -308,7 +308,16 @@ impl Visualize for Symbol {
     }
 
     fn visualize_with_context(&self, indent: usize, is_last: bool, prefix: &[bool]) {
-        self.ident.visualize_with_context(indent, is_last, prefix);
+        print_branch("Symbol", &self.ident.to_string(), indent, false, &prefix);
+        let next_prefix = extend_prefix(prefix, !is_last);
+
+        print_branch(
+            "Type",
+            &self.get_type().unwrap().to_rust_format(),
+            indent + 1,
+            true,
+            &next_prefix,
+        );
     }
 }
 
@@ -929,8 +938,15 @@ impl Visualize for Struct {
             .unwrap_or("anonymous");
 
         print_branch("StructDeclStmt", struct_name, indent, is_last, prefix);
-        let next_prefix = extend_prefix(prefix, !is_last);
 
+        let next_prefix = extend_prefix(prefix, !is_last);
+        print_branch(
+            "Type",
+            &self.symbol.get_type().unwrap().to_rust_format(),
+            indent + 1,
+            is_last,
+            &next_prefix,
+        );
         if self.member.is_empty() {
             print_branch("Members", "(empty)", indent + 1, true, &next_prefix);
         } else {

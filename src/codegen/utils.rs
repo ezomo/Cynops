@@ -324,7 +324,7 @@ impl Type {
                         .join(","),
                 )
             }
-            Type::Struct(this) => format!("%{}", this.type_ident.to_string()),
+            Type::Struct(this) => format!("%{}", this.symbol.ident.to_string()),
             Type::Enum(_) => Type::Int.to_llvm_format(),
             Type::Union(this) => format!("%{}", this.symbol.ident.to_string()),
             Type::Typedef(this) => this.get_type().unwrap().to_llvm_format(),

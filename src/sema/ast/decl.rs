@@ -43,22 +43,15 @@ impl MemberDecl {
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Struct {
     pub ident: Option<Ident>,
-    pub type_ident: Ident,
-    pub scope_ptr: ScopePar,
+    pub symbol: Symbol,
     pub member: Vec<MemberDecl>,
 }
 
 impl Struct {
-    pub fn new(
-        ident: Option<Ident>,
-        type_ident: Ident,
-        scope_ptr: ScopePar,
-        member: Vec<MemberDecl>,
-    ) -> Self {
+    pub fn new(ident: Option<Ident>, symbol: Symbol, member: Vec<MemberDecl>) -> Self {
         Struct {
             ident,
-            type_ident,
-            scope_ptr,
+            symbol,
             member,
         }
     }
