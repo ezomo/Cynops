@@ -90,9 +90,16 @@ fn resolve_function_def(func_def: &FunctionDef, session: &mut Session) -> TypeRe
     // 関数型を平坦化してから処理
     let flattened_func_type = func_def.sig.ty.flat();
     if let Some(func_type) = flattened_func_type.as_func() {
-        for (param_name, param_type) in func_def.param_names.iter().zip(&func_type.params) {
+        for (param_name, param_type) in func_def
+            .param_names
+            .clone()
+            .iter_mut()
+            .zip(&func_type.params)
+        {
             // パラメータ型も平坦化して登録
-            session.register_symbols(param_name.ident.clone(), param_type.flat());
+            param_name
+                .scope
+                .register_symbols(param_name.ident.clone(), param_type.flat());
         }
     }
 
