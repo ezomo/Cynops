@@ -207,7 +207,7 @@ impl Visualize for Cast {
 
         print_branch(
             "Type",
-            &self.r#type.to_rust_format(),
+            &self.type_to.to_rust_format(),
             indent + 1,
             false,
             &next_prefix,
@@ -1137,7 +1137,7 @@ impl OneLine for Sizeof {
 
 impl OneLine for Cast {
     fn oneline(&self) -> String {
-        format!("({}){}", self.r#type.to_rust_format(), self.expr.oneline())
+        format!("({}){}", self.type_to.to_rust_format(), self.expr.oneline())
     }
 }
 

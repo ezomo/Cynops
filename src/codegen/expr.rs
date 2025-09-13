@@ -326,19 +326,19 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
 
             // true branch
             println!("{}:", true_label.to_string());
-            let true_val = gen_expr(*ternary.then_branch, cgs);
+            let true_val = new_load(gen_expr, *ternary.then_branch, cgs);
             println!("br label %{}", end_label.to_string());
 
             // false branch
             println!("{}:", false_label.to_string());
-            let false_val = gen_expr(*ternary.else_branch, cgs);
+            let false_val = new_load(gen_expr, *ternary.else_branch, cgs);
             println!("br label %{}", end_label.to_string());
 
             // end
             println!("{}:", end_label.to_string());
             let result = cgs.name_gen.register();
             println!(
-                "{} = phi i64 [{}, %{}], [{}, %{}]",
+                "{} = phi i32 [{}, %{}], [{}, %{}]",
                 result.to_string(),
                 true_val.to_string(),
                 true_label.to_string(),
@@ -415,10 +415,31 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
             Sizeof::TypedExpr(num) => LLVMValue::new(num.r#type.size(), LLVMType::Const),
         },
         SemaExpr::Cast(cast) => {
-            // キャスト演算子 (type)expr
-            let expr_val = gen_expr(*cast.expr, cgs);
-            // 簡略化のため、実際の型変換は行わずそのまま返す
-            expr_val
+            let name = cgs.name_gen.register();
+
+            if *cast.type_orignal == Type::Int && *cast.type_to == Type::Double {
+                println!(
+                    "{} = sitofp {} {} to {}",
+                    name.to_string(),
+                    Type::Int.to_llvm_format(),
+                    new_load(gen_expr, *cast.expr, cgs).to_string(),
+                    Type::Double.to_llvm_format(),
+                );
+                name
+            } else if *cast.type_orignal == Type::Double && *cast.type_to == Type::Int {
+                println!(
+                    "{} = fptosi {} {} to {}",
+                    name.to_string(),
+                    Type::Double.to_llvm_format(),
+                    new_load(gen_expr, *cast.expr, cgs).to_string(),
+                    Type::Int.to_llvm_format(),
+                );
+                name
+            } else {
+                let expr_val = gen_expr(*cast.expr, cgs);
+                // 簡略化のため、実際の型変換は行わずそのまま返す
+                expr_val
+            }
         }
         SemaExpr::Comma(comma) => {
             // カンマ演算子 - 最後の式の値を返す

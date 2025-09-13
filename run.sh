@@ -13,9 +13,10 @@ mkdir -p ./out/
 # cargoを実行してLLVM IRを生成
 cargo run "$1" codegen > ./out/result.ll
 
+opt -O2 ./out/result.ll -S -o ./out/optimized.ll
 # アセンブリ生成 & 実行ファイル作成
-llc ./out/result.ll
-clang ./out/result.s -o ./out/result
+llc ./out/optimized.ll
+clang ./out/optimized.s -o ./out/result
 
 # 実行 & 終了コード表示
 ./out/result

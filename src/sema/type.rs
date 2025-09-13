@@ -410,11 +410,13 @@ fn resolve_sema_expr(expr: &SemaExpr, session: &mut Session) -> TypeResult<SemaE
         })),
         SemaExpr::Cast(cast) => {
             // キャスト型も平坦化
-            let flattened_cast_type = cast.r#type.flat();
-            Ok(SemaExpr::Cast(Cast {
-                r#type: Box::new(flattened_cast_type),
-                expr: Box::new(resolve_typed_expr(&cast.expr, session)?),
-            }))
+            let flattened_cast_type = cast.type_to.flat();
+            let expr = resolve_typed_expr(&cast.expr, session)?;
+            Ok(SemaExpr::cast(
+                flattened_cast_type,
+                expr.r#type.flat(),
+                resolve_typed_expr(&cast.expr, session)?,
+            ))
         }
         SemaExpr::Comma(comma) => Ok(SemaExpr::Comma(Comma {
             assigns: {
@@ -582,7 +584,7 @@ fn infer_type(expr: &SemaExpr, session: &mut Session) -> TypeResult<Type> {
                 })
             }
         }
-        SemaExpr::Cast(cast) => Ok(cast.r#type.flat()), // キャストの結果型も平坦化
+        SemaExpr::Cast(cast) => Ok(cast.type_to.flat()), // キャストの結果型も平坦化
         SemaExpr::Comma(comma) => {
             if let Some(last_expr) = comma.assigns.last() {
                 infer_type(&last_expr.r#expr, session)

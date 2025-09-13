@@ -461,6 +461,7 @@ fn convert_expr(expr: &old_ast::Expr, session: &mut Session) -> new_ast::TypedEx
         }
         old_ast::Expr::Cast(cast) => new_ast::SemaExpr::cast(
             convert_type(&cast.r#type, session),
+            Type::Unresolved,
             convert_expr(&cast.expr, session),
         ),
         old_ast::Expr::Comma(comma) => new_ast::SemaExpr::comma(

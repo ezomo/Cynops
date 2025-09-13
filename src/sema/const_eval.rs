@@ -225,17 +225,17 @@ fn eval_typed_ternary(ternary: &Ternary) -> Result<isize, String> {
 
 fn eval_typed_cast(cast: &Cast) -> Result<isize, String> {
     // キャスト先の型チェック
-    if !is_compile_time_constant_type(&cast.r#type) {
+    if !is_compile_time_constant_type(&cast.type_to) {
         return Err(format!(
             "キャスト先の型が定数計算に対応していません: {:?}",
-            cast.r#type
+            cast.type_to
         ));
     }
 
     let value = eval_const_typed_expr(&cast.expr)?;
 
     // int/charのキャストのみサポート
-    match cast.r#type.as_ref() {
+    match cast.type_to.as_ref() {
         Type::Int => Ok(value),
         Type::Char => {
             // char範囲チェック
@@ -245,7 +245,7 @@ fn eval_typed_cast(cast: &Cast) -> Result<isize, String> {
                 Err(format!("charの範囲外の値: {}", value))
             }
         }
-        _ => Err(format!("サポートされていないキャスト: {:?}", cast.r#type)),
+        _ => Err(format!("サポートされていないキャスト: {:?}", cast.type_to)),
     }
 }
 

@@ -70,7 +70,8 @@ impl Sizeof {
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Cast {
-    pub r#type: Box<Type>,
+    pub type_to: Box<Type>,
+    pub type_orignal: Box<Type>,
     pub expr: Box<TypedExpr>,
 }
 
@@ -230,9 +231,10 @@ impl SemaExpr {
         SemaExpr::Sizeof(sizeof)
     }
 
-    pub fn cast(r#type: Type, expr: TypedExpr) -> Self {
+    pub fn cast(r#type_to: Type, r#type_orinal: Type, expr: TypedExpr) -> Self {
         SemaExpr::Cast(Cast {
-            r#type: Box::new(r#type),
+            type_to: Box::new(r#type_to),
+            type_orignal: Box::new(r#type_orinal),
             expr: Box::new(expr),
         })
     }
