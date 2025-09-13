@@ -242,7 +242,7 @@ impl Type {
             // Type::Struct(s) => {
             //     // Structのメンバーも再帰的にflat化する場合
             //     Type::Struct(s.clone()) // 今回は簡単のためclone
-            // }
+            // } //循環参照して死ぬ？　TODO
             // その他の基本型はそのまま返す
             _ => self.clone(),
         }
@@ -324,10 +324,15 @@ impl Size for Symbol {
 pub struct FunctionSig {
     pub ty: Type,
     pub ident: Ident,
+    pub scope_ptr: ScopePtr,
 }
 impl FunctionSig {
-    pub fn new(ty: Type, ident: Ident) -> Self {
-        FunctionSig { ty, ident }
+    pub fn new(ty: Type, ident: Ident, scope_ptr: ScopePtr) -> Self {
+        FunctionSig {
+            ty,
+            ident,
+            scope_ptr,
+        }
     }
 }
 

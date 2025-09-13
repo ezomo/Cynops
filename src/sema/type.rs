@@ -85,7 +85,7 @@ fn resolve_toplevel(toplevel: &TopLevel, session: &mut Session) -> TypeResult<To
 }
 
 fn resolve_function_def(func_def: &FunctionDef, session: &mut Session) -> TypeResult<FunctionDef> {
-    session.push_scope();
+    session.current_scope = func_def.sig.scope_ptr.get_scope().unwrap();
 
     // 関数型を平坦化してから処理
     let flattened_func_type = func_def.sig.ty.flat();
@@ -98,12 +98,11 @@ fn resolve_function_def(func_def: &FunctionDef, session: &mut Session) -> TypeRe
 
     let resolved_body = resolve_block(&func_def.body, session)?;
 
-    session.pop_scope();
-
     Ok(FunctionDef {
         sig: FunctionSig {
             ty: flattened_func_type,
             ident: func_def.sig.ident.clone(),
+            scope_ptr: session.current_scope(),
         },
         param_names: func_def.param_names.clone(),
         body: resolved_body,
@@ -111,7 +110,7 @@ fn resolve_function_def(func_def: &FunctionDef, session: &mut Session) -> TypeRe
 }
 
 fn resolve_block(block: &Block, session: &mut Session) -> TypeResult<Block> {
-    session.push_scope();
+    session.current_scope = block.scope_par.get_scope().unwrap();
 
     let mut resolved_statements = Vec::new();
     for stmt in &block.statements {
@@ -119,10 +118,9 @@ fn resolve_block(block: &Block, session: &mut Session) -> TypeResult<Block> {
         resolved_statements.push(Box::new(resolved_stmt));
     }
 
-    session.pop_scope();
-
     Ok(Block {
         statements: resolved_statements,
+        scope_par: session.current_scope(),
     })
 }
 
@@ -231,7 +229,8 @@ fn resolve_decl_stmt(decl: &DeclStmt, session: &mut Session) -> TypeResult<DeclS
 }
 
 fn resolve_init(init: &Init, session: &mut Session) -> TypeResult<Init> {
-    // 型を平坦化して取得
+    session.current_scope = init.r.sympl.scope.get_scope().unwrap();
+
     let mut resolved_type = init.r.sympl.get_type().unwrap().flat();
 
     // 配列の長さ推論

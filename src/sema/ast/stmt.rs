@@ -1,11 +1,17 @@
+use crate::sema::ast::ScopePtr;
+
 use super::{DeclStmt, Ident, TypedExpr};
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Block {
+    pub scope_par: ScopePtr,
     pub statements: Vec<Box<Stmt>>,
 }
 impl Block {
-    pub fn new(statements: Vec<Box<Stmt>>) -> Self {
-        Self { statements }
+    pub fn new(statements: Vec<Box<Stmt>>, scope_par: ScopePtr) -> Self {
+        Self {
+            statements,
+            scope_par,
+        }
     }
 }
 

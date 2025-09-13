@@ -1,7 +1,6 @@
 use super::ast as new_ast;
 use super::ast::*;
 use crate::ast as old_ast;
-use std::rc::Rc;
 
 pub fn program(program: &old_ast::Program, session: &mut Session) -> new_ast::Program {
     let mut new_items = Vec::new();
@@ -71,7 +70,11 @@ fn convert_function_proto(
 }
 
 fn convert_function_sig(sig: &old_ast::FunctionSig, session: &mut Session) -> new_ast::FunctionSig {
-    new_ast::FunctionSig::new(convert_type(&sig.ty, session), sig.ident.as_same())
+    new_ast::FunctionSig::new(
+        convert_type(&sig.ty, session),
+        sig.ident.as_same(),
+        session.current_scope(),
+    )
 }
 
 fn convert_type(ty: &old_ast::Type, session: &mut Session) -> new_ast::Type {
@@ -149,7 +152,7 @@ fn convert_struct(s: &old_ast::Struct, session: &mut Session) -> new_ast::Struct
         .as_ref()
         .unwrap()
         .as_same()
-        .with_suffix(session.scope_id());
+        .with_suffix(session.id().to_string());
 
     let converted = new_ast::Struct::new(
         s.ident.as_ref().map(|i: &old_ast::Ident| i.as_same()),
@@ -255,9 +258,9 @@ fn convert_block(block: &old_ast::Block, session: &mut Session) -> Box<new_ast::
         .map(|stmt| Box::new(convert_stmt(stmt, session)))
         .collect();
 
+    let tmp = Box::new(new_ast::Block::new(statements, session.current_scope()));
     session.pop_scope();
-
-    Box::new(new_ast::Block::new(statements))
+    tmp
 }
 
 fn convert_control(control: &old_ast::Control, session: &mut Session) -> new_ast::Control {
@@ -419,10 +422,8 @@ fn convert_expr(expr: &old_ast::Expr, session: &mut Session) -> new_ast::TypedEx
         old_ast::Expr::String(s) => new_ast::SemaExpr::string(s.clone()),
         old_ast::Expr::Ident(ident) => {
             // Identを解決してSymbolに変換
-            let symbol = new_ast::Symbol::new(
-                ident.as_same(),
-                Rc::downgrade(&session.get_scope(&ident.as_same())),
-            );
+            let symbol =
+                new_ast::Symbol::new(ident.as_same(), session.get_ident_scope(&ident.as_same()));
             new_ast::SemaExpr::ident(symbol)
         }
         old_ast::Expr::NumInt(n) => new_ast::SemaExpr::num_int(*n),
