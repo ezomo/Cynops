@@ -353,7 +353,7 @@ impl Ident {
     }
 
     pub fn with_suffix(&self, add: impl Into<String>) -> Self {
-        Self::new(format!("d{}{}", self.to_string(), add.into()))
+        Self::new(format!("type..{}{}", self.to_string(), add.into()))
     }
 }
 

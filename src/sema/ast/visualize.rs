@@ -1186,3 +1186,89 @@ impl OneLine for TypedExpr {
         self.r#expr.oneline()
     }
 }
+
+impl Visualize for ScopeNode {
+    fn visualize(&self) {
+        println!("Scope Tree:");
+        self.visualize_with_context(0, true, &[]);
+    }
+
+    fn visualize_with_context(&self, indent: usize, is_last: bool, prefix: &[bool]) {
+        // スコープIDとシンボル数を表示
+        let scope_info = format!(
+            "Scope[{}] ({} symbols)",
+            self.id
+                .0
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join("."),
+            self.symbols.len()
+        );
+        print_branch("", &scope_info, indent, is_last, prefix);
+
+        let new_prefix = extend_prefix(prefix, !is_last);
+
+        // シンボルを表示
+        if !self.symbols.is_empty() {
+            let symbols_last_idx = self.symbols.len().saturating_sub(1);
+            for (i, (name, ty)) in self.symbols.iter().enumerate() {
+                let is_symbol_last = i == symbols_last_idx && self.children.is_empty();
+                let symbol_info = format!("{}: {}", name.to_string(), ty.to_rust_format());
+                print_branch("", &symbol_info, indent + 1, is_symbol_last, &new_prefix);
+            }
+        }
+
+        // 子スコープを表示
+        let children_count = self.children.len();
+        for (i, child) in self.children.iter().enumerate() {
+            let is_child_last = i == children_count - 1;
+            child
+                .borrow()
+                .visualize_with_context(indent + 1, is_child_last, &new_prefix);
+        }
+    }
+}
+
+impl Visualize for Session {
+    fn visualize(&self) {
+        println!("Session (ID: {})", self.id);
+        println!(
+            "Current Scope: [{}]",
+            self.current_scope
+                .borrow()
+                .id
+                .0
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(".")
+        );
+        println!();
+        self.root_scope.borrow().visualize();
+    }
+
+    fn visualize_with_context(&self, indent: usize, is_last: bool, prefix: &[bool]) {
+        let session_info = format!("Session[{}]", self.id);
+        print_branch("", &session_info, indent, is_last, prefix);
+
+        let new_prefix = extend_prefix(prefix, !is_last);
+        self.root_scope
+            .borrow()
+            .visualize_with_context(indent + 1, true, &new_prefix);
+    }
+}
+
+impl OneLine for ScopeId {
+    fn oneline(&self) -> String {
+        if self.0.is_empty() {
+            "root".to_string()
+        } else {
+            self.0
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(".")
+        }
+    }
+}

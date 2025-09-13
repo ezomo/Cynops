@@ -55,6 +55,7 @@ fn process(args: &mut Vec<String>) {
             let new_pragram = sema::r#type::program(&new_pragram, &mut session);
             println!("typed");
             new_pragram.unwrap().visualize();
+            session.visualize();
         }
         "codegen" => {
             let mut session = sema::ast::Session::new();
