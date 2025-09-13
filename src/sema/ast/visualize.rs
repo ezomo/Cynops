@@ -315,6 +315,13 @@ impl Visualize for Symbol {
             "Type",
             &self.get_type().unwrap().to_rust_format(),
             indent + 1,
+            false,
+            &next_prefix,
+        );
+        print_branch(
+            "Scope",
+            &self.scope.get_scope().unwrap().borrow().id.id_string(), //後で直した方が良い　TODO
+            indent + 1,
             true,
             &next_prefix,
         );
@@ -883,13 +890,9 @@ impl Visualize for Init {
         print_branch("Init", &self.r.sympl.ident.name, indent, is_last, prefix);
         let next_prefix = extend_prefix(prefix, !is_last);
 
-        print_branch(
-            "Type",
-            &self.r.sympl.get_type().unwrap().to_rust_format(),
-            indent + 1,
-            self.l.is_none(),
-            &next_prefix,
-        );
+        self.r
+            .sympl
+            .visualize_with_context(indent + 1, self.l.is_none(), &next_prefix);
 
         if let Some(init_data) = &self.l {
             print_branch("Initializer", "", indent + 1, true, &next_prefix);
