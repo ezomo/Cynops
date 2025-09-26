@@ -28,6 +28,7 @@ pub struct Func {
 #[derive(Debug, Clone, Eq)]
 pub enum Type {
     Void,
+    Error, //エラー時に使う
     Int,
     Double,
     Char,
@@ -94,6 +95,7 @@ impl Hash for Type {
                 }
             }
             Type::Void => std::mem::discriminant(self).hash(state),
+            Type::Error => std::mem::discriminant(self).hash(state),
             Type::Int => std::mem::discriminant(self).hash(state),
             Type::Double => std::mem::discriminant(self).hash(state),
             Type::Char => std::mem::discriminant(self).hash(state),
@@ -145,6 +147,7 @@ impl Type {
         match self {
             Type::DotDotDot => "...".to_string(),
             Type::Void => "void".to_string(),
+            Type::Error => "error".to_string(),
             Type::Int => "int".to_string(),
             Type::Double => "double".to_string(),
             Type::Char => "char".to_string(),
@@ -257,6 +260,7 @@ impl Size for Type {
     fn size(&self) -> usize {
         match self {
             Type::Void => 0,                // void型はサイズなし
+            Type::Error => 0,               // エラー型はサイズなし
             Type::Char => 1,                // char は 1 バイト
             Type::Int => 4,                 // int は 4 バイト (32bit想定)
             Type::Double => 8,              // double は 8 バイト

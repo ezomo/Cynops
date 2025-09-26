@@ -110,11 +110,11 @@ fn convert_type(ty: &old_ast::Type, session: &mut Session) -> new_ast::Type {
                             &convert_expr(&arr.length.clone().unwrap(), session),
                             session,
                         )
-                        .unwrap()
+                        .result // TypeCheckResult<T> から T を取得
                         .eval_const()
-                        .unwrap()
+                        .unwrap_or(0) // 定数評価に失敗した場合は0
                         .try_into()
-                        .unwrap(),
+                        .unwrap_or(0), // 型変換に失敗した場合は0
                     ),
                 ))
             },
@@ -297,6 +297,7 @@ fn convert_control(control: &old_ast::Control, session: &mut Session) -> new_ast
         ),
     }
 }
+
 fn convert_switch_case(case: &old_ast::SwitchCase, session: &mut Session) -> new_ast::SwitchCase {
     match case {
         old_ast::SwitchCase::Case(c) => new_ast::SwitchCase::case(
@@ -340,54 +341,10 @@ fn convert_decl_stmt(decl: &old_ast::DeclStmt, session: &mut Session) -> new_ast
     }
 }
 
-// 配列長を推論するヘルパー関数
-fn infer_array_length(init_data: &new_ast::InitData) -> Option<usize> {
-    match init_data {
-        new_ast::InitData::Compound(elements) => Some(elements.len()),
-        new_ast::InitData::Expr(that) => match &that.expr {
-            SemaExpr::String(this) => Some(this.len()),
-            _ => None,
-        },
-    }
-}
-
 fn convert_init(init: &old_ast::Init, session: &mut Session) -> new_ast::Init {
     let member_decl = convert_member_decl(&init.r, session);
     let converted_init_data = init.l.as_ref().map(|data| convert_init_data(data, session));
 
-    // 配列の長さ推論を実行
-    if let (Some(init_data), new_ast::Type::Array(array)) = (
-        &converted_init_data,
-        &mut member_decl.sympl.get_type().unwrap().clone(),
-    ) {
-        // 配列の長さがNoneの場合のみ推論
-        if array.length.is_none() {
-            if let Some(inferred_length) = infer_array_length(init_data) {
-                // 推論された長さをTypedExprとして設定
-                array.length = Some(Box::new(new_ast::TypedExpr::new(
-                    new_ast::Type::Int,
-                    new_ast::SemaExpr::NumInt(inferred_length),
-                )));
-            }
-        } else {
-            array.length = Some(Box::new(new_ast::TypedExpr::new(
-                new_ast::Type::Int,
-                new_ast::SemaExpr::NumInt(
-                    super::r#type::resolve_typed_expr(
-                        array.length.clone().unwrap().as_ref(),
-                        session,
-                    )
-                    .unwrap()
-                    .eval_const()
-                    .unwrap()
-                    .try_into()
-                    .unwrap(),
-                ),
-            )));
-        }
-    }
-
-    // 変数をsessionに登録
     new_ast::Init::new(member_decl, converted_init_data)
 }
 
@@ -402,6 +359,7 @@ fn convert_init_data(data: &old_ast::InitData, session: &mut Session) -> new_ast
         ),
     }
 }
+
 fn convert_expr(expr: &old_ast::Expr, session: &mut Session) -> new_ast::TypedExpr {
     let sema_expr = match expr {
         old_ast::Expr::Assign(assign) => new_ast::SemaExpr::assign(

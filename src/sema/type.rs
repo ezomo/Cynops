@@ -59,32 +59,82 @@ impl std::fmt::Display for TypeError {
     }
 }
 
-pub type TypeResult<T> = Result<T, TypeError>;
+// 型チェック結果を格納する構造体（エラーと結果の両方を保持）
+#[derive(Debug)]
+pub struct TypeCheckResult<T> {
+    pub result: T,
+    pub errors: Vec<TypeError>,
+}
 
-pub fn program(program: &Program, session: &mut Session) -> TypeResult<Program> {
+impl<T> TypeCheckResult<T> {
+    fn new(result: T) -> Self {
+        Self {
+            result,
+            errors: Vec::new(),
+        }
+    }
+}
+
+// Error型かどうかをチェックするヘルパー関数
+fn is_error_type(ty: &Type) -> bool {
+    matches!(ty, Type::Error)
+}
+
+// Error型を含む場合はError型を返すヘルパー関数
+fn propagate_error_type(types: &[&Type]) -> Option<Type> {
+    if types.iter().any(|t| is_error_type(t)) {
+        Some(Type::Error)
+    } else {
+        None
+    }
+}
+
+pub fn program(program: &Program, session: &mut Session) -> TypeCheckResult<Program> {
     let mut resolved_items = Vec::new();
+    let mut all_errors = Vec::new();
 
     for item in &program.items {
-        let resolved_item = resolve_toplevel(item, session)?;
-        resolved_items.push(resolved_item);
+        let mut result = resolve_toplevel(item, session);
+        all_errors.append(&mut result.errors);
+        resolved_items.push(result.result);
     }
 
-    Ok(Program {
-        items: resolved_items,
-    })
+    TypeCheckResult {
+        result: Program {
+            items: resolved_items,
+        },
+        errors: all_errors,
+    }
 }
 
-fn resolve_toplevel(toplevel: &TopLevel, session: &mut Session) -> TypeResult<TopLevel> {
+fn resolve_toplevel(toplevel: &TopLevel, session: &mut Session) -> TypeCheckResult<TopLevel> {
     match toplevel {
-        TopLevel::FunctionDef(func_def) => Ok(TopLevel::FunctionDef(resolve_function_def(
-            func_def, session,
-        )?)),
-        TopLevel::FunctionProto(func_proto) => Ok(TopLevel::FunctionProto(func_proto.clone())),
-        TopLevel::Stmt(stmt) => Ok(TopLevel::Stmt(resolve_stmt(stmt, session)?)),
+        TopLevel::FunctionDef(func_def) => {
+            let result = resolve_function_def(func_def, session);
+            TypeCheckResult {
+                result: TopLevel::FunctionDef(result.result),
+                errors: result.errors,
+            }
+        }
+        TopLevel::FunctionProto(func_proto) => {
+            TypeCheckResult::new(TopLevel::FunctionProto(func_proto.clone()))
+        }
+        TopLevel::Stmt(stmt) => {
+            let result = resolve_stmt(stmt, session);
+            TypeCheckResult {
+                result: TopLevel::Stmt(result.result),
+                errors: result.errors,
+            }
+        }
     }
 }
 
-fn resolve_function_def(func_def: &FunctionDef, session: &mut Session) -> TypeResult<FunctionDef> {
+fn resolve_function_def(
+    func_def: &FunctionDef,
+    session: &mut Session,
+) -> TypeCheckResult<FunctionDef> {
+    let mut errors = Vec::new();
+
     session.current_scope = func_def.sig.scope_ptr.get_scope().unwrap();
 
     // 関数型を平坦化してから処理
@@ -103,139 +153,233 @@ fn resolve_function_def(func_def: &FunctionDef, session: &mut Session) -> TypeRe
         }
     }
 
-    let resolved_body = resolve_block(&func_def.body, session)?;
+    let mut body_result = resolve_block(&func_def.body, session);
+    errors.append(&mut body_result.errors);
 
-    Ok(FunctionDef {
-        sig: FunctionSig {
-            ty: flattened_func_type,
-            ident: func_def.sig.ident.clone(),
-            scope_ptr: session.current_scope(),
+    TypeCheckResult {
+        result: FunctionDef {
+            sig: FunctionSig {
+                ty: flattened_func_type,
+                ident: func_def.sig.ident.clone(),
+                scope_ptr: session.current_scope(),
+            },
+            param_names: func_def.param_names.clone(),
+            body: body_result.result,
         },
-        param_names: func_def.param_names.clone(),
-        body: resolved_body,
-    })
+        errors,
+    }
 }
 
-fn resolve_block(block: &Block, session: &mut Session) -> TypeResult<Block> {
+fn resolve_block(block: &Block, session: &mut Session) -> TypeCheckResult<Block> {
+    let mut errors = Vec::new();
+
     session.current_scope = block.scope_par.get_scope().unwrap();
 
     let mut resolved_statements = Vec::new();
     for stmt in &block.statements {
-        let resolved_stmt = resolve_stmt(stmt, session)?;
-        resolved_statements.push(Box::new(resolved_stmt));
+        let mut stmt_result = resolve_stmt(stmt, session);
+        errors.append(&mut stmt_result.errors);
+        resolved_statements.push(Box::new(stmt_result.result));
     }
 
-    Ok(Block {
-        statements: resolved_statements,
-        scope_par: session.current_scope(),
-    })
+    TypeCheckResult {
+        result: Block {
+            statements: resolved_statements,
+            scope_par: session.current_scope(),
+        },
+        errors,
+    }
 }
 
-fn resolve_stmt(stmt: &Stmt, session: &mut Session) -> TypeResult<Stmt> {
-    match stmt {
-        Stmt::ExprStmt(expr) => Ok(Stmt::expr(resolve_typed_expr(expr, session)?)),
-        Stmt::DeclStmt(decl) => Ok(Stmt::decl_stmt(resolve_decl_stmt(decl, session)?)),
-        Stmt::Control(control) => Ok(Stmt::control(resolve_control(control, session)?)),
-        Stmt::Return(ret) => Ok(Stmt::Return(Return {
+fn resolve_stmt(stmt: &Stmt, session: &mut Session) -> TypeCheckResult<Stmt> {
+    let mut errors = Vec::new();
+
+    let result = match stmt {
+        Stmt::ExprStmt(expr) => {
+            let mut expr_result = resolve_typed_expr(expr, session);
+            errors.append(&mut expr_result.errors);
+            Stmt::expr(expr_result.result)
+        }
+        Stmt::DeclStmt(decl) => {
+            let mut decl_result = resolve_decl_stmt(decl, session);
+            errors.append(&mut decl_result.errors);
+            Stmt::decl_stmt(decl_result.result)
+        }
+        Stmt::Control(control) => {
+            let mut control_result = resolve_control(control, session);
+            errors.append(&mut control_result.errors);
+            Stmt::control(control_result.result)
+        }
+        Stmt::Return(ret) => Stmt::Return(Return {
             value: match &ret.value {
-                Some(v) => Some(Box::new(resolve_typed_expr(v, session)?)),
+                Some(v) => {
+                    let mut v_result = resolve_typed_expr(v, session);
+                    errors.append(&mut v_result.errors);
+                    Some(Box::new(v_result.result))
+                }
                 None => None,
             },
-        })),
-        Stmt::Block(block) => Ok(Stmt::Block(resolve_block(block, session)?)),
-        Stmt::Label(label) => Ok(Stmt::Label(Label {
-            name: label.name.clone(),
-            stmt: Box::new(resolve_stmt(&label.stmt, session)?),
-        })),
-        _ => Ok(stmt.clone()),
-    }
+        }),
+        Stmt::Block(block) => {
+            let mut block_result = resolve_block(block, session);
+            errors.append(&mut block_result.errors);
+            Stmt::Block(block_result.result)
+        }
+        Stmt::Label(label) => {
+            let mut stmt_result = resolve_stmt(&label.stmt, session);
+            errors.append(&mut stmt_result.errors);
+            Stmt::Label(Label {
+                name: label.name.clone(),
+                stmt: Box::new(stmt_result.result),
+            })
+        }
+        _ => stmt.clone(),
+    };
+
+    TypeCheckResult { result, errors }
 }
 
-fn resolve_control(control: &Control, session: &mut Session) -> TypeResult<Control> {
-    match control {
-        Control::If(if_stmt) => Ok(Control::r#if(
-            resolve_typed_expr(&if_stmt.cond, session)?,
-            resolve_stmt(&if_stmt.then_branch, session)?,
-            match &if_stmt.else_branch {
-                Some(e) => Some(resolve_stmt(e, session)?),
+fn resolve_control(control: &Control, session: &mut Session) -> TypeCheckResult<Control> {
+    let mut errors = Vec::new();
+
+    let result = match control {
+        Control::If(if_stmt) => {
+            let mut cond_result = resolve_typed_expr(&if_stmt.cond, session);
+            let mut then_result = resolve_stmt(&if_stmt.then_branch, session);
+            errors.append(&mut cond_result.errors);
+            errors.append(&mut then_result.errors);
+
+            let else_branch = match &if_stmt.else_branch {
+                Some(e) => {
+                    let mut else_result = resolve_stmt(e, session);
+                    errors.append(&mut else_result.errors);
+                    Some(else_result.result)
+                }
                 None => None,
-            },
-        )),
-        Control::While(while_stmt) => Ok(Control::r#while(
-            resolve_typed_expr(&while_stmt.cond, session)?,
-            resolve_stmt(&while_stmt.body, session)?,
-        )),
-        Control::DoWhile(do_while) => Ok(Control::r#do_while(
-            resolve_stmt(&do_while.body, session)?,
-            resolve_typed_expr(&do_while.cond, session)?,
-        )),
-        Control::For(for_stmt) => Ok(Control::r#for(
-            match &for_stmt.init {
-                Some(i) => Some(resolve_typed_expr(i, session)?),
+            };
+
+            Control::r#if(cond_result.result, then_result.result, else_branch)
+        }
+        Control::While(while_stmt) => {
+            let mut cond_result = resolve_typed_expr(&while_stmt.cond, session);
+            let mut body_result = resolve_stmt(&while_stmt.body, session);
+            errors.append(&mut cond_result.errors);
+            errors.append(&mut body_result.errors);
+
+            Control::r#while(cond_result.result, body_result.result)
+        }
+        Control::DoWhile(do_while) => {
+            let mut body_result = resolve_stmt(&do_while.body, session);
+            let mut cond_result = resolve_typed_expr(&do_while.cond, session);
+            errors.append(&mut body_result.errors);
+            errors.append(&mut cond_result.errors);
+
+            Control::r#do_while(body_result.result, cond_result.result)
+        }
+        Control::For(for_stmt) => {
+            let init = match &for_stmt.init {
+                Some(i) => {
+                    let mut init_result = resolve_typed_expr(i, session);
+                    errors.append(&mut init_result.errors);
+                    Some(init_result.result)
+                }
                 None => None,
-            },
-            match &for_stmt.cond {
-                Some(c) => Some(resolve_typed_expr(c, session)?),
+            };
+            let cond = match &for_stmt.cond {
+                Some(c) => {
+                    let mut cond_result = resolve_typed_expr(c, session);
+                    errors.append(&mut cond_result.errors);
+                    Some(cond_result.result)
+                }
                 None => None,
-            },
-            match &for_stmt.step {
-                Some(s) => Some(resolve_typed_expr(s, session)?),
+            };
+            let step = match &for_stmt.step {
+                Some(s) => {
+                    let mut step_result = resolve_typed_expr(s, session);
+                    errors.append(&mut step_result.errors);
+                    Some(step_result.result)
+                }
                 None => None,
-            },
-            resolve_stmt(&for_stmt.body, session)?,
-        )),
+            };
+            let mut body_result = resolve_stmt(&for_stmt.body, session);
+            errors.append(&mut body_result.errors);
+
+            Control::r#for(init, cond, step, body_result.result)
+        }
         Control::Switch(switch) => {
+            let mut cond_result = resolve_typed_expr(&switch.cond, session);
+            errors.append(&mut cond_result.errors);
+
             let mut cases = Vec::new();
             for c in &switch.cases {
-                cases.push(resolve_switch_case(c, session)?);
+                let mut case_result = resolve_switch_case(c, session);
+                errors.append(&mut case_result.errors);
+                cases.push(case_result.result);
             }
-            Ok(Control::r#switch(
-                resolve_typed_expr(&switch.cond, session)?,
-                cases,
-            ))
+            Control::r#switch(cond_result.result, cases)
         }
-    }
+    };
+
+    TypeCheckResult { result, errors }
 }
 
-fn resolve_switch_case(case: &SwitchCase, session: &mut Session) -> TypeResult<SwitchCase> {
-    match case {
-        SwitchCase::Case(c) => Ok(SwitchCase::Case(Case {
-            const_expr: resolve_typed_expr(&c.const_expr, session)?,
-            stmts: {
-                let mut stmts = Vec::new();
-                for s in &c.stmts {
-                    stmts.push(Box::new(resolve_stmt(s, session)?));
-                }
-                stmts
-            },
-        })),
-        SwitchCase::Default(d) => Ok(SwitchCase::Default(DefaultCase {
-            stmts: {
-                let mut stmts = Vec::new();
-                for s in &d.stmts {
-                    stmts.push(Box::new(resolve_stmt(s, session)?));
-                }
-                stmts
-            },
-        })),
-    }
+fn resolve_switch_case(case: &SwitchCase, session: &mut Session) -> TypeCheckResult<SwitchCase> {
+    let mut errors = Vec::new();
+
+    let result = match case {
+        SwitchCase::Case(c) => {
+            let mut const_result = resolve_typed_expr(&c.const_expr, session);
+            errors.append(&mut const_result.errors);
+
+            let mut stmts = Vec::new();
+            for s in &c.stmts {
+                let mut stmt_result = resolve_stmt(s, session);
+                errors.append(&mut stmt_result.errors);
+                stmts.push(Box::new(stmt_result.result));
+            }
+
+            SwitchCase::Case(Case {
+                const_expr: const_result.result,
+                stmts,
+            })
+        }
+        SwitchCase::Default(d) => {
+            let mut stmts = Vec::new();
+            for s in &d.stmts {
+                let mut stmt_result = resolve_stmt(s, session);
+                errors.append(&mut stmt_result.errors);
+                stmts.push(Box::new(stmt_result.result));
+            }
+
+            SwitchCase::Default(DefaultCase { stmts })
+        }
+    };
+
+    TypeCheckResult { result, errors }
 }
 
-fn resolve_decl_stmt(decl: &DeclStmt, session: &mut Session) -> TypeResult<DeclStmt> {
-    match decl {
+fn resolve_decl_stmt(decl: &DeclStmt, session: &mut Session) -> TypeCheckResult<DeclStmt> {
+    let mut errors = Vec::new();
+
+    let result = match decl {
         DeclStmt::InitVec(inits) => {
             let mut resolved_inits = Vec::new();
             for init in inits {
-                let resolved_init = resolve_init(init, session)?;
-                resolved_inits.push(resolved_init);
+                let mut init_result = resolve_init(init, session);
+                errors.append(&mut init_result.errors);
+                resolved_inits.push(init_result.result);
             }
-            Ok(DeclStmt::InitVec(resolved_inits))
+            DeclStmt::InitVec(resolved_inits)
         }
-        _ => Ok(decl.clone()),
-    }
+        _ => decl.clone(),
+    };
+
+    TypeCheckResult { result, errors }
 }
 
-fn resolve_init(init: &Init, session: &mut Session) -> TypeResult<Init> {
+fn resolve_init(init: &Init, session: &mut Session) -> TypeCheckResult<Init> {
+    let mut errors = Vec::new();
+
     session.current_scope = init.r.sympl.scope.get_scope().unwrap();
 
     let mut resolved_type = init.r.sympl.get_type().unwrap().flat();
@@ -250,10 +394,17 @@ fn resolve_init(init: &Init, session: &mut Session) -> TypeResult<Init> {
     };
 
     // 初期化データがある場合、型の互換性をチェック
-    if let Some(init_data) = &init.l {
-        let init_expr = resolve_init_data(init_data, session)?;
-        check_init_compatibility(&resolved_type, &init_expr, session)?;
-    }
+    let init_data_result = if let Some(init_data) = &init.l {
+        let mut init_result = resolve_init_data(init_data, session);
+        errors.append(&mut init_result.errors);
+
+        // 型の互換性チェック
+        check_init_compatibility(&resolved_type, &init_result.result, session, &mut errors);
+
+        Some(init_result.result)
+    } else {
+        None
+    };
 
     // 変数をセッションに平坦化された型で登録
     session.register_symbols(
@@ -261,29 +412,33 @@ fn resolve_init(init: &Init, session: &mut Session) -> TypeResult<Init> {
         resolved_type.clone(),
     );
 
-    Ok(Init {
-        r: resolved_member_decl,
-        l: init
-            .l
-            .as_ref()
-            .map(|data| resolve_init_data(data, session))
-            .transpose()?,
-    })
+    TypeCheckResult {
+        result: Init {
+            r: resolved_member_decl,
+            l: init_data_result,
+        },
+        errors,
+    }
 }
 
 fn check_init_compatibility(
     var_type: &Type,
     init_data: &InitData,
     session: &mut Session,
-) -> TypeResult<()> {
+    errors: &mut Vec<TypeError>,
+) {
     match init_data {
         InitData::Expr(expr) => {
             // 両方の型を平坦化して比較
             let var_type_flat = var_type.flat();
             let expr_type_flat = expr.r#type.flat();
 
-            if var_type_flat != expr_type_flat {
-                return Err(TypeError::IncompatibleTypes {
+            // Error型の場合は互換性チェックをスキップ
+            if !is_error_type(&var_type_flat)
+                && !is_error_type(&expr_type_flat)
+                && var_type_flat != expr_type_flat
+            {
+                errors.push(TypeError::IncompatibleTypes {
                     expected: var_type_flat,
                     found: expr_type_flat,
                     context: "variable initialization".to_string(),
@@ -295,13 +450,12 @@ fn check_init_compatibility(
             let flat_var_type = var_type.flat();
             if let Type::Array(array) = flat_var_type {
                 for compound in compounds {
-                    check_init_compatibility(&array.array_of, compound, session)?;
+                    check_init_compatibility(&array.array_of, compound, session, errors);
                 }
             }
             // 構造体の場合は省略（実装が複雑になるため）
         }
     }
-    Ok(())
 }
 
 fn infer_array_length(array_type: &mut Type, init_data: &InitData, session: &mut Session) {
@@ -311,148 +465,219 @@ fn infer_array_length(array_type: &mut Type, init_data: &InitData, session: &mut
                 let len_expr = TypedExpr::new(Type::Int, SemaExpr::NumInt(compounds.len()));
                 array.length = Some(Box::new(len_expr));
             }
+
+            if let InitData::Expr(this) = init_data {
+                if let SemaExpr::String(s) = &this.r#expr {
+                    let len_expr = TypedExpr::new(Type::Int, SemaExpr::NumInt(s.len()));
+                    array.length = Some(Box::new(len_expr));
+                }
+            }
         } else {
-            let len_expr = TypedExpr::new(
-                Type::Int,
-                SemaExpr::NumInt(
-                    resolve_typed_expr(array.length.clone().unwrap().as_ref(), session)
-                        .unwrap()
-                        .eval_const()
-                        .unwrap()
-                        .try_into()
-                        .unwrap(),
-                ),
-            );
-            array.length = Some(Box::new(len_expr));
+            // エラーハンドリングを改善
+            let resolved = resolve_typed_expr(array.length.clone().unwrap().as_ref(), session);
+            if let Ok(const_val) = resolved.result.eval_const() {
+                if let Ok(len_val) = const_val.try_into() {
+                    let len_expr = TypedExpr::new(Type::Int, SemaExpr::NumInt(len_val));
+                    array.length = Some(Box::new(len_expr));
+                }
+            }
         }
     }
 }
 
-fn resolve_init_data(data: &InitData, session: &mut Session) -> TypeResult<InitData> {
-    match data {
-        InitData::Expr(expr) => Ok(InitData::Expr(resolve_typed_expr(expr, session)?)),
+fn resolve_init_data(data: &InitData, session: &mut Session) -> TypeCheckResult<InitData> {
+    let mut errors = Vec::new();
+
+    let result = match data {
+        InitData::Expr(expr) => {
+            let mut expr_result = resolve_typed_expr(expr, session);
+            errors.append(&mut expr_result.errors);
+            InitData::Expr(expr_result.result)
+        }
         InitData::Compound(compounds) => {
             let mut resolved_compounds = Vec::new();
             for c in compounds {
-                resolved_compounds.push(resolve_init_data(c, session)?);
+                let mut compound_result = resolve_init_data(c, session);
+                errors.append(&mut compound_result.errors);
+                resolved_compounds.push(compound_result.result);
             }
-            Ok(InitData::Compound(resolved_compounds))
+            InitData::Compound(resolved_compounds)
         }
+    };
+
+    TypeCheckResult { result, errors }
+}
+
+pub fn resolve_typed_expr(expr: &TypedExpr, session: &mut Session) -> TypeCheckResult<TypedExpr> {
+    let sema_result = resolve_sema_expr(&expr.r#expr, session);
+    let mut errors = sema_result.errors;
+
+    let inferred_type = infer_type(&sema_result.result, session, &mut errors).flat();
+
+    TypeCheckResult {
+        result: TypedExpr {
+            r#type: inferred_type,
+            r#expr: sema_result.result,
+        },
+        errors,
     }
 }
 
-pub fn resolve_typed_expr(expr: &TypedExpr, session: &mut Session) -> TypeResult<TypedExpr> {
-    let resolved_sema_expr = resolve_sema_expr(&expr.r#expr, session)?;
-    let inferred_type = infer_type(&resolved_sema_expr, session)?.flat(); // 推論した型も平坦化
+fn resolve_sema_expr(expr: &SemaExpr, session: &mut Session) -> TypeCheckResult<SemaExpr> {
+    let mut errors = Vec::new();
 
-    Ok(TypedExpr {
-        r#type: inferred_type,
-        r#expr: resolved_sema_expr,
-    })
-}
-
-fn resolve_sema_expr(expr: &SemaExpr, session: &mut Session) -> TypeResult<SemaExpr> {
-    match expr {
+    let result = match expr {
         SemaExpr::Assign(assign) => {
-            let lhs = resolve_typed_expr(&assign.lhs, session)?;
-            let rhs = resolve_typed_expr(&assign.rhs, session)?;
+            let mut lhs_result = resolve_typed_expr(&assign.lhs, session);
+            let mut rhs_result = resolve_typed_expr(&assign.rhs, session);
+            errors.append(&mut lhs_result.errors);
+            errors.append(&mut rhs_result.errors);
 
             // 代入の型互換性チェック（平坦化された型で比較）
-            let lhs_flat = lhs.r#type.flat();
-            let rhs_flat = rhs.r#type.flat();
+            let lhs_flat = lhs_result.result.r#type.flat();
+            let rhs_flat = rhs_result.result.r#type.flat();
 
-            if lhs_flat != rhs_flat {
-                return Err(TypeError::IncompatibleTypes {
+            // Error型の場合は互換性チェックをスキップ、そうでなければエラーをログして継続
+            if !is_error_type(&lhs_flat) && !is_error_type(&rhs_flat) && lhs_flat != rhs_flat {
+                errors.push(TypeError::IncompatibleTypes {
                     expected: lhs_flat,
                     found: rhs_flat,
                     context: "assignment".to_string(),
                 });
             }
 
-            Ok(SemaExpr::Assign(Assign {
+            SemaExpr::Assign(Assign {
                 op: assign.op,
-                lhs: Box::new(lhs),
-                rhs: Box::new(rhs),
-            }))
+                lhs: Box::new(lhs_result.result),
+                rhs: Box::new(rhs_result.result),
+            })
         }
-        SemaExpr::Binary(binary) => Ok(SemaExpr::Binary(Binary {
-            op: binary.op,
-            lhs: Box::new(resolve_typed_expr(&binary.lhs, session)?),
-            rhs: Box::new(resolve_typed_expr(&binary.rhs, session)?),
-        })),
-        SemaExpr::Unary(unary) => Ok(SemaExpr::Unary(Unary {
-            op: unary.op,
-            expr: Box::new(resolve_typed_expr(&unary.expr, session)?),
-        })),
-        SemaExpr::Ternary(ternary) => Ok(SemaExpr::Ternary(Ternary {
-            cond: Box::new(resolve_typed_expr(&ternary.cond, session)?),
-            then_branch: Box::new(resolve_typed_expr(&ternary.then_branch, session)?),
-            else_branch: Box::new(resolve_typed_expr(&ternary.else_branch, session)?),
-        })),
-        SemaExpr::Call(call) => {
-            let resolved_func = resolve_typed_expr(&call.func, session)?;
-            let mut resolved_args = Vec::new();
+        SemaExpr::Binary(binary) => {
+            let mut lhs_result = resolve_typed_expr(&binary.lhs, session);
+            let mut rhs_result = resolve_typed_expr(&binary.rhs, session);
+            errors.append(&mut lhs_result.errors);
+            errors.append(&mut rhs_result.errors);
 
+            SemaExpr::Binary(Binary {
+                op: binary.op,
+                lhs: Box::new(lhs_result.result),
+                rhs: Box::new(rhs_result.result),
+            })
+        }
+        SemaExpr::Unary(unary) => {
+            let mut expr_result = resolve_typed_expr(&unary.expr, session);
+            errors.append(&mut expr_result.errors);
+
+            SemaExpr::Unary(Unary {
+                op: unary.op,
+                expr: Box::new(expr_result.result),
+            })
+        }
+        SemaExpr::Ternary(ternary) => {
+            let mut cond_result = resolve_typed_expr(&ternary.cond, session);
+            let mut then_result = resolve_typed_expr(&ternary.then_branch, session);
+            let mut else_result = resolve_typed_expr(&ternary.else_branch, session);
+            errors.append(&mut cond_result.errors);
+            errors.append(&mut then_result.errors);
+            errors.append(&mut else_result.errors);
+
+            SemaExpr::Ternary(Ternary {
+                cond: Box::new(cond_result.result),
+                then_branch: Box::new(then_result.result),
+                else_branch: Box::new(else_result.result),
+            })
+        }
+        SemaExpr::Call(call) => {
+            let mut func_result = resolve_typed_expr(&call.func, session);
+            errors.append(&mut func_result.errors);
+
+            let mut resolved_args = Vec::new();
             for arg in &call.args {
-                resolved_args.push(Box::new(resolve_typed_expr(arg, session)?));
+                let mut arg_result = resolve_typed_expr(arg, session);
+                errors.append(&mut arg_result.errors);
+                resolved_args.push(Box::new(arg_result.result));
             }
 
             // 関数呼び出しの型チェック
-            check_function_call(&resolved_func, &resolved_args, session)?;
+            check_function_call(&func_result.result, &resolved_args, session, &mut errors);
 
-            Ok(SemaExpr::Call(Call {
-                func: Box::new(resolved_func),
+            SemaExpr::Call(Call {
+                func: Box::new(func_result.result),
                 args: resolved_args,
-            }))
+            })
         }
-        SemaExpr::Subscript(subscript) => Ok(SemaExpr::Subscript(Subscript {
-            subject: Box::new(resolve_typed_expr(&subscript.subject, session)?),
-            index: Box::new(resolve_typed_expr(&subscript.index, session)?),
-        })),
-        SemaExpr::MemberAccess(member) => Ok(SemaExpr::MemberAccess(MemberAccess {
-            base: Box::new(resolve_typed_expr(&member.base, session)?),
-            member: member.member.clone(),
-            kind: member.kind.clone(),
-        })),
+        SemaExpr::Subscript(subscript) => {
+            let mut subject_result = resolve_typed_expr(&subscript.subject, session);
+            let mut index_result = resolve_typed_expr(&subscript.index, session);
+            errors.append(&mut subject_result.errors);
+            errors.append(&mut index_result.errors);
+
+            SemaExpr::Subscript(Subscript {
+                subject: Box::new(subject_result.result),
+                index: Box::new(index_result.result),
+            })
+        }
+        SemaExpr::MemberAccess(member) => {
+            let mut base_result = resolve_typed_expr(&member.base, session);
+            errors.append(&mut base_result.errors);
+
+            SemaExpr::MemberAccess(MemberAccess {
+                base: Box::new(base_result.result),
+                member: member.member.clone(),
+                kind: member.kind.clone(),
+            })
+        }
         SemaExpr::Cast(cast) => {
-            // キャスト型も平坦化
             let flattened_cast_type = cast.type_to.flat();
-            let expr = resolve_typed_expr(&cast.expr, session)?;
-            Ok(SemaExpr::cast(
+            let mut expr_result = resolve_typed_expr(&cast.expr, session);
+            errors.append(&mut expr_result.errors);
+
+            SemaExpr::cast(
                 flattened_cast_type,
-                expr.r#type.flat(),
-                resolve_typed_expr(&cast.expr, session)?,
-            ))
+                expr_result.result.r#type.flat(),
+                expr_result.result,
+            )
         }
-        SemaExpr::Comma(comma) => Ok(SemaExpr::Comma(Comma {
-            assigns: {
-                let mut assigns = Vec::new();
-                for a in &comma.assigns {
-                    assigns.push(resolve_typed_expr(a, session)?);
-                }
-                assigns
-            },
-        })),
+        SemaExpr::Comma(comma) => {
+            let mut assigns = Vec::new();
+            for a in &comma.assigns {
+                let mut assign_result = resolve_typed_expr(a, session);
+                errors.append(&mut assign_result.errors);
+                assigns.push(assign_result.result);
+            }
+
+            SemaExpr::Comma(Comma { assigns })
+        }
         SemaExpr::Sizeof(sizeof) => {
             let resolved_sizeof = match sizeof {
                 Sizeof::Type(ty) => Sizeof::Type(ty.flat()), // sizeof内の型も平坦化
                 Sizeof::TypedExpr(expr) => {
-                    Sizeof::TypedExpr(Box::new(resolve_typed_expr(expr, session)?))
+                    let mut expr_result = resolve_typed_expr(expr, session);
+                    errors.append(&mut expr_result.errors);
+                    Sizeof::TypedExpr(Box::new(expr_result.result))
                 }
             };
-            Ok(SemaExpr::Sizeof(resolved_sizeof))
+            SemaExpr::Sizeof(resolved_sizeof)
         }
-        _ => Ok(expr.clone()),
-    }
+        _ => expr.clone(),
+    };
+
+    TypeCheckResult { result, errors }
 }
 
 fn check_function_call(
     func_expr: &TypedExpr,
     args: &[Box<TypedExpr>],
     _session: &mut Session,
-) -> TypeResult<()> {
+    errors: &mut Vec<TypeError>,
+) {
     // 関数型も平坦化してチェック
     let func_type_flat = func_expr.r#type.flat();
+
+    // Error型の場合はチェックをスキップ
+    if is_error_type(&func_type_flat) {
+        return;
+    }
 
     if let Type::Func(func) = func_type_flat {
         // 引数の数をチェック
@@ -460,7 +685,7 @@ fn check_function_call(
             && func.params.last().unwrap() != &Type::DotDotDot
             && func.params.len() != args.len()
         {
-            return Err(TypeError::IncompatibleTypes {
+            errors.push(TypeError::IncompatibleTypes {
                 expected: Type::Func(func.clone()),
                 found: Type::Func(Func {
                     return_type: func.return_type.clone(),
@@ -482,167 +707,231 @@ fn check_function_call(
             let expected_flat = expected_param.flat();
             let actual_flat = actual_arg.r#type.flat();
 
-            if expected_flat != actual_flat {
-                return Err(TypeError::IncompatibleTypes {
+            // Error型の場合は型チェックをスキップ
+            if !is_error_type(&expected_flat)
+                && !is_error_type(&actual_flat)
+                && expected_flat != actual_flat
+            {
+                errors.push(TypeError::IncompatibleTypes {
                     expected: expected_flat,
                     found: actual_flat,
                     context: format!("function call argument {} ({})", i + 1, func_expr.oneline()),
                 });
             }
         }
-
-        Ok(())
     } else {
         // 関数型でない場合のエラー
-        Err(TypeError::InvalidOperation {
+        errors.push(TypeError::InvalidOperation {
             op: "function call".to_string(),
             operand_type: func_type_flat,
-        })
+        });
     }
 }
 
-fn infer_type(expr: &SemaExpr, session: &mut Session) -> TypeResult<Type> {
+fn infer_type(expr: &SemaExpr, session: &mut Session, errors: &mut Vec<TypeError>) -> Type {
     match expr {
-        SemaExpr::NumInt(_) => Ok(Type::Int),
-        SemaExpr::NumFloat(_) => Ok(Type::Double),
-        SemaExpr::Char(_) => Ok(Type::Char),
-        SemaExpr::String(this) => Ok(Type::Array(Array {
+        SemaExpr::NumInt(_) => Type::Int,
+        SemaExpr::NumFloat(_) => Type::Double,
+        SemaExpr::Char(_) => Type::Char,
+        SemaExpr::String(this) => Type::Array(Array {
             array_of: Box::new(Type::Char),
             length: Some(Box::new(TypedExpr::new(
                 Type::Int,
                 SemaExpr::NumInt(this.len()),
             ))),
-        })),
-        SemaExpr::Symbol(symbol) => session
-            .get_type(&symbol.ident)
-            .map(|t| t.flat()) // シンボルの型も平坦化
-            .ok_or_else(|| TypeError::UndefinedVariable(symbol.ident.name.clone())),
-        SemaExpr::Binary(binary) => infer_binary_type(binary, session),
-        SemaExpr::Unary(unary) => infer_unary_type(unary, session),
-        SemaExpr::Assign(assign) => Ok(infer_type(&assign.lhs.r#expr, session)?),
+        }),
+        SemaExpr::Symbol(symbol) => {
+            match session.get_type(&symbol.ident) {
+                Some(t) => t.flat(), // シンボルの型も平坦化
+                None => {
+                    errors.push(TypeError::UndefinedVariable(symbol.ident.name.clone()));
+                    Type::Error // 未定義変数の場合はError型を返す
+                }
+            }
+        }
+        SemaExpr::Binary(binary) => infer_binary_type(binary, session, errors),
+        SemaExpr::Unary(unary) => infer_unary_type(unary, session, errors),
+        SemaExpr::Assign(assign) => infer_type(&assign.lhs.r#expr, session, errors),
         SemaExpr::Call(call) => {
-            let func_type = infer_type(&call.func.r#expr, session)?.flat();
+            let func_type = infer_type(&call.func.r#expr, session, errors).flat();
+
+            // Error型の場合はError型を返す
+            if is_error_type(&func_type) {
+                return Type::Error;
+            }
+
             if let Type::Func(func) = func_type {
-                Ok((*func.return_type).flat()) // 戻り値型も平坦化
+                (*func.return_type).flat() // 戻り値型も平坦化
             } else {
-                Err(TypeError::InvalidOperation {
+                errors.push(TypeError::InvalidOperation {
                     op: "function call".to_string(),
                     operand_type: func_type,
-                })
+                });
+                Type::Error
             }
         }
         SemaExpr::Subscript(subscript) => {
-            let subject_type = infer_type(&subscript.subject.r#expr, session)?.flat();
+            let subject_type = infer_type(&subscript.subject.r#expr, session, errors).flat();
+
+            // Error型の場合はError型を返す
+            if is_error_type(&subject_type) {
+                return Type::Error;
+            }
+
             match subject_type {
-                Type::Array(array) => Ok((*array.array_of).flat()),
-                Type::Pointer(inner) => Ok((*inner).flat()),
-                _ => Err(TypeError::InvalidOperation {
-                    op: "array subscript".to_string(),
-                    operand_type: subject_type,
-                }),
+                Type::Array(array) => (*array.array_of).flat(),
+                Type::Pointer(inner) => (*inner).flat(),
+                _ => {
+                    errors.push(TypeError::InvalidOperation {
+                        op: "array subscript".to_string(),
+                        operand_type: subject_type,
+                    });
+                    Type::Error
+                }
             }
         }
         SemaExpr::MemberAccess(member) => {
-            let base_type = infer_type(&member.base.r#expr, session)?.flat();
+            let base_type = infer_type(&member.base.r#expr, session, errors).flat();
+
+            // Error型の場合はError型を返す
+            if is_error_type(&base_type) {
+                return Type::Error;
+            }
+
             let actual_type = match &member.kind {
                 MemberAccessOp::Dot => base_type.clone(),
                 _ => unreachable!(),
             };
 
             match actual_type.flat() {
-                Type::Struct(ref s) => s
-                    .member
-                    .iter()
-                    .find(|m| m.sympl.ident.name == member.member.name)
-                    .map(|m| m.sympl.get_type().unwrap().flat()) // メンバー型も平坦化
-                    .ok_or_else(|| TypeError::InvalidMemberAccess {
-                        base_type: actual_type.clone(),
+                Type::Struct(ref s) => {
+                    match s.member
+                        .iter()
+                        .find(|m| m.sympl.ident.name == member.member.name)
+                        .map(|m| m.sympl.get_type().unwrap().flat()) // メンバー型も平坦化
+                    {
+                        Some(member_type) => member_type,
+                        None => {
+                            errors.push(TypeError::InvalidMemberAccess {
+                                base_type: actual_type.clone(),
+                                member: member.member.name.clone(),
+                            });
+                            Type::Error
+                        }
+                    }
+                }
+                Type::Union(u) => {
+                    match u.member
+                        .iter()
+                        .find(|m| m.sympl.ident.name == member.member.name)
+                        .map(|m| m.sympl.get_type().unwrap().flat()) // メンバー型も平坦化
+                    {
+                        Some(member_type) => member_type,
+                        None => {
+                            errors.push(TypeError::InvalidMemberAccess {
+                                base_type: actual_type.clone(),
+                                member: member.member.name.clone(),
+                            });
+                            Type::Error
+                        }
+                    }
+                }
+                _ => {
+                    errors.push(TypeError::InvalidMemberAccess {
+                        base_type: actual_type,
                         member: member.member.name.clone(),
-                    }),
-                Type::Union(u) => u
-                    .member
-                    .iter()
-                    .find(|m| m.sympl.ident.name == member.member.name)
-                    .map(|m| m.sympl.get_type().unwrap().flat()) // メンバー型も平坦化
-                    .ok_or_else(|| TypeError::InvalidMemberAccess {
-                        base_type: actual_type.clone(),
-                        member: member.member.name.clone(),
-                    }),
-                _ => Err(TypeError::InvalidMemberAccess {
-                    base_type: actual_type,
-                    member: member.member.name.clone(),
-                }),
+                    });
+                    Type::Error
+                }
             }
         }
         SemaExpr::Ternary(ternary) => {
-            let then_type = infer_type(&ternary.then_branch.r#expr, session)?.flat();
-            let else_type = infer_type(&ternary.else_branch.r#expr, session)?.flat();
+            let then_type = infer_type(&ternary.then_branch.r#expr, session, errors).flat();
+            let else_type = infer_type(&ternary.else_branch.r#expr, session, errors).flat();
+
+            // Error型がある場合はError型を伝播
+            if let Some(error_type) = propagate_error_type(&[&then_type, &else_type]) {
+                return error_type;
+            }
 
             // 三項演算子でも完全一致を要求（平坦化後で比較）
             if then_type == else_type {
-                Ok(then_type)
+                then_type
             } else {
-                // 型が一致しない場合はエラー
-                Err(TypeError::IncompatibleTypes {
+                // 型が一致しない場合はエラーを記録してError型を返す
+                errors.push(TypeError::IncompatibleTypes {
                     expected: then_type,
                     found: else_type,
                     context: "ternary operator branches".to_string(),
-                })
+                });
+                Type::Error
             }
         }
-        SemaExpr::Cast(cast) => Ok(cast.type_to.flat()), // キャストの結果型も平坦化
+        SemaExpr::Cast(cast) => cast.type_to.flat(), // キャストの結果型も平坦化
         SemaExpr::Comma(comma) => {
             if let Some(last_expr) = comma.assigns.last() {
-                infer_type(&last_expr.r#expr, session)
+                infer_type(&last_expr.r#expr, session, errors)
             } else {
-                Ok(Type::Void)
+                Type::Void
             }
         }
-        SemaExpr::Sizeof(_) => Ok(Type::Int),
+        SemaExpr::Sizeof(_) => Type::Int,
     }
 }
 
-fn infer_binary_type(binary: &Binary, session: &mut Session) -> TypeResult<Type> {
-    let lhs_type = infer_type(&binary.lhs.r#expr, session)?.flat();
-    let rhs_type = infer_type(&binary.rhs.r#expr, session)?.flat();
+fn infer_binary_type(binary: &Binary, session: &mut Session, errors: &mut Vec<TypeError>) -> Type {
+    let lhs_type = infer_type(&binary.lhs.r#expr, session, errors).flat();
+    let rhs_type = infer_type(&binary.rhs.r#expr, session, errors).flat();
+
+    // Error型がある場合はError型を伝播
+    if let Some(error_type) = propagate_error_type(&[&lhs_type, &rhs_type]) {
+        return error_type;
+    }
 
     match binary.op {
         BinaryOp::Comparison(_) | BinaryOp::Logical(_) => {
             // 比較・論理演算は結果がint型
-            Ok(Type::Int)
+            Type::Int
         }
         BinaryOp::Arithmetic(_) => {
             // 算術演算では両オペランドの型が一致している必要がある（平坦化後で比較）
             if lhs_type == rhs_type {
-                Ok(lhs_type)
+                lhs_type
             } else {
-                Err(TypeError::IncompatibleTypes {
+                errors.push(TypeError::IncompatibleTypes {
                     expected: lhs_type,
                     found: rhs_type,
                     context: "arithmetic operation".to_string(),
-                })
+                });
+                Type::Error
             }
         }
     }
 }
 
-fn infer_unary_type(unary: &Unary, session: &mut Session) -> TypeResult<Type> {
-    let operand_type = infer_type(&unary.expr.r#expr, session)?.flat();
+fn infer_unary_type(unary: &Unary, session: &mut Session, errors: &mut Vec<TypeError>) -> Type {
+    let operand_type = infer_type(&unary.expr.r#expr, session, errors).flat();
+
+    // Error型の場合はError型を返す
+    if is_error_type(&operand_type) {
+        return Type::Error;
+    }
 
     match unary.op {
-        UnaryOp::Bang => Ok(Type::Int),
-        UnaryOp::Tilde => Ok(operand_type),
-        UnaryOp::Ampersand => Ok(Type::Pointer(Box::new(operand_type))),
+        UnaryOp::Bang => Type::Int,
+        UnaryOp::Tilde => operand_type,
+        UnaryOp::Ampersand => Type::Pointer(Box::new(operand_type)),
         UnaryOp::Asterisk => {
             if let Type::Pointer(inner) = operand_type {
-                Ok((*inner).flat()) // デリファレンス結果も平坦化
+                (*inner).flat() // デリファレンス結果も平坦化
             } else {
-                Err(TypeError::InvalidOperation {
+                errors.push(TypeError::InvalidOperation {
                     op: "dereference".to_string(),
                     operand_type,
-                })
+                });
+                Type::Error
             }
         }
-        _ => Ok(operand_type), // その他の単項演算子
+        _ => operand_type, // その他の単項演算子
     }
 }

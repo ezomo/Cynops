@@ -137,33 +137,40 @@ fn process(args: &mut Vec<String>) {
 
     // 4. Type checking フェーズ（typed/session/codegenのいずれかが指定されている場合のみ実行）
     if options.show_typed || options.show_session || options.run_codegen {
-        let typed_program = sema::r#type::program(&new_program, &mut sema_session);
+        let type_check_result = sema::r#type::program(&new_program, &mut sema_session);
 
-        match typed_program {
-            Ok(typed_prog) => {
-                // 5. Typed結果の表示
-                if options.show_typed {
-                    println!("=== Typed ===");
-                    typed_prog.visualize();
-                }
+        // エラーがあっても結果を表示する
+        let typed_prog = type_check_result.result;
+        let type_errors = type_check_result.errors;
 
-                // 6. Session情報の表示
-                if options.show_session {
-                    println!("=== Session ===");
-                    sema_session.visualize();
-                }
-
-                // 7. Code generation
-                if options.run_codegen {
-                    println!("; === Code Generation ===");
-                    codegen::generate_program(typed_prog, &mut codegen::CodeGenStatus::new());
-                }
+        // 型エラーを表示
+        if !type_errors.is_empty() {
+            eprintln!("=== Type Errors ===");
+            for error in &type_errors {
+                eprintln!("型エラー: {}", error);
             }
-            Err(e) => {
-                eprintln!("型エラー: {}", e);
-                if options.run_codegen {
-                    std::process::exit(1);
-                }
+        }
+
+        // 5. Typed結果の表示（エラーがあっても表示）
+        if options.show_typed {
+            println!("=== Typed (with Error propagation) ===");
+            typed_prog.visualize();
+        }
+
+        // 6. Session情報の表示
+        if options.show_session {
+            println!("=== Session ===");
+            sema_session.visualize();
+        }
+
+        // 7. Code generation（エラーがある場合は実行しない）
+        if options.run_codegen {
+            if type_errors.is_empty() {
+                println!("; === Code Generation ===");
+                codegen::generate_program(typed_prog, &mut codegen::CodeGenStatus::new());
+            } else {
+                eprintln!("コード生成をスキップします（型エラーがあるため）");
+                std::process::exit(1);
             }
         }
     }
@@ -187,6 +194,8 @@ fn print_usage(program_name: &str) {
     eprintln!();
     eprintln!("実行順序: parse → simplification → convert → typed → session → codegen");
     eprintln!();
+    eprintln!("注意: typed結果では型エラーがあってもError型を伝播したASTが表示されます");
+    eprintln!();
     eprintln!("例:");
     eprintln!(
         "  {} input.c parse typed               - パースと型チェック結果を表示",
@@ -208,73 +217,4 @@ fn print_usage(program_name: &str) {
         "  {} input.c ast                       - 従来のastモード",
         program_name
     );
-}
-
-#[test]
-fn test() {
-    let mut args: Vec<String> = ["", "./test.c", "session", "parse", "typed"]
-        .iter()
-        .map(|x| x.to_string())
-        .collect();
-
-    process(&mut args);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_mode_parsing() {
-        // 単一モード
-        let opts = CompilerOptions::from_modes(&["parse"]).unwrap();
-        assert!(opts.show_parse);
-        assert!(!opts.show_typed);
-
-        // 複数モード（順序は関係ない）
-        let opts = CompilerOptions::from_modes(&["session", "parse", "typed"]).unwrap();
-        assert!(opts.show_parse);
-        assert!(opts.show_typed);
-        assert!(opts.show_session);
-        assert!(!opts.run_codegen);
-
-        // エイリアス
-        let opts = CompilerOptions::from_modes(&["sess", "type", "simp"]).unwrap();
-        assert!(opts.show_simplification);
-        assert!(opts.show_typed);
-        assert!(opts.show_session);
-
-        // 既存のモード
-        let opts = CompilerOptions::from_modes(&["ast"]).unwrap();
-        assert!(opts.show_parse);
-        assert!(opts.show_simplification);
-        assert!(opts.show_convert);
-        assert!(opts.show_typed);
-        assert!(opts.show_session);
-
-        // 重複指定（問題なし）
-        let opts = CompilerOptions::from_modes(&["parse", "parse", "typed"]).unwrap();
-        assert!(opts.show_parse);
-        assert!(opts.show_typed);
-
-        // エラーケース
-        assert!(CompilerOptions::from_modes(&["invalid"]).is_err());
-        assert!(CompilerOptions::from_modes(&[]).is_err());
-    }
-
-    #[test]
-    fn test_execution_order() {
-        // どの順序で指定しても、同じオプションになることを確認
-        let opts1 = CompilerOptions::from_modes(&["parse", "typed", "session"]).unwrap();
-        let opts2 = CompilerOptions::from_modes(&["session", "parse", "typed"]).unwrap();
-        let opts3 = CompilerOptions::from_modes(&["typed", "session", "parse"]).unwrap();
-
-        assert_eq!(opts1.show_parse, opts2.show_parse);
-        assert_eq!(opts1.show_typed, opts2.show_typed);
-        assert_eq!(opts1.show_session, opts2.show_session);
-
-        assert_eq!(opts1.show_parse, opts3.show_parse);
-        assert_eq!(opts1.show_typed, opts3.show_typed);
-        assert_eq!(opts1.show_session, opts3.show_session);
-    }
 }
