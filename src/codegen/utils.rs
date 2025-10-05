@@ -236,15 +236,20 @@ impl ToLLVMIR for Comparison {
 }
 
 impl LLVMValue {
-    pub fn i1toi64(self: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
+    pub fn i1toi32(self: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
         let name = cgs.name_gen.register();
-        println!("{} = zext i1 {} to i64", name.to_string(), self.to_string());
+        println!("{} = zext i1 {} to i32", name.to_string(), self.to_string());
         name
     }
 
-    pub fn i64toi1(&self, cgs: &mut CodeGenStatus) -> LLVMValue {
+    pub fn i32toi1(&self, cgs: &mut CodeGenStatus) -> LLVMValue {
         let name = cgs.name_gen.register();
-        println!("{} = icmp ne i64 {}, 0", name.to_string(), self.to_string());
+        println!(
+            "{} = icmp ne {} {}, 0",
+            name.to_string(),
+            Type::Int.to_llvm_format(),
+            self.to_string()
+        );
         name
     }
 }

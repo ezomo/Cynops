@@ -134,7 +134,7 @@ fn initialize_variable(
                             &arr.array_of.to_llvm_format()
                         );
                         println!(
-                            "  {} = getelementptr inbounds {}, {}* {}, i64 0, i64 {}",
+                            "  {} = getelementptr inbounds {}, {}* {}, i32 0, i32 {}",
                             element_ptr.to_string(),
                             array_type,
                             array_type,
@@ -241,7 +241,7 @@ mod controls {
         let end_label = cgs.name_gen.label();
 
         // 条件の評価（TypedExprなのでtodo!()）
-        let cond_result = new_load(gen_expr, *if_stmt.cond, cgs).i64toi1(cgs); // todo!()で条件式を評価した結果
+        let cond_result = new_load(gen_expr, *if_stmt.cond, cgs).i32toi1(cgs); // todo!()で条件式を評価した結果
 
         // 条件による分岐
         if if_stmt.else_branch.is_some() {
@@ -289,7 +289,7 @@ mod controls {
 
         // 条件評価ラベル
         println!("{}:", cond_label.to_string());
-        let cond_result = new_load(gen_expr, *while_stmt.cond, cgs).i64toi1(cgs); // todo!()で条件式を評価した結果
+        let cond_result = new_load(gen_expr, *while_stmt.cond, cgs).i32toi1(cgs); // todo!()で条件式を評価した結果
         println!(
             "  br i1 {}, label %{}, label %{}",
             cond_result.to_string(),
@@ -327,7 +327,7 @@ mod controls {
 
         // 条件評価ラベル
         println!("{}:", cond_label.to_string());
-        let cond_result = new_load(gen_expr, *do_while_stmt.cond, cgs).i64toi1(cgs); // todo!()で条件式を評価した結果
+        let cond_result = new_load(gen_expr, *do_while_stmt.cond, cgs).i32toi1(cgs); // todo!()で条件式を評価した結果
         println!(
             "  br i1 {}, label %{}, label %{}",
             cond_result.to_string(),
@@ -362,7 +362,7 @@ mod controls {
         // 条件評価ラベル
         println!("{}:", cond_label.to_string());
         if let Some(_cond) = for_stmt.cond {
-            let cond_result = new_load(gen_expr, *_cond, cgs).i64toi1(cgs); // todo!()で条件式を評価した結果
+            let cond_result = new_load(gen_expr, *_cond, cgs).i32toi1(cgs); // todo!()で条件式を評価した結果
             println!(
                 "  br i1 {}, label %{}, label %{}",
                 cond_result.to_string(),
@@ -404,7 +404,7 @@ mod controls {
 
         // switchの開始
         print!(
-            "  switch i64 {}, label %{} [",
+            "  switch i32 {}, label %{} [",
             cond_result.to_string(),
             default_label.to_string()
         );
@@ -420,7 +420,7 @@ mod controls {
                     case_labels.push((case_label.clone(), case));
                     let case_value = case_stmt.const_expr.consume_const(); // todo!()でcase値を評価
                     print!(
-                        "\n    i64 {}, label %{}",
+                        "\n    i32 {}, label %{}",
                         case_value,
                         case_label.to_string()
                     );

@@ -36,11 +36,11 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                     lhs.to_string(),
                     rhs.to_string()
                 );
-                name.i1toi64(cgs)
+                name.i1toi32(cgs)
             }
             BinaryOp::Logical(Logical::AmpersandAmpersand) => {
                 // 短絡評価: lhs && rhs
-                let lhs_bool = gen_expr(*binary.lhs, cgs).i64toi1(cgs);
+                let lhs_bool = gen_expr(*binary.lhs, cgs).i32toi1(cgs);
                 let true_label = cgs.name_gen.label();
                 let false_label = cgs.name_gen.label();
                 let end_label = cgs.name_gen.label();
@@ -65,7 +65,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                 println!("{}:", end_label.to_string());
                 let result = cgs.name_gen.register();
                 println!(
-                    "{} = phi i64 [{}, %{}], [0, %{}]",
+                    "{} = phi i32 [{}, %{}], [0, %{}]",
                     result.to_string(),
                     rhs.to_string(),
                     true_label.to_string(),
@@ -76,7 +76,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
             BinaryOp::Logical(Logical::PipePipe) => {
                 // 短絡評価: lhs || rhs
                 let lhs = gen_expr(*binary.lhs, cgs);
-                let lhs_bool = lhs.clone().i64toi1(cgs);
+                let lhs_bool = lhs.clone().i32toi1(cgs);
 
                 let false_label = cgs.name_gen.register();
                 let true_label = cgs.name_gen.register();
@@ -102,7 +102,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                 println!("{}:", end_label.to_string());
                 let result = cgs.name_gen.register();
                 println!(
-                    "{} = phi i64 [{}, {}], [{}, {}]",
+                    "{} = phi i32 [{}, {}], [{}, {}]",
                     result.to_string(),
                     lhs.to_string(),
                     true_label.to_string(),
@@ -162,7 +162,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                     &arr.array_of.to_llvm_format()
                 );
                 println!(
-                    "  {} = getelementptr inbounds {}, {}* {}, i64 0, i64 {}",
+                    "  {} = getelementptr inbounds {}, {}* {}, i32 0, i32 {}",
                     element_ptr.to_string(),
                     array_type,
                     array_type,
@@ -244,16 +244,16 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                     let operand = gen_expr(*unary.expr, cgs);
                     let name = cgs.name_gen.register();
                     println!(
-                        "{} = icmp eq i64 {}, 0",
+                        "{} = icmp eq i32 {}, 0",
                         name.to_string(),
                         operand.to_string()
                     );
-                    name.i1toi64(cgs)
+                    name.i1toi32(cgs)
                 }
                 UnaryOp::Tilde => {
                     let operand = gen_expr(*unary.expr, cgs);
                     let name = cgs.name_gen.register();
-                    println!("{} = xor i64 {}, -1", name.to_string(), operand.to_string());
+                    println!("{} = xor i32 {}, -1", name.to_string(), operand.to_string());
                     name
                 }
                 UnaryOp::Ampersand => {
@@ -311,7 +311,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
         }
         SemaExpr::Ternary(ternary) => {
             let cond = new_load(gen_expr, *ternary.cond, cgs);
-            let cond_bool = cond.i64toi1(cgs);
+            let cond_bool = cond.i32toi1(cgs);
 
             let true_label = cgs.name_gen.label();
             let false_label = cgs.name_gen.label();
