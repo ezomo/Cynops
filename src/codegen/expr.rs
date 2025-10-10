@@ -435,6 +435,16 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) -> LLVMValue {
                     Type::Int.to_llvm_format(),
                 );
                 name
+            } else if cast.type_orignal.as_par().is_some() && cast.type_to.as_par().is_some() {
+                println!(
+                    "{} = bitcast {} {} to {}",
+                    name.to_string(),
+                    cast.type_orignal.to_llvm_format(),
+                    new_load(gen_expr, *cast.expr, cgs).to_string(),
+                    cast.type_to.to_llvm_format()
+                );
+
+                name
             } else {
                 let expr_val = gen_expr(*cast.expr, cgs);
                 // 簡略化のため、実際の型変換は行わずそのまま返す

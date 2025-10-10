@@ -220,6 +220,13 @@ impl Type {
             None
         }
     }
+    pub fn as_par(&self) -> Option<&Type> {
+        if let Type::Pointer(ptr) = self {
+            Some(ptr)
+        } else {
+            None
+        }
+    }
 }
 
 impl Type {
