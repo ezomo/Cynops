@@ -887,14 +887,13 @@ impl Visualize for Init {
     }
 
     fn visualize_with_context(&self, indent: usize, is_last: bool, prefix: &[bool]) {
-        print_branch("Init", &self.r.sympl.ident.name, indent, is_last, prefix);
+        print_branch("Init", &self.l.ident.name, indent, is_last, prefix);
         let next_prefix = extend_prefix(prefix, !is_last);
 
-        self.r
-            .sympl
-            .visualize_with_context(indent + 1, self.l.is_none(), &next_prefix);
+        self.l
+            .visualize_with_context(indent + 1, self.r.is_none(), &next_prefix);
 
-        if let Some(init_data) = &self.l {
+        if let Some(init_data) = &self.r {
             print_branch("Initializer", "", indent + 1, true, &next_prefix);
             init_data.visualize_with_context(indent + 2, true, &extend_prefix(&next_prefix, false));
         }
@@ -1033,26 +1032,6 @@ impl Visualize for EnumMember {
             None => self.symbol.ident.name.clone(),
         };
         print_branch("Variant", &variant_info, indent, is_last, prefix);
-    }
-}
-
-impl Visualize for MemberDecl {
-    fn visualize(&self) {
-        self.visualize_with_context(0, true, &[]);
-    }
-
-    fn visualize_with_context(&self, indent: usize, is_last: bool, prefix: &[bool]) {
-        print_branch(
-            "Member",
-            &format!(
-                "{}: {}",
-                self.sympl.ident.name,
-                self.sympl.get_type().unwrap().to_rust_format()
-            ),
-            indent,
-            is_last,
-            prefix,
-        );
     }
 }
 

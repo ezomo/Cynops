@@ -30,25 +30,14 @@ impl DeclStmt {
 }
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub struct MemberDecl {
-    pub sympl: Symbol,
-}
-
-impl MemberDecl {
-    pub fn new(symbol: Symbol) -> Self {
-        MemberDecl { sympl: symbol }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Struct {
     pub ident: Option<Ident>,
     pub symbol: Symbol,
-    pub member: Vec<MemberDecl>,
+    pub member: Vec<Symbol>,
 }
 
 impl Struct {
-    pub fn new(ident: Option<Ident>, symbol: Symbol, member: Vec<MemberDecl>) -> Self {
+    pub fn new(ident: Option<Ident>, symbol: Symbol, member: Vec<Symbol>) -> Self {
         Struct {
             ident,
             symbol,
@@ -61,11 +50,11 @@ impl Struct {
 pub struct Union {
     pub ident: Option<Ident>,
     pub symbol: Symbol,
-    pub member: Vec<MemberDecl>,
+    pub member: Vec<Symbol>,
 }
 
 impl Union {
-    pub fn new(ident: Option<Ident>, symbol: Symbol, member: Vec<MemberDecl>) -> Self {
+    pub fn new(ident: Option<Ident>, symbol: Symbol, member: Vec<Symbol>) -> Self {
         Union {
             ident,
             symbol,
@@ -116,12 +105,12 @@ pub enum InitData {
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Init {
-    pub r: MemberDecl,
-    pub l: Option<InitData>,
+    pub l: Symbol,
+    pub r: Option<InitData>,
 }
 
 impl Init {
-    pub fn new(r: MemberDecl, l: Option<InitData>) -> Self {
-        Init { r, l }
+    pub fn new(r: Symbol, l: Option<InitData>) -> Self {
+        Init { l: r, r: l }
     }
 }

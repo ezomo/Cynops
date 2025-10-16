@@ -304,7 +304,7 @@ impl Size for Struct {
     fn size(&self) -> usize {
         self.member
             .iter()
-            .map(|x| x.sympl.get_type().unwrap().size())
+            .map(|x| x.get_type().unwrap().size())
             .sum()
     }
 }
@@ -313,7 +313,7 @@ impl Size for Union {
     fn size(&self) -> usize {
         self.member
             .iter()
-            .map(|x| x.sympl.get_type().unwrap().size())
+            .map(|x| x.get_type().unwrap().size())
             .max()
             .unwrap_or(0)
     }

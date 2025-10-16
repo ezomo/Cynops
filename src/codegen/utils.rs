@@ -2,6 +2,41 @@ use crate::op::*;
 use crate::sema::ast::*;
 use std::collections::HashMap;
 
+#[derive(Debug, Clone, Copy)]
+pub struct SLabel(usize);
+
+#[derive(Debug)]
+pub enum StackCommand {
+    Push(TypedExpr),
+    BinaryOP(BinaryOp),
+    Symbol(Symbol),
+    Alloca(Symbol),
+    Store, //　計算結果が下　対象は上
+    Load,
+    Pop,
+    Label(SLabel),       // ラベル定義
+    Jump(SLabel),        // 無条件ジャンプ
+    JumpIfFalse(SLabel), // スタックトップがfalseならジャンプ
+}
+
+pub fn load(fnc: impl Fn(TypedExpr, &mut CodeGenStatus), expr: TypedExpr, cgs: &mut CodeGenStatus) {
+    fnc(expr, cgs);
+    if cgs.is_left_val() {
+        cgs.outpus.push(StackCommand::Load);
+    }
+}
+
+impl From<TypedExpr> for StackCommand {
+    fn from(expr: TypedExpr) -> Self {
+        StackCommand::Push(expr)
+    }
+}
+impl From<BinaryOp> for StackCommand {
+    fn from(this: BinaryOp) -> Self {
+        StackCommand::BinaryOP(this)
+    }
+}
+
 #[derive(Debug)]
 pub struct CodeGenSpace {
     pub variables: HashMap<Ident, String>,
@@ -21,6 +56,7 @@ pub struct CodeGenStatus {
     pub return_label: Option<LLVMValue>,
     pub break_labels: Vec<LLVMValue>,    // break用ラベルのスタック
     pub continue_labels: Vec<LLVMValue>, // continue用ラベルのスタック
+    pub outpus: Vec<StackCommand>,
 }
 
 impl Block {
@@ -37,17 +73,43 @@ impl CodeGenStatus {
             return_label: None,
             break_labels: Vec::new(),
             continue_labels: Vec::new(),
+            outpus: Vec::new(),
         }
     }
 
-    pub fn push_loop_labels(&mut self, break_label: LLVMValue, continue_label: LLVMValue) {
-        self.break_labels.push(break_label);
-        self.continue_labels.push(continue_label);
-    }
-
-    pub fn pop_loop_labels(&mut self) {
-        self.break_labels.pop();
-        self.continue_labels.pop();
+    pub fn is_left_val(&self) -> bool {
+        if let Some(last) = self.outpus.last() {
+            match last {
+                StackCommand::Push(te) => match &te.expr {
+                    SemaExpr::Assign(_) => false,
+                    SemaExpr::Binary(_) => false,
+                    SemaExpr::Call(_) => false,
+                    SemaExpr::Char(_) => false,
+                    SemaExpr::String(_) => false,
+                    SemaExpr::Symbol(_) => false,
+                    SemaExpr::NumInt(_) => false,
+                    SemaExpr::NumFloat(_) => false,
+                    SemaExpr::Subscript(_) => true,
+                    SemaExpr::MemberAccess(_) => true,
+                    SemaExpr::Ternary(_) => false,
+                    SemaExpr::Unary(_) => false,
+                    SemaExpr::Sizeof(_) => false,
+                    SemaExpr::Cast(_) => false,
+                    SemaExpr::Comma(_) => false,
+                },
+                StackCommand::BinaryOP(_) => false,
+                StackCommand::Symbol(_) => true,
+                StackCommand::Alloca(_) => false,
+                StackCommand::Store => false, //　計算結果が下　対象は上
+                StackCommand::Load => false,
+                StackCommand::Pop => false,
+                StackCommand::Label(_) => false, // ラベル定義
+                StackCommand::Jump(_) => false,
+                StackCommand::JumpIfFalse(_) => false,
+            }
+        } else {
+            false
+        }
     }
 
     pub fn current_break_label(&self) -> Option<&LLVMValue> {
@@ -105,15 +167,6 @@ pub struct LLVMValue {
     pub ty: LLVMType,
 }
 
-impl LLVMValue {
-    pub fn new<T: ToString>(variable: T, ty: LLVMType) -> Self {
-        Self {
-            variable: variable.to_string(),
-            ty,
-        }
-    }
-}
-
 impl ToString for LLVMValue {
     fn to_string(&self) -> String {
         self.variable.clone()
@@ -164,10 +217,9 @@ impl NameGenerator {
             ty: LLVMType::Label,
         }
     }
-}
-
-pub trait ToLLVMIR {
-    fn to_llvmir(&self, ty: &Type) -> &str;
+    pub fn slabel(&mut self) -> SLabel {
+        SLabel(self.next())
+    }
 }
 
 impl Ident {
@@ -177,127 +229,6 @@ impl Ident {
 
     pub fn get_fnc_name(&self) -> String {
         format!("@{}", &self.name)
-    }
-}
-
-impl ToLLVMIR for Arithmetic {
-    fn to_llvmir(&self, ty: &Type) -> &str {
-        match ty {
-            Type::Int | Type::Char | Type::Enum(_) => match self {
-                Self::Plus => "add",
-                Self::Minus => "sub",
-                Self::Asterisk => "mul",
-                Self::Slash => "sdiv",
-                Self::Percent => "srem",
-                Self::Ampersand => "and",
-                Self::Pipe => "or",
-                Self::Caret => "xor",
-                Self::LessLess => "shl",
-                Self::GreaterGreater => "ashr",
-            },
-            Type::Double => {
-                match self {
-                    Self::Plus => "fadd",
-                    Self::Minus => "fsub",
-                    Self::Asterisk => "fmul",
-                    Self::Slash => "fdiv",
-                    Self::Percent => "frem",
-                    // Double にビット演算やシフトは無いので panic/error にする
-                    _ => panic!("invalid operator {:?} for Double", self),
-                }
-            }
-            _ => panic!("unsupported type {:?}", ty),
-        }
-    }
-}
-
-impl ToLLVMIR for Comparison {
-    fn to_llvmir(&self, ty: &Type) -> &str {
-        match ty {
-            Type::Int | Type::Char | Type::Enum(_) => match self {
-                Self::EqualEqual => "icmp eq",
-                Self::NotEqual => "icmp ne",
-                Self::Less => "icmp slt",
-                Self::LessEqual => "icmp sle",
-                Self::Greater => "icmp sgt",
-                Self::GreaterEqual => "icmp sge",
-            },
-            Type::Double => match self {
-                Self::EqualEqual => "fcmp oeq",
-                Self::NotEqual => "fcmp one",
-                Self::Less => "fcmp olt",
-                Self::LessEqual => "fcmp ole",
-                Self::Greater => "fcmp ogt",
-                Self::GreaterEqual => "fcmp oge",
-            },
-            _ => panic!("unsupported type {:?} for comparison", ty),
-        }
-    }
-}
-
-impl LLVMValue {
-    pub fn i1toi32(self: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
-        let name = cgs.name_gen.register();
-        println!("{} = zext i1 {} to i32", name.to_string(), self.to_string());
-        name
-    }
-
-    pub fn i32toi1(&self, cgs: &mut CodeGenStatus) -> LLVMValue {
-        let name = cgs.name_gen.register();
-        println!(
-            "{} = icmp ne {} {}, 0",
-            name.to_string(),
-            Type::Int.to_llvm_format(),
-            self.to_string()
-        );
-        name
-    }
-}
-
-pub fn load(ty: &Type, data: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
-    match data.ty {
-        LLVMType::Variable => {
-            let name = cgs.name_gen.register();
-            println!(
-                "{} = load {}, {}* {}",
-                name.to_string(),
-                ty.to_llvm_format(),
-                ty.to_llvm_format(),
-                data.to_string()
-            );
-            name
-        }
-
-        _ => data,
-    }
-}
-
-pub fn new_load(
-    fnc: impl Fn(TypedExpr, &mut CodeGenStatus) -> LLVMValue,
-    expr: TypedExpr,
-    cgs: &mut CodeGenStatus,
-) -> LLVMValue {
-    load(&expr.r#type.clone(), fnc(expr, cgs), cgs)
-}
-
-pub fn wrap(ty: &Type, data: LLVMValue, cgs: &mut CodeGenStatus) -> LLVMValue {
-    match data.ty {
-        LLVMType::Variable => data,
-        LLVMType::Void => data,
-        _ => {
-            let name = cgs.name_gen.variable();
-            println!("{} = alloca {}", name.to_string(), ty.to_llvm_format());
-
-            println!(
-                "store {} {}, {}* {}",
-                ty.to_llvm_format(),
-                data.to_string(),
-                ty.to_llvm_format(),
-                name.to_string()
-            );
-
-            name
-        }
     }
 }
 

@@ -223,10 +223,10 @@ fn convert_enum(e: &old_ast::Enum, session: &mut Session) -> new_ast::Enum {
     converted
 }
 
-fn convert_member_decl(m: &old_ast::MemberDecl, session: &mut Session) -> new_ast::MemberDecl {
+fn convert_member_decl(m: &old_ast::MemberDecl, session: &mut Session) -> Symbol {
     let ty = convert_type(&m.ty, session);
     session.register_symbols(m.ident.as_same(), ty);
-    new_ast::MemberDecl::new(Symbol::new(m.ident.as_same(), session.current_scope()))
+    Symbol::new(m.ident.as_same(), session.current_scope())
 }
 
 fn convert_stmt(stmt: &old_ast::Stmt, session: &mut Session) -> new_ast::Stmt {

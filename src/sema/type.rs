@@ -380,21 +380,19 @@ fn resolve_decl_stmt(decl: &DeclStmt, session: &mut Session) -> TypeCheckResult<
 fn resolve_init(init: &Init, session: &mut Session) -> TypeCheckResult<Init> {
     let mut errors = Vec::new();
 
-    session.current_scope = init.r.sympl.scope.get_scope().unwrap();
+    session.current_scope = init.l.scope.get_scope().unwrap();
 
-    let mut resolved_type = init.r.sympl.get_type().unwrap().flat();
+    let mut resolved_type = init.l.get_type().unwrap().flat();
 
     // 配列の長さ推論
-    if let Some(init_data) = &init.l {
+    if let Some(init_data) = &init.r {
         infer_array_length(&mut resolved_type, init_data, session);
     }
 
-    let resolved_member_decl = MemberDecl {
-        sympl: init.r.sympl.clone(),
-    };
+    let resolved_member_decl = init.l.clone();
 
     // 初期化データがある場合、型の互換性をチェック
-    let init_data_result = if let Some(init_data) = &init.l {
+    let init_data_result = if let Some(init_data) = &init.r {
         let mut init_result = resolve_init_data(init_data, session);
         errors.append(&mut init_result.errors);
 
@@ -407,15 +405,12 @@ fn resolve_init(init: &Init, session: &mut Session) -> TypeCheckResult<Init> {
     };
 
     // 変数をセッションに平坦化された型で登録
-    session.register_symbols(
-        resolved_member_decl.sympl.ident.clone(),
-        resolved_type.clone(),
-    );
+    session.register_symbols(resolved_member_decl.ident.clone(), resolved_type.clone());
 
     TypeCheckResult {
         result: Init {
-            r: resolved_member_decl,
-            l: init_data_result,
+            l: resolved_member_decl,
+            r: init_data_result,
         },
         errors,
     }
@@ -807,8 +802,8 @@ fn infer_type(expr: &SemaExpr, session: &mut Session, errors: &mut Vec<TypeError
                 Type::Struct(ref s) => {
                     match s.member
                         .iter()
-                        .find(|m| m.sympl.ident.name == member.member.name)
-                        .map(|m| m.sympl.get_type().unwrap().flat()) // メンバー型も平坦化
+                        .find(|m| m.ident.name == member.member.name)
+                        .map(|m| m.get_type().unwrap().flat()) // メンバー型も平坦化
                     {
                         Some(member_type) => member_type,
                         None => {
@@ -823,8 +818,8 @@ fn infer_type(expr: &SemaExpr, session: &mut Session, errors: &mut Vec<TypeError
                 Type::Union(u) => {
                     match u.member
                         .iter()
-                        .find(|m| m.sympl.ident.name == member.member.name)
-                        .map(|m| m.sympl.get_type().unwrap().flat()) // メンバー型も平坦化
+                        .find(|m| m.ident.name == member.member.name)
+                        .map(|m| m.get_type().unwrap().flat()) // メンバー型も平坦化
                     {
                         Some(member_type) => member_type,
                         None => {

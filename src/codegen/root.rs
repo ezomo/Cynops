@@ -1,5 +1,5 @@
 use super::*;
-use crate::sema::ast::*;
+use crate::{sema::ast::*, visualize::OneLine};
 
 fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
     let args: Vec<(Symbol, Type)> = (0..function.param_names.len())
@@ -130,5 +130,20 @@ fn gen_top_level(top_level: TopLevel, cgs: &mut CodeGenStatus) {
 pub fn generate_program(program: Program, cgs: &mut CodeGenStatus) {
     for item in program.items {
         gen_top_level(item, cgs);
+    }
+
+    for o in cgs.outpus.iter() {
+        match o {
+            StackCommand::Push(this) => println!("Push {}", this.oneline()),
+            StackCommand::BinaryOP(this) => println!("{:?}", this),
+            StackCommand::Symbol(this) => println!("Symbol {}", this.oneline()),
+            StackCommand::Alloca(this) => println!("Alloca {}", this.oneline()),
+            StackCommand::Store => println!("{:?}", o), //　計算結果が下　対象は上
+            StackCommand::Load => println!("{:?}", o),
+            StackCommand::Pop => println!("{:?}", o),
+            StackCommand::Label(this) => println!("Label {:?}", this), // ラベル定義
+            StackCommand::Jump(this) => println!("Jump {:?}", this),
+            StackCommand::JumpIfFalse(this) => println!("JumpIfFalse {:?}", this),
+        }
     }
 }
