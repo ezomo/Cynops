@@ -17,6 +17,13 @@ pub enum StackCommand {
     Label(SLabel),       // ラベル定義
     Jump(SLabel),        // 無条件ジャンプ
     JumpIfFalse(SLabel), // スタックトップがfalseならジャンプ
+    Call,
+}
+
+pub struct Func {
+    pub sig: FunctionSig,
+    pub param_names: Vec<Ident>,
+    pub body: Block,
 }
 
 pub fn load(fnc: impl Fn(TypedExpr, &mut CodeGenStatus), expr: TypedExpr, cgs: &mut CodeGenStatus) {
@@ -100,12 +107,13 @@ impl CodeGenStatus {
                 StackCommand::BinaryOP(_) => false,
                 StackCommand::Symbol(_) => true,
                 StackCommand::Alloca(_) => false,
-                StackCommand::Store => false, //　計算結果が下　対象は上
+                StackCommand::Store => false,
                 StackCommand::Load => false,
                 StackCommand::Pop => false,
-                StackCommand::Label(_) => false, // ラベル定義
+                StackCommand::Label(_) => false,
                 StackCommand::Jump(_) => false,
                 StackCommand::JumpIfFalse(_) => false,
+                StackCommand::Call => false, //多分？
             }
         } else {
             false
@@ -153,12 +161,9 @@ pub struct NameGenerator {
 #[derive(Debug, Clone, PartialEq)]
 
 pub enum LLVMType {
-    Const,
     GrobalConst,
     Register,
-    Variable,
     Label,
-    Void,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -187,20 +192,6 @@ impl NameGenerator {
         LLVMValue {
             variable: format!("%tmp{}", self.next()),
             ty: LLVMType::Register,
-        }
-    }
-
-    pub fn void(&mut self) -> LLVMValue {
-        LLVMValue {
-            variable: "void".to_string(),
-            ty: LLVMType::Void,
-        }
-    }
-
-    pub fn variable(&mut self) -> LLVMValue {
-        LLVMValue {
-            variable: format!("%tmp{}", self.next()),
-            ty: LLVMType::Variable,
         }
     }
 

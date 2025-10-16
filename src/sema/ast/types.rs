@@ -333,17 +333,11 @@ impl Size for Symbol {
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct FunctionSig {
-    pub ty: Type,
-    pub ident: Ident,
-    pub scope_ptr: ScopePtr,
+    pub symbol: Symbol,
 }
 impl FunctionSig {
-    pub fn new(ty: Type, ident: Ident, scope_ptr: ScopePtr) -> Self {
-        FunctionSig {
-            ty,
-            ident,
-            scope_ptr,
-        }
+    pub fn new(symbol: Symbol) -> Self {
+        FunctionSig { symbol }
     }
 }
 

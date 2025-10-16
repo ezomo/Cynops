@@ -36,14 +36,17 @@ fn convert_function_def(
     let sig = convert_function_sig(&func_def.sig, session);
 
     // 関数をsessionに登録
-    session.register_function(sig.ident.clone(), sig.ty.clone());
+    session.register_function(
+        sig.symbol.ident.clone(),
+        sig.symbol.get_type().unwrap().clone(),
+    );
 
     // 新しいスコープを作成して関数本体を処理
     session.push_scope();
 
     let mut symbols = Vec::new();
     // パラメータを現在のスコープに登録
-    if let Some(func_type) = sig.ty.as_func() {
+    if let Some(func_type) = sig.symbol.get_type().unwrap().as_func() {
         for (param_name, param_type) in func_def.param_names.iter().zip(&func_type.params) {
             session.register_symbols(param_name.as_same(), param_type.clone());
             symbols.push(Symbol::new(param_name.as_same(), session.current_scope()));
@@ -64,17 +67,18 @@ fn convert_function_proto(
     let sig = convert_function_sig(&func_proto.sig, session);
 
     // プロトタイプもsessionに登録
-    session.register_function(sig.ident.clone(), sig.ty.clone());
+    session.register_function(
+        sig.symbol.ident.clone(),
+        sig.symbol.get_type().unwrap().clone(),
+    );
 
     new_ast::TopLevel::function_proto(sig)
 }
 
 fn convert_function_sig(sig: &old_ast::FunctionSig, session: &mut Session) -> new_ast::FunctionSig {
-    new_ast::FunctionSig::new(
-        convert_type(&sig.ty, session),
-        sig.ident.as_same(),
-        session.current_scope(),
-    )
+    let ty = convert_type(&sig.ty, session);
+    session.register_function(sig.ident.as_same(), ty);
+    new_ast::FunctionSig::new(Symbol::new(sig.ident.as_same(), session.current_scope()))
 }
 
 fn convert_type(ty: &old_ast::Type, session: &mut Session) -> new_ast::Type {

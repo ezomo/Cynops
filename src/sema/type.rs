@@ -129,16 +129,17 @@ fn resolve_toplevel(toplevel: &TopLevel, session: &mut Session) -> TypeCheckResu
     }
 }
 
+// TODO カス　絶対になおす
 fn resolve_function_def(
     func_def: &FunctionDef,
     session: &mut Session,
 ) -> TypeCheckResult<FunctionDef> {
     let mut errors = Vec::new();
 
-    session.current_scope = func_def.sig.scope_ptr.get_scope().unwrap();
+    session.current_scope = func_def.sig.symbol.scope.get_scope().unwrap();
 
     // 関数型を平坦化してから処理
-    let flattened_func_type = func_def.sig.ty.flat();
+    let flattened_func_type = func_def.sig.symbol.get_type().unwrap().flat();
     if let Some(func_type) = flattened_func_type.as_func() {
         for (param_name, param_type) in func_def
             .param_names
@@ -159,9 +160,7 @@ fn resolve_function_def(
     TypeCheckResult {
         result: FunctionDef {
             sig: FunctionSig {
-                ty: flattened_func_type,
-                ident: func_def.sig.ident.clone(),
-                scope_ptr: session.current_scope(),
+                symbol: Symbol::new(func_def.sig.symbol.ident.clone(), session.current_scope()),
             },
             param_names: func_def.param_names.clone(),
             body: body_result.result,

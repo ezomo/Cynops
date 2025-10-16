@@ -394,19 +394,10 @@ impl Visualize for FunctionProto {
     fn visualize_with_context(&self, indent: usize, is_last: bool, prefix: &[bool]) {
         print_branch(
             "FunctionProto",
-            &self.sig.ident.name,
+            &self.sig.symbol.oneline(),
             indent,
-            is_last,
-            prefix,
-        );
-        let next_prefix = extend_prefix(prefix, !is_last);
-
-        print_branch(
-            "Type",
-            &self.sig.ty.to_rust_format(),
-            indent + 1,
             true,
-            &next_prefix,
+            prefix,
         );
     }
 }
@@ -417,7 +408,13 @@ impl Visualize for FunctionDef {
     }
 
     fn visualize_with_context(&self, indent: usize, is_last: bool, prefix: &[bool]) {
-        print_branch("FunctionDef", &self.sig.ident.name, indent, is_last, prefix);
+        print_branch(
+            "FunctionDef",
+            &self.sig.symbol.oneline(),
+            indent,
+            is_last,
+            prefix,
+        );
         let next_prefix = extend_prefix(prefix, !is_last);
 
         let has_body = !self.body.statements.is_empty();
@@ -434,7 +431,7 @@ impl Visualize for FunctionDef {
         remaining_items -= 1;
         print_branch(
             "Type",
-            &self.sig.ty.to_rust_format(),
+            &self.sig.symbol.get_type().unwrap().to_rust_format(),
             indent + 1,
             remaining_items == 0,
             &next_prefix,

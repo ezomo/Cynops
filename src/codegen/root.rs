@@ -6,7 +6,15 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
         .map(|i| {
             (
                 function.param_names[i].clone(),
-                function.sig.ty.as_func().unwrap().params[i].clone(),
+                function
+                    .sig
+                    .symbol
+                    .get_type()
+                    .unwrap()
+                    .as_func()
+                    .unwrap()
+                    .params[i]
+                    .clone(),
             )
         })
         .collect();
@@ -15,12 +23,14 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
         "define {} {}({}) {{",
         function
             .sig
-            .ty
+            .symbol
+            .get_type()
+            .unwrap()
             .as_func()
             .unwrap()
             .return_type
             .to_llvm_format(),
-        function.sig.ident.get_fnc_name(),
+        function.sig.symbol.ident.get_fnc_name(),
         args.iter()
             .map(|x| format!("{} %{}", x.1.to_llvm_format(), x.0.ident.get_name()))
             .collect::<Vec<_>>()
@@ -46,7 +56,15 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
 
     // return用の変数とラベルを設定
 
-    let return_type = function.sig.ty.as_func().unwrap().return_type.clone();
+    let return_type = function
+        .sig
+        .symbol
+        .get_type()
+        .unwrap()
+        .as_func()
+        .unwrap()
+        .return_type
+        .clone();
     let return_label = cgs.name_gen.label();
     let return_ptr = cgs.name_gen.register();
 
@@ -100,15 +118,19 @@ fn function_proto(function: FunctionProto, _cgs: &mut CodeGenStatus) {
         "declare {} @{}({})",
         function
             .sig
-            .ty
+            .symbol
+            .get_type()
+            .unwrap()
             .as_func()
             .unwrap()
             .return_type
             .to_llvm_format(),
-        function.sig.ident.get_name(),
+        function.sig.symbol.ident.get_name(),
         function
             .sig
-            .ty
+            .symbol
+            .get_type()
+            .unwrap()
             .as_func()
             .unwrap()
             .params
@@ -144,6 +166,7 @@ pub fn generate_program(program: Program, cgs: &mut CodeGenStatus) {
             StackCommand::Label(this) => println!("Label {:?}", this), // ラベル定義
             StackCommand::Jump(this) => println!("Jump {:?}", this),
             StackCommand::JumpIfFalse(this) => println!("JumpIfFalse {:?}", this),
+            StackCommand::Call => println!("{:?}", o),
         }
     }
 }
