@@ -113,7 +113,6 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                 .iter()
                 .filter(|x| !x.get_type().unwrap().is_void())
                 .for_each(|x| {
-                    println!("palam {}", x.oneline());
                     cgs.add_stck(1);
                     cgs.symbol_table.insert(x.clone(), cgs.head_sack_func());
                 });
@@ -129,12 +128,6 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                 StackCommand::Symbol(symbol) => match symbol.get_type().unwrap() {
                     Type::Func(_) => cgs.push_usize(cgs.symbol_table[&symbol]),
                     _ => {
-                        println!(
-                            "{} - {},{}",
-                            cgs.head_sack_func(),
-                            cgs.symbol_table[&symbol],
-                            symbol.oneline()
-                        );
                         cgs.push_usize(cgs.head_sack_func() - cgs.symbol_table[&symbol]);
                     }
                 },
@@ -148,7 +141,7 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
 
                     // 一下のアドレス，その下の実値
                 }
-                StackCommand::Load(Type) => {
+                StackCommand::Load(ty) => {
                     cgs.outpus.push(SeStackCommand::Push(1));
                     cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
                     //こいつはpush分の計算がいる基準が違う
@@ -173,11 +166,12 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                     cgs.outpus
                         .push(SeStackCommand::Push(cgs.head_sack_func() + 1));
                     cgs.outpus.push(SeStackCommand::WriteAddr);
+
+                    println!("{},{}", cgs.head_sack_all(), cgs.head_sack_func());
                     cgs.sub_stack(1); //writeaddrでアドレスを2消費する
+                    println!("{},{}", cgs.head_sack_all(), cgs.head_sack_func());
                 }
                 StackCommand::FramePop => {
-                    println!("framePop_{} {}", cgs.head_sack_all(), cgs.head_sack_func());
-
                     cgs.outpus
                         .push(SeStackCommand::DeAlloc(cgs.alloced + palam_size));
                     // println!("Alloc_{} {}", cgs.head_sack_all(), cgs.head_sack_func());
@@ -269,7 +263,7 @@ impl CodeGenStatus {
 
         // 返り値
         if !ty.as_func().unwrap().return_type.is_void() {
-            self.sub_stack(1);
+            // self.sub_stack(1);
             self.sub_alloc(1);
         }
 
