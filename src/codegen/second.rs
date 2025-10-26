@@ -6,6 +6,7 @@ use super::StackCommand;
 use super::utils::SFunc;
 use crate::op::*;
 use crate::sema::ast::*;
+use crate::visualize::OneLine;
 
 type Address = usize;
 
@@ -108,10 +109,14 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
         cgs.outpus.push(SeStackCommand::Label(func.entry.into()));
 
         {
-            func.param_names.iter().for_each(|x| {
-                cgs.add_stck(1);
-                cgs.symbol_table.insert(x.clone(), cgs.head_sack_func());
-            });
+            func.param_names
+                .iter()
+                .filter(|x| !x.get_type().unwrap().is_void())
+                .for_each(|x| {
+                    println!("palam {}", x.oneline());
+                    cgs.add_stck(1);
+                    cgs.symbol_table.insert(x.clone(), cgs.head_sack_func());
+                });
         }
 
         for cmd in func.body {
@@ -121,15 +126,18 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                     cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp));
                     cgs.sub_stack(1);
                 }
-                StackCommand::Symbol(symbol) => {
-                    match symbol.get_type().unwrap() {
-                        Type::Func(_) => cgs.push_usize(cgs.symbol_table[&symbol]),
-                        _ => {
-                            cgs.push_usize(cgs.head_sack_func() - cgs.symbol_table[&symbol]);
-                        }
+                StackCommand::Symbol(symbol) => match symbol.get_type().unwrap() {
+                    Type::Func(_) => cgs.push_usize(cgs.symbol_table[&symbol]),
+                    _ => {
+                        println!(
+                            "{} - {},{}",
+                            cgs.head_sack_func(),
+                            cgs.symbol_table[&symbol],
+                            symbol.oneline()
+                        );
+                        cgs.push_usize(cgs.head_sack_func() - cgs.symbol_table[&symbol]);
                     }
-                    cgs.add_stck(1);
-                }
+                },
                 StackCommand::Name(symbol) => {
                     _ = cgs.symbol_table.insert(symbol, cgs.head_sack_func())
                 }
@@ -137,6 +145,7 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                 StackCommand::Store => {
                     cgs.outpus.push(SeStackCommand::WriteAddr);
                     cgs.sub_stack(2);
+
                     // 一下のアドレス，その下の実値
                 }
                 StackCommand::Load(Type) => {
@@ -171,10 +180,10 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
 
                     cgs.outpus
                         .push(SeStackCommand::DeAlloc(cgs.alloced + palam_size));
-                    println!("Alloc_{} {}", cgs.head_sack_all(), cgs.head_sack_func());
-                    println!("{}+ {}", cgs.alloced, palam_size);
+                    // println!("Alloc_{} {}", cgs.head_sack_all(), cgs.head_sack_func());
+                    // println!("{}+ {}", cgs.alloced, palam_size);
                     cgs.sub_stack(cgs.alloced + palam_size);
-                    println!("DeAlloc_{} {}", cgs.head_sack_all(), cgs.head_sack_func());
+                    // println!("DeAlloc_{} {}", cgs.head_sack_all(), cgs.head_sack_func());
 
                     cgs.outpus.push(SeStackCommand::Goto);
                     //存在するだけで呼び出されていない関数もある．
@@ -254,7 +263,7 @@ impl CodeGenStatus {
     fn call(&mut self, ty: Type) {
         self.outpus.push(SeStackCommand::Goto);
 
-        println!("CallF {} {}", self.head_sack_all(), self.head_sack_func());
+        // println!("CallF {} {}", self.head_sack_all(), self.head_sack_func());
         // Goto消費
         self.sub_stack(1);
 
@@ -276,6 +285,6 @@ impl CodeGenStatus {
                 .filter(|x| !x.is_void())
                 .count(),
         );
-        println!("CallE {} {}", self.head_sack_all(), self.head_sack_func());
+        // println!("CallE {} {}", self.head_sack_all(), self.head_sack_func());
     }
 }
