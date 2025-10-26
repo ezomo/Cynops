@@ -347,6 +347,12 @@ pub struct Ident {
     pub name: String,
 }
 
+impl<T: Into<String>> From<T> for Ident {
+    fn from(value: T) -> Self {
+        Ident { name: value.into() }
+    }
+}
+
 impl ast::Ident {
     /// ASTのIdentをcrate内共通型に変換
     pub fn as_same(&self) -> Ident {
@@ -358,12 +364,9 @@ impl ast::Ident {
 
 impl Ident {
     /// 新しく Ident を作る（&str, String 両方対応）
-    pub fn new(name: impl Into<String>) -> Self {
-        Self { name: name.into() }
-    }
 
     pub fn with_suffix(&self, add: impl Into<String>) -> Self {
-        Self::new(format!("type..{}{}", self.to_string(), add.into()))
+        format!("type..{}{}", self.to_string(), add.into()).into()
     }
 }
 

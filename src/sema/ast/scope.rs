@@ -49,13 +49,13 @@ impl ScopePtr {
 
 impl Hash for ScopePtr {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.ptr.as_ptr().hash(state);
+        self.get_id().0.hash(state)
     }
 }
 
 impl PartialEq for ScopePtr {
     fn eq(&self, other: &Self) -> bool {
-        self.ptr.upgrade().unwrap().borrow().id == other.ptr.upgrade().unwrap().borrow().id
+        self.get_id() == other.get_id()
     }
 }
 
@@ -76,9 +76,11 @@ impl ScopeId {
     pub fn id_vec(&self) -> Vec<usize> {
         self.0.clone()
     }
+}
 
-    pub fn id_string(&self) -> String {
-        self.id_vec()
+impl From<&ScopeId> for String {
+    fn from(this: &ScopeId) -> Self {
+        this.id_vec()
             .iter()
             .map(|x| x.to_string())
             .collect::<Vec<String>>()
@@ -183,6 +185,7 @@ impl Session {
 pub trait ScopeNodes {
     fn get_type(&self, ident: &Ident) -> Option<Type>;
     fn register_symbols(&mut self, name: Ident, ty: Type);
+    fn get_id(&self) -> ScopeId;
 }
 
 impl ScopeNodes for ScopePtr {
@@ -195,6 +198,9 @@ impl ScopeNodes for ScopePtr {
             .borrow_mut()
             .register_symbols(name, ty);
     }
+    fn get_id(&self) -> ScopeId {
+        self.get_scope().unwrap().borrow().get_id()
+    }
 }
 impl ScopeNodes for Session {
     fn get_type(&self, ident: &Ident) -> Option<Type> {
@@ -202,6 +208,9 @@ impl ScopeNodes for Session {
     }
     fn register_symbols(&mut self, name: Ident, ty: Type) {
         self.current_scope.borrow_mut().register_symbols(name, ty);
+    }
+    fn get_id(&self) -> ScopeId {
+        self.current_scope.borrow().id.clone()
     }
 }
 impl ScopeNodes for ScopeNode {
@@ -222,5 +231,9 @@ impl ScopeNodes for ScopeNode {
 
     fn register_symbols(&mut self, name: Ident, ty: Type) {
         self.symbols.insert(name, ty);
+    }
+
+    fn get_id(&self) -> ScopeId {
+        self.id.clone()
     }
 }

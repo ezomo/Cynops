@@ -36,19 +36,117 @@ fn declstmt(declstmt: DeclStmt, cgs: &mut CodeGenStatus) {
 }
 
 fn declare_variable(init: Init, cgs: &mut CodeGenStatus) {
-    // 初期化子がある場合は初期化
+    // メモリ確保と変数名を登録
+    let var_type = init.l.get_type().unwrap();
+    cgs.outpus.push(StackCommand::Alloc(var_type.clone()));
+    cgs.outpus.push(StackCommand::Name(init.l.clone()));
+
+    // 初期化子がある場合は初期化を実行
     if let Some(init_data) = init.r {
-        match init_data {
-            InitData::Expr(expr) => {
-                cgs.outpus.push(StackCommand::Alloca(init.l.clone()));
-                gen_expr(expr, cgs);
-                cgs.outpus.push(StackCommand::Symbol(init.l));
-                cgs.outpus.push(StackCommand::Store);
+        initialize_variable(init.l.clone(), init_data, &var_type, cgs);
+    }
+}
+
+impl Array {
+    pub fn arry_list(&self) -> Vec<usize> {
+        let this_len = self.length.as_ref().unwrap().consume_const() as usize;
+
+        match &*self.array_of {
+            Type::Array(inner) => {
+                std::iter::once(self.length.as_ref().unwrap().consume_const() as usize)
+                    .chain(inner.arry_list().into_iter())
+                    .collect()
             }
-            _ => {}
+            _ => vec![this_len],
         }
-    } else {
-        cgs.outpus.push(StackCommand::Alloca(init.l.clone()));
+    }
+
+    fn types(&self, b: usize) -> Type {
+        if b == 0 {
+            *self.array_of.clone()
+        } else {
+            self.array_of.as_array().unwrap().types(b - 1)
+        }
+    }
+}
+
+impl InitData {
+    fn acsess(&self, list: Vec<usize>) -> InitData {
+        if list.is_empty() {
+            return self.clone();
+        } else {
+            match self {
+                InitData::Compound(this) => this[*list.first().unwrap()].acsess(list[1..].to_vec()),
+                _ => return self.clone(),
+            }
+        }
+    }
+}
+
+fn initialize_variable(
+    object: Symbol,
+    init_data: InitData,
+    var_type: &Type,
+    cgs: &mut CodeGenStatus,
+) {
+    match init_data.clone() {
+        InitData::Expr(typed_expr) => {
+            // 式の初期化: 値を評価してスタックに乗せる
+            load(gen_expr, typed_expr, cgs);
+            cgs.outpus.push(StackCommand::Symbol(object.clone()));
+            cgs.outpus.push(StackCommand::Store);
+        }
+        InitData::Compound(_) => {
+            // 複合初期化子 {1, 2, 3} または {.a = 1, .b = 2}
+            match var_type {
+                Type::Array(arr) => {
+                    let combos =
+                        arr.arry_list()
+                            .iter()
+                            .fold(vec![vec![]].into_iter(), |acc, &max| {
+                                acc.flat_map(move |prefix| {
+                                    (0..max).map(move |i| {
+                                        let mut new_prefix = prefix.clone();
+                                        new_prefix.push(i);
+                                        new_prefix
+                                    })
+                                })
+                                .collect::<Vec<_>>()
+                                .into_iter()
+                            });
+
+                    for i in combos {
+                        let tmp = i.clone();
+                        cgs.outpus
+                            .push(StackCommand::Push(match init_data.clone().acsess(i) {
+                                InitData::Compound(_) => panic!(),
+                                InitData::Expr(this) => this,
+                            }));
+
+                        cgs.outpus.push(StackCommand::Symbol(object.clone()));
+                        for i in (0..tmp.len()).rev() {
+                            let ty = arr.types(tmp.len() - i - 1);
+                            let offset = tmp[tmp.len() - i - 1];
+                            cgs.outpus.push(StackCommand::Push(TypedExpr::new(
+                                Type::Int,
+                                SemaExpr::NumInt(offset),
+                            )));
+                            cgs.outpus.push(StackCommand::IndexAccess(ty));
+                        }
+                        cgs.outpus.push(StackCommand::Store);
+                    }
+                }
+                Type::Struct(stru) => {
+                    // 構造体の初期化
+                }
+                Type::Union(_) => {
+                    panic!("共用体の複合初期化は未対応");
+                }
+                _ => {
+                    panic!("複合初期化子が使用できない型です");
+                }
+            }
+        }
     }
 }
 
@@ -94,14 +192,6 @@ fn declare_enum(init: Enum, cgs: &mut CodeGenStatus) {
     }
 }
 
-fn initialize_variable(
-    var_name: LLVMValue,
-    init_data: InitData,
-    var_type: &Type,
-    cgs: &mut CodeGenStatus,
-) {
-}
-
 fn control(control: Control, cgs: &mut CodeGenStatus) {
     match control {
         Control::If(if_stmt) => controls::r#if(if_stmt, cgs),
@@ -112,23 +202,19 @@ fn control(control: Control, cgs: &mut CodeGenStatus) {
     }
 }
 
-fn r#break(cgs: &mut CodeGenStatus) {
-    if let Some(break_label) = cgs.current_break_label() {
-        println!("  br label %{}", break_label.to_string());
-    } else {
-        panic!("break statement outside of loop");
-    }
-}
+fn r#break(cgs: &mut CodeGenStatus) {}
 
-fn r#continue(cgs: &mut CodeGenStatus) {
-    if let Some(continue_label) = cgs.current_continue_label() {
-        println!("  br label %{}", continue_label.to_string());
-    } else {
-        panic!("continue statement outside of loop");
-    }
-}
+fn r#continue(cgs: &mut CodeGenStatus) {}
 
-fn r#return(ret: Return, cgs: &mut CodeGenStatus) {}
+fn r#return(ret: Return, cgs: &mut CodeGenStatus) {
+    if let Some(expr) = ret.value {
+        load(gen_expr, *expr.clone(), cgs);
+        cgs.outpus.push(StackCommand::Return);
+    }
+
+    cgs.outpus.push(StackCommand::Goto(cgs.func_end.unwrap()));
+    cgs.outpus.push(StackCommand::Label(cgs.name_gen.slabel())); //未到達空間回避
+}
 
 fn goto(goto: Goto, _cgs: &mut CodeGenStatus) {
     println!("  br label %{}", goto.label.get_name());
@@ -146,35 +232,59 @@ mod controls {
     pub fn r#if(if_stmt: If, cgs: &mut CodeGenStatus) {
         match if_stmt.else_branch {
             Some(else_blach) => {
-                let label_end = cgs.name_gen.slabel();
+                let label_then = cgs.name_gen.slabel();
                 let label_else = cgs.name_gen.slabel();
+                let label_end = cgs.name_gen.slabel();
                 gen_expr(*if_stmt.cond, cgs);
-                cgs.outpus.push(StackCommand::JumpIfFalse(label_else));
+
+                cgs.outpus
+                    .push(StackCommand::Branch(label_then, label_else));
+
+                cgs.outpus.push(label_then.into());
                 stmt(*if_stmt.then_branch, cgs);
-                cgs.outpus.push(StackCommand::Jump(label_end));
-                cgs.outpus.push(StackCommand::Label(label_else));
+                cgs.outpus.push(StackCommand::Goto(label_end));
+
+                cgs.outpus.push(label_else.into());
                 stmt(*else_blach, cgs);
-                cgs.outpus.push(StackCommand::Label(label_end));
+                cgs.outpus.push(StackCommand::Goto(label_end));
+
+                cgs.outpus.push(label_end.into());
             }
             None => {
+                let label_then = cgs.name_gen.slabel();
                 let label_end = cgs.name_gen.slabel();
                 gen_expr(*if_stmt.cond, cgs);
-                cgs.outpus.push(StackCommand::JumpIfFalse(label_end));
+                cgs.outpus.push(StackCommand::Branch(label_then, label_end));
+                cgs.outpus.push(label_then.into());
                 stmt(*if_stmt.then_branch, cgs);
-                cgs.outpus.push(StackCommand::Label(label_end));
+                cgs.outpus.push(StackCommand::Goto(label_end));
+                cgs.outpus.push(label_end.into());
             }
         }
     }
 
     pub fn r#while(while_stmt: While, cgs: &mut CodeGenStatus) {
         let label_start = cgs.name_gen.slabel();
+        let label_body = cgs.name_gen.slabel();
         let label_end = cgs.name_gen.slabel();
 
+        // ループの先頭ラベル
         cgs.outpus.push(StackCommand::Label(label_start));
+
+        // 条件式を評価
         gen_expr(*while_stmt.cond, cgs);
-        cgs.outpus.push(StackCommand::JumpIfFalse(label_end));
+
+        // 条件が真なら body へ、偽なら end へ
+        cgs.outpus.push(StackCommand::Branch(label_body, label_end));
+
+        // ループ本体
+        cgs.outpus.push(StackCommand::Label(label_body));
         stmt(*while_stmt.body, cgs);
-        cgs.outpus.push(StackCommand::Jump(label_start));
+
+        // 本体実行後、再び条件評価へ戻る
+        cgs.outpus.push(StackCommand::Goto(label_start));
+
+        // 終了ラベル
         cgs.outpus.push(StackCommand::Label(label_end));
     }
 
@@ -182,34 +292,41 @@ mod controls {
 
     pub fn r#for(for_stmt: For, cgs: &mut CodeGenStatus) {
         let label_start = cgs.name_gen.slabel();
+        let label_body = cgs.name_gen.slabel();
         let label_step = cgs.name_gen.slabel();
         let label_end = cgs.name_gen.slabel();
 
-        // 初期化式を実行
+        // 初期化式
         if let Some(init) = for_stmt.init {
             gen_expr(*init, cgs);
         }
 
-        // ループ開始
+        // ループ条件判定の開始位置
         cgs.outpus.push(StackCommand::Label(label_start));
 
         // 条件判定
         if let Some(cond) = for_stmt.cond {
             gen_expr(*cond, cgs);
-            cgs.outpus.push(StackCommand::JumpIfFalse(label_end));
+            cgs.outpus.push(StackCommand::Branch(label_body, label_end));
+        } else {
+            // 条件がない場合は常に本体を実行する無限ループ
+            cgs.outpus.push(StackCommand::Goto(label_body));
         }
 
         // ループ本体
+        cgs.outpus.push(StackCommand::Label(label_body));
         stmt(*for_stmt.body, cgs);
 
-        // ステップ部分
+        // ステップ（後処理）
         cgs.outpus.push(StackCommand::Label(label_step));
         if let Some(step) = for_stmt.step {
             gen_expr(*step, cgs);
         }
 
-        // ループの先頭に戻る
-        cgs.outpus.push(StackCommand::Jump(label_start));
+        // 再び条件チェックへ
+        cgs.outpus.push(StackCommand::Goto(label_start));
+
+        // ループ終了
         cgs.outpus.push(StackCommand::Label(label_end));
     }
 

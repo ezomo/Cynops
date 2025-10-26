@@ -159,9 +159,7 @@ fn resolve_function_def(
 
     TypeCheckResult {
         result: FunctionDef {
-            sig: FunctionSig {
-                symbol: Symbol::new(func_def.sig.symbol.ident.clone(), session.current_scope()),
-            },
+            sig: func_def.sig.clone(),
             param_names: func_def.param_names.clone(),
             body: body_result.result,
         },

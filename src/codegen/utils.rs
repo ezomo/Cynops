@@ -3,33 +3,60 @@ use crate::sema::ast::*;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy)]
-pub struct SLabel(usize);
+pub struct SLabel(pub usize);
+#[derive(Debug, Clone)]
 
-#[derive(Debug)]
+pub struct Flame(usize);
+
+#[derive(Debug, Clone)]
 pub enum StackCommand {
-    Push(TypedExpr),
-    BinaryOP(BinaryOp),
-    Symbol(Symbol),
-    Alloca(Symbol),
-    Store, //　計算結果が下　対象は上
-    Load,
-    Pop,
-    Label(SLabel),       // ラベル定義
-    Jump(SLabel),        // 無条件ジャンプ
-    JumpIfFalse(SLabel), // スタックトップがfalseならジャンプ
-    Call,
+    Push(TypedExpr),        // スタックに値を乗せる
+    BinaryOP(BinaryOp),     // 二項演算子
+    Symbol(Symbol),         //変数のアドレスをスタックに乗せる
+    Name(Symbol),           // 変数名をスタックに乗せる下のAlloca命令と組み合わせて使う
+    Alloc(Type),            //型のサイズだけメモリ確保
+    Store,                  //　計算結果が下　対象は上
+    Load(Type),             //下のメモリから値をロード
+    IndexAccess(Type),      // 下のアドレスから型とオフセットを使ってアドレス計算
+    Label(SLabel),          // ラベル定義
+    Goto(SLabel),           // 無条件ジャンプ
+    Branch(SLabel, SLabel), //True ,False
+    Call(Type),             // 関数呼び出し 下の引数群を使う　アドレス＋引数群
+    Return,                 // 関数からの復帰
+    ReturnPoint(SLabel),    // 関数終了後の戻る場所
+    FramePop,               // フレームを削除
+    SellOut,                //一番上を出力
 }
 
-pub struct Func {
+#[derive(Debug, Clone)]
+pub struct SFunc {
     pub sig: FunctionSig,
-    pub param_names: Vec<Ident>,
-    pub body: Block,
+    pub param_names: Vec<Symbol>,
+    pub body: Vec<StackCommand>,
+    pub entry: SLabel,
+}
+
+impl SFunc {
+    pub fn new(
+        sig: FunctionSig,
+        param_names: Vec<Symbol>,
+        body: Vec<StackCommand>,
+        entry: SLabel,
+    ) -> Self {
+        Self {
+            sig,
+            param_names,
+            body,
+            entry,
+        }
+    }
 }
 
 pub fn load(fnc: impl Fn(TypedExpr, &mut CodeGenStatus), expr: TypedExpr, cgs: &mut CodeGenStatus) {
+    let ty = expr.r#type.clone();
     fnc(expr, cgs);
     if cgs.is_left_val() {
-        cgs.outpus.push(StackCommand::Load);
+        cgs.outpus.push(StackCommand::Load(ty));
     }
 }
 
@@ -41,6 +68,11 @@ impl From<TypedExpr> for StackCommand {
 impl From<BinaryOp> for StackCommand {
     fn from(this: BinaryOp) -> Self {
         StackCommand::BinaryOP(this)
+    }
+}
+impl From<SLabel> for StackCommand {
+    fn from(this: SLabel) -> Self {
+        StackCommand::Label(this)
     }
 }
 
@@ -59,11 +91,9 @@ impl CodeGenSpace {
 
 pub struct CodeGenStatus {
     pub name_gen: NameGenerator,
-    pub return_value_ptr: Option<String>,
-    pub return_label: Option<LLVMValue>,
-    pub break_labels: Vec<LLVMValue>,    // break用ラベルのスタック
-    pub continue_labels: Vec<LLVMValue>, // continue用ラベルのスタック
     pub outpus: Vec<StackCommand>,
+    pub func_end: Option<SLabel>,
+    pub funcs: Vec<SFunc>,
 }
 
 impl Block {
@@ -76,11 +106,9 @@ impl CodeGenStatus {
     pub fn new() -> Self {
         Self {
             name_gen: NameGenerator::new(),
-            return_value_ptr: None,
-            return_label: None,
-            break_labels: Vec::new(),
-            continue_labels: Vec::new(),
             outpus: Vec::new(),
+            func_end: None,
+            funcs: Vec::new(),
         }
     }
 
@@ -106,26 +134,23 @@ impl CodeGenStatus {
                 },
                 StackCommand::BinaryOP(_) => false,
                 StackCommand::Symbol(_) => true,
-                StackCommand::Alloca(_) => false,
+                StackCommand::Alloc(_) => false,
                 StackCommand::Store => false,
-                StackCommand::Load => false,
-                StackCommand::Pop => false,
+                StackCommand::Load(_) => true,
                 StackCommand::Label(_) => false,
-                StackCommand::Jump(_) => false,
-                StackCommand::JumpIfFalse(_) => false,
-                StackCommand::Call => false, //多分？
+                StackCommand::Goto(_) => false,
+                StackCommand::Call(_) => false, //多分？ pointer等の値を検討
+                StackCommand::Return => false,  //多分？
+                StackCommand::ReturnPoint(_) => false, //多分
+                StackCommand::FramePop => false,
+                StackCommand::Name(_) => false,
+                StackCommand::IndexAccess(_) => true,
+                StackCommand::Branch(_, _) => false,
+                StackCommand::SellOut => false,
             }
         } else {
             false
         }
-    }
-
-    pub fn current_break_label(&self) -> Option<&LLVMValue> {
-        self.break_labels.last()
-    }
-
-    pub fn current_continue_label(&self) -> Option<&LLVMValue> {
-        self.continue_labels.last()
     }
 
     pub fn register_variable(&self, sybmol: Symbol, string: String) {
@@ -139,19 +164,6 @@ impl CodeGenStatus {
             .variables
             .insert(sybmol.ident, string);
     }
-
-    pub fn get_variable(&self, sybmol: &Symbol) -> Option<String> {
-        sybmol
-            .scope
-            .ptr
-            .upgrade()
-            .unwrap()
-            .borrow()
-            .codege_space
-            .variables
-            .get(&sybmol.ident)
-            .cloned()
-    }
 }
 
 pub struct NameGenerator {
@@ -162,8 +174,6 @@ pub struct NameGenerator {
 
 pub enum LLVMType {
     GrobalConst,
-    Register,
-    Label,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -179,20 +189,15 @@ impl ToString for LLVMValue {
 }
 
 impl NameGenerator {
+    // 1はentry_point
+    // 2はexit_point
     pub fn new() -> Self {
-        Self { counter: 0 }
+        Self { counter: 2 }
     }
 
     fn next(&mut self) -> usize {
         self.counter += 1;
         self.counter
-    }
-
-    pub fn register(&mut self) -> LLVMValue {
-        LLVMValue {
-            variable: format!("%tmp{}", self.next()),
-            ty: LLVMType::Register,
-        }
     }
 
     pub fn global_const(&mut self) -> LLVMValue {
@@ -202,24 +207,17 @@ impl NameGenerator {
         }
     }
 
-    pub fn label(&mut self) -> LLVMValue {
-        LLVMValue {
-            variable: format!("label_{}", self.next()),
-            ty: LLVMType::Label,
-        }
-    }
     pub fn slabel(&mut self) -> SLabel {
         SLabel(self.next())
+    }
+    pub fn frame(&mut self) -> Flame {
+        Flame(self.next())
     }
 }
 
 impl Ident {
     pub fn get_name(&self) -> &str {
         &self.name
-    }
-
-    pub fn get_fnc_name(&self) -> String {
-        format!("@{}", &self.name)
     }
 }
 

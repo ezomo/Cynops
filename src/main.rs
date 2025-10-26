@@ -167,7 +167,7 @@ fn process(args: &mut Vec<String>) {
         if options.run_codegen {
             if type_errors.is_empty() {
                 println!("; === Code Generation ===");
-                codegen::generate_program(typed_prog, &mut codegen::CodeGenStatus::new());
+                codegen::generate_program(typed_prog);
             } else {
                 eprintln!("コード生成をスキップします（型エラーがあるため）");
                 std::process::exit(1);

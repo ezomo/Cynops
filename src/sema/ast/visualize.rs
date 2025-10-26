@@ -318,9 +318,10 @@ impl Visualize for Symbol {
             false,
             &next_prefix,
         );
+        let s: String = (&self.scope.get_id()).into();
         print_branch(
             "Scope",
-            &self.scope.get_scope().unwrap().borrow().id.id_string(), //後で直した方が良い　TODO
+            &s, //後で直した方が良い　TODO
             indent + 1,
             true,
             &next_prefix,
@@ -408,13 +409,7 @@ impl Visualize for FunctionDef {
     }
 
     fn visualize_with_context(&self, indent: usize, is_last: bool, prefix: &[bool]) {
-        print_branch(
-            "FunctionDef",
-            &self.sig.symbol.oneline(),
-            indent,
-            is_last,
-            prefix,
-        );
+        print_branch("FunctionDef", "", indent, is_last, prefix);
         let next_prefix = extend_prefix(prefix, !is_last);
 
         let has_body = !self.body.statements.is_empty();
@@ -429,13 +424,10 @@ impl Visualize for FunctionDef {
 
         // Type
         remaining_items -= 1;
-        print_branch(
-            "Type",
-            &self.sig.symbol.get_type().unwrap().to_rust_format(),
-            indent + 1,
-            remaining_items == 0,
-            &next_prefix,
-        );
+
+        self.sig
+            .symbol
+            .visualize_with_context(indent + 1, remaining_items == 0, &next_prefix);
 
         // Parameters
         if has_params {
@@ -1236,6 +1228,6 @@ impl Visualize for Session {
 
 impl OneLine for ScopeId {
     fn oneline(&self) -> String {
-        self.id_string()
+        self.into()
     }
 }

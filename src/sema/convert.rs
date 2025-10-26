@@ -184,10 +184,7 @@ fn convert_union(u: &old_ast::Union, session: &mut Session) -> new_ast::Union {
 
     let converted = new_ast::Union::new(
         u.ident.as_ref().map(|i| i.as_same()),
-        Symbol::new(
-            Ident::new(session.id().to_string()),
-            session.current_scope(),
-        ),
+        Symbol::new(session.id().to_string().into(), session.current_scope()),
         members,
     );
 
