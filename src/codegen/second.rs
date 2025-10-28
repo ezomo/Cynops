@@ -23,6 +23,7 @@ pub enum SeStackCommand {
     Goto,
     Comment(String),
     Exit,
+    Copy,
     SellOut,
 }
 
@@ -121,8 +122,8 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
         for cmd in func.body {
             match cmd {
                 StackCommand::Push(TypedExpr { expr, .. }) => cgs.push_expr(expr),
-                StackCommand::BinaryOP(BinaryOp) => {
-                    cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp));
+                StackCommand::BinaryOP(binary_op) => {
+                    cgs.outpus.push(SeStackCommand::BinaryOP(binary_op));
                     cgs.sub_stack(1);
                 }
                 StackCommand::Symbol(symbol) => match symbol.get_type().unwrap() {
@@ -142,11 +143,38 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                     // 一下のアドレス，その下の実値
                 }
                 StackCommand::Load(ty) => {
-                    cgs.outpus.push(SeStackCommand::Push(1));
-                    cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
-                    //こいつはpush分の計算がいる基準が違う
-                    cgs.outpus.push(SeStackCommand::ReadAddr);
-                    // 下のメモリを消費して上に積むからスタックサイズは変わらない
+                    match ty {
+                        Type::Pointer(p) => match *p {
+                            Type::Func(_) => {
+                                cgs.outpus.push(SeStackCommand::Push(1));
+                                cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
+                                //こいつはpush分の計算がいる基準が違う
+                                cgs.outpus.push(SeStackCommand::ReadAddr);
+                                // 下のメモリを消費して上に積むからスタックサイズは変わらないcgs
+                                cgs.outpus
+                                    .push(SeStackCommand::Comment("↑関数のアドレス".into()))
+                            }
+
+                            _ => {
+                                cgs.outpus.push(SeStackCommand::Comment("p_s".into()));
+                                cgs.outpus.push(SeStackCommand::Copy);
+                                cgs.outpus.push(SeStackCommand::Push(2));
+                                cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
+                                cgs.outpus.push(SeStackCommand::ReadAddr);
+                                cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
+                                cgs.outpus.push(SeStackCommand::Comment("p_e".into()));
+
+                                // 下のメモリを消費して上に積むからスタックサイズは変わらない
+                            }
+                        },
+                        _ => {
+                            cgs.outpus.push(SeStackCommand::Push(1));
+                            cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
+                            //こいつはpush分の計算がいる基準が違う
+                            cgs.outpus.push(SeStackCommand::ReadAddr);
+                            // 下のメモリを消費して上に積むからスタックサイズは変わらない
+                        }
+                    }
                 } //下のメモリから値をロード
                 StackCommand::IndexAccess(Type) => {} // 下のアドレスから型とオフセットを使ってアドレス計算
                 StackCommand::Label(this) => cgs.outpus.push(SeStackCommand::Label(this.into())),

@@ -125,6 +125,7 @@ pub fn generate_program(program: Program) {
             SeStackCommand::Exit => StackInst::Exit,
             SeStackCommand::Comment(this) => StackInst::Comment(this), // 無条件ジャンプ
             SeStackCommand::SellOut => StackInst::PutChar,
+            SeStackCommand::Copy => StackInst::Copy,
         }
     }
 }

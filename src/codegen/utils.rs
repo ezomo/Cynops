@@ -5,10 +5,6 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Copy)]
 pub struct SLabel(pub usize);
 #[derive(Debug, Clone)]
-
-pub struct Flame(usize);
-
-#[derive(Debug, Clone)]
 pub enum StackCommand {
     Push(TypedExpr),        // スタックに値を乗せる
     BinaryOP(BinaryOp),     // 二項演算子
@@ -55,7 +51,7 @@ impl SFunc {
 pub fn load(fnc: impl Fn(TypedExpr, &mut CodeGenStatus), expr: TypedExpr, cgs: &mut CodeGenStatus) {
     let ty = expr.r#type.clone();
     fnc(expr, cgs);
-    if cgs.is_left_val() {
+    if cgs.is_left_val() && !ty.is_address() {
         cgs.outpus.push(StackCommand::Load(ty));
     }
 }
@@ -210,9 +206,6 @@ impl NameGenerator {
     pub fn slabel(&mut self) -> SLabel {
         SLabel(self.next())
     }
-    pub fn frame(&mut self) -> Flame {
-        Flame(self.next())
-    }
 }
 
 impl Ident {
@@ -233,6 +226,24 @@ impl TypedExpr {
 impl Type {
     pub fn is_void(&self) -> bool {
         matches!(self, Type::Void)
+    }
+
+    pub fn is_address(&self) -> bool {
+        match self {
+            Type::Void => false,
+            Type::DotDotDot => false,
+            Type::Int => false,
+            Type::Double => false,
+            Type::Char => false,
+            Type::Pointer(_) => true,
+            Type::Array(_) => false,
+            Type::Func(_) => true,
+            Type::Struct(_) => false,
+            Type::Enum(_) => false,
+            Type::Union(_) => false,
+            Type::Typedef(_) => false,
+            _ => unreachable!(),
+        }
     }
 
     pub fn to_llvm_format(&self) -> String {
