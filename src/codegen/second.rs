@@ -129,7 +129,7 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                 StackCommand::Symbol(symbol) => match symbol.get_type().unwrap() {
                     Type::Func(_) => cgs.push_usize(cgs.symbol_table[&symbol]),
                     _ => {
-                        cgs.push_usize(cgs.head_sack_func() - cgs.symbol_table[&symbol]);
+                        cgs.push_usize(cgs.symbol_table[&symbol]);
                     }
                 },
                 StackCommand::Name(symbol) => {
@@ -137,12 +137,14 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                 }
                 StackCommand::Alloc(ty) => cgs.alloc(&ty),
                 StackCommand::Store => {
+                    cgs.acsess();
                     cgs.outpus.push(SeStackCommand::WriteAddr);
                     cgs.sub_stack(2);
 
                     // 一下のアドレス，その下の実値
                 }
                 StackCommand::Load(ty) => {
+                    cgs.acsess();
                     match ty {
                         Type::Pointer(p) => match *p {
                             Type::Func(_) => {
@@ -274,6 +276,38 @@ impl CodeGenStatus {
     fn push_usize(&mut self, num: usize) {
         self.outpus.push(SeStackCommand::Push(num));
         self.add_stck(1);
+    }
+
+    fn mul(&mut self, b: isize) {
+        self.outpus
+            .push(SeStackCommand::Comment("mul_start".into()));
+        if b == 0 {
+            self.outpus.push(SeStackCommand::Push(0));
+            self.outpus.push(SeStackCommand::Push(1));
+            self.outpus.push(SeStackCommand::WriteAddr);
+        } else if b > 0 {
+            (1..b).for_each(|_| self.outpus.push(SeStackCommand::Copy)); //すでに１つ乗っているので..=ではない
+            (1..b).for_each(|_| self.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus())));
+        } else {
+            self.outpus.push(SeStackCommand::Copy);
+            self.outpus.push(SeStackCommand::Push(0));
+            self.outpus.push(SeStackCommand::Push(2));
+            self.outpus.push(SeStackCommand::WriteAddr);
+            (1..-b).for_each(|_| self.outpus.push(SeStackCommand::Copy)); //すでに１つ乗っているので..=ではない
+            (1..-b).for_each(|_| self.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus())));
+            self.outpus
+                .push(SeStackCommand::BinaryOP(BinaryOp::minus()));
+        }
+        self.outpus.push(SeStackCommand::Comment("mul_end".into()));
+    }
+
+    fn acsess(&mut self) {
+        self.outpus
+            .push(SeStackCommand::Push(self.head_sack_func() - 1));
+        self.outpus
+            .push(SeStackCommand::BinaryOP(BinaryOp::minus()));
+
+        self.mul(-1);
     }
 
     fn alloc(&mut self, _ty: &Type) {
