@@ -145,38 +145,12 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                 }
                 StackCommand::Load(ty) => {
                     cgs.acsess();
-                    match ty {
-                        Type::Pointer(p) => match *p {
-                            Type::Func(_) => {
-                                cgs.outpus.push(SeStackCommand::Push(1));
-                                cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
-                                //こいつはpush分の計算がいる基準が違う
-                                cgs.outpus.push(SeStackCommand::ReadAddr);
-                                // 下のメモリを消費して上に積むからスタックサイズは変わらないcgs
-                                cgs.outpus
-                                    .push(SeStackCommand::Comment("↑関数のアドレス".into()))
-                            }
 
-                            _ => {
-                                cgs.outpus.push(SeStackCommand::Comment("p_s".into()));
-                                cgs.outpus.push(SeStackCommand::Copy);
-                                cgs.outpus.push(SeStackCommand::Push(2));
-                                cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
-                                cgs.outpus.push(SeStackCommand::ReadAddr);
-                                cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
-                                cgs.outpus.push(SeStackCommand::Comment("p_e".into()));
-
-                                // 下のメモリを消費して上に積むからスタックサイズは変わらない
-                            }
-                        },
-                        _ => {
-                            cgs.outpus.push(SeStackCommand::Push(1));
-                            cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
-                            //こいつはpush分の計算がいる基準が違う
-                            cgs.outpus.push(SeStackCommand::ReadAddr);
-                            // 下のメモリを消費して上に積むからスタックサイズは変わらない
-                        }
-                    }
+                    cgs.outpus.push(SeStackCommand::Push(1));
+                    cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
+                    //こいつはpush分の計算がいる基準が違う
+                    cgs.outpus.push(SeStackCommand::ReadAddr);
+                    // 下のメモリを消費して上に積むからスタックサイズは変わらない
                 } //下のメモリから値をロード
                 StackCommand::IndexAccess(Type) => {} // 下のアドレスから型とオフセットを使ってアドレス計算
                 StackCommand::Label(this) => cgs.outpus.push(SeStackCommand::Label(this.into())),
@@ -278,6 +252,7 @@ impl CodeGenStatus {
         self.add_stck(1);
     }
 
+    // stackの上に人にの整数定数をかける
     fn mul(&mut self, b: isize) {
         self.outpus
             .push(SeStackCommand::Comment("mul_start".into()));
