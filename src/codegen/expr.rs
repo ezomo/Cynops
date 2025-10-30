@@ -54,6 +54,8 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             }
 
             cgs.outputs.push(StackCommand::ReturnPoint(return_point));
+            cgs.outputs.push(StackCommand::GlobalAddress);
+
             for (i, arg) in (0..=call.args.len()).rev().zip(call.args.into_iter()) {
                 gen_expr(*arg.clone(), cgs);
                 if matches!(arg.r#type, Type::Pointer(inner) if !matches!(*inner, Type::Func(_))) {

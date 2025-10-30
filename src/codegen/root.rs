@@ -46,7 +46,6 @@ fn function_proto(function: FunctionProto, cgs: &mut CodeGenStatus) {
         let child = ScopeNode::add_child(&function.sig.symbol.scope.get_scope().unwrap());
         let sy = Symbol::new(ojcet.clone(), ScopePtr::new(Rc::downgrade(&child)));
         child.borrow_mut().register_symbols(ojcet, Type::Int);
-
         cgs.outputs.push(StackCommand::Symbol(sy.clone()));
         cgs.outputs.push(StackCommand::Load(Type::Int));
         cgs.outputs.push(StackCommand::SellOut);
@@ -157,13 +156,8 @@ fn first_out(cgs: &CodeGenStatus) {
                 StackCommand::SellOut => println!("{:?}", o),
                 StackCommand::AgsPointerRecalculation(_) => println!("{:?}", o),
                 StackCommand::Comment(this) => println!("Comment {}", this),
+                StackCommand::GlobalAddress => println!("{:?}", o),
             }
         }
-    }
-}
-
-fn second_out(cgs: &Vec<SeStackCommand>) {
-    for o in cgs.iter() {
-        println!("{:?}", o);
     }
 }

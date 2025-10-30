@@ -24,6 +24,7 @@ pub enum StackCommand {
     ReturnPoint(SLabel),            // 関数終了後の戻る場所
     FramePop,                       // フレームを削除
     SellOut,                        //一番上を出力
+    GlobalAddress,                  //グローバルアドレスをスタックに乗せる
 }
 
 #[derive(Debug, Clone)]
@@ -148,6 +149,7 @@ impl CodeGenStatus {
                 StackCommand::Branch(_, _) => false,
                 StackCommand::SellOut => false,
                 StackCommand::Comment(_) => false,
+                StackCommand::GlobalAddress => true,
             }
         } else {
             false

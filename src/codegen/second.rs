@@ -35,7 +35,7 @@ impl From<SLabel> for Address {
 #[derive(Debug, Clone, Default)]
 pub struct CodeGenStatus {
     pub outpus: Vec<SeStackCommand>,
-    pub stack_size_all: usize,
+    pub grobal_address: usize,
     pub stack_size_func: usize,
     pub alloced: usize,
     pub symbol_table: HashMap<Symbol, Address>,
@@ -43,19 +43,12 @@ pub struct CodeGenStatus {
 
 impl CodeGenStatus {
     fn add_stck(&mut self, size: usize) {
-        self.stack_size_all += size;
         self.stack_size_func += size;
     }
     fn sub_stack(&mut self, size: usize) {
-        self.stack_size_all -= size;
         self.stack_size_func -= size;
     }
-    fn sub_stack_all(&mut self, size: usize) {
-        self.stack_size_all -= size;
-    }
-    fn head_sack_all(&self) -> usize {
-        self.stack_size_all
-    }
+
     fn head_sack_func(&self) -> usize {
         self.stack_size_func
     }
@@ -91,8 +84,9 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
     {
         cgs.outpus.insert(0, SeStackCommand::Label(1));
         cgs.push_label(SLabel(2));
+        cgs.push_grobal(0); // Grobal address for main
         cgs.push_label(SLabel(cgs.symbol_table[&entry.unwrap()]));
-        cgs.outpus.insert(3, SeStackCommand::Goto);
+        cgs.outpus.push(SeStackCommand::Goto);
         cgs.sub_stack(1);
     }
 
@@ -109,6 +103,10 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
         cgs.outpus.push(SeStackCommand::Label(func.entry.into()));
 
         {
+            {
+                cgs.add_stck(1); // Grobal address  分
+                cgs.grobal_address = cgs.head_sack_func();
+            }
             func.param_names
                 .iter()
                 .filter(|x| !x.get_type().unwrap().is_void())
@@ -139,14 +137,7 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
 
                     // 一下のアドレス，その下の実値
                 }
-                StackCommand::Load(ty) => {
-                    cgs.acsess();
-                    cgs.outpus.push(SeStackCommand::Push(1));
-                    cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
-                    //こいつはpush分の計算がいる基準が違う
-                    cgs.outpus.push(SeStackCommand::ReadAddr);
-                    // 下のメモリを消費して上に積むからスタックサイズは変わらない
-                } //下のメモリから値をロード
+                StackCommand::Load(ty) => cgs.load(ty),
                 StackCommand::IndexAccess(ype) => {} // 下のアドレスから型とオフセットを使ってアドレス計算
                 StackCommand::Label(this) => cgs.outpus.push(SeStackCommand::Label(this.into())),
                 StackCommand::Goto(this) => {
@@ -166,17 +157,17 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                         .push(SeStackCommand::Push(cgs.head_sack_func() + 1));
                     cgs.outpus.push(SeStackCommand::WriteAddr);
 
-                    println!("{},{}", cgs.head_sack_all(), cgs.head_sack_func());
+                    // println!("{},{}", cgs.head_sack_all(), cgs.head_sack_func());
                     cgs.sub_stack(1); //writeaddrでアドレスを2消費する
-                    println!("{},{}", cgs.head_sack_all(), cgs.head_sack_func());
+                    // println!("{},{}", cgs.head_sack_all(), cgs.head_sack_func());
                 }
                 StackCommand::FramePop => {
-                    cgs.outpus
-                        .push(SeStackCommand::DeAlloc(cgs.alloced + palam_size));
-                    // println!("Alloc_{} {}", cgs.head_sack_all(), cgs.head_sack_func());
-                    // println!("{}+ {}", cgs.alloced, palam_size);
-                    cgs.sub_stack(cgs.alloced + palam_size);
-                    // println!("DeAlloc_{} {}", cgs.head_sack_all(), cgs.head_sack_func());
+                    let delete = cgs.alloced + palam_size + 1;
+                    cgs.outpus.push(SeStackCommand::DeAlloc(delete));
+                    // println!("Alloc_{} {}", cgs.head_sack_func(), cgs.head_sack_func());
+                    println!("{}+ {}", cgs.alloced, palam_size);
+                    cgs.sub_stack(delete);
+                    // +1は継承したgrobal address分
 
                     cgs.outpus.push(SeStackCommand::Goto);
                     //存在するだけで呼び出されていない関数もある．
@@ -184,6 +175,7 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                 StackCommand::ReturnPoint(repo) => cgs.push_label(repo),
                 StackCommand::SellOut => {
                     cgs.outpus.push(SeStackCommand::SellOut);
+                    // cgs.outpus.push(SeStackCommand::DeAlloc(1));
                     cgs.sub_stack(1);
                 }
                 StackCommand::AgsPointerRecalculation(num) => {
@@ -196,13 +188,25 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                         .push(SeStackCommand::Comment("memory_recalculation_end".into()));
                 }
                 StackCommand::Comment(com) => cgs.outpus.push(SeStackCommand::Comment(com)),
+                StackCommand::GlobalAddress => {
+                    cgs.outpus
+                        .push(SeStackCommand::Comment("push_global_address_start".into()));
+
+                    {
+                        cgs.outpus.push(SeStackCommand::Push(cgs.grobal_address));
+                        cgs.add_stck(1);
+                        cgs.load(Type::Int);
+                        cgs.outpus.push(SeStackCommand::Push(cgs.head_sack_func()));
+                        cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
+                    }
+
+                    cgs.outpus
+                        .push(SeStackCommand::Comment("push_global_address_end".into()));
+                }
             }
         }
 
         // 関数が呼び出されていた場合は-1
-        if cgs.stack_size_all > 1 {
-            cgs.sub_stack_all(1);
-        }
     }
 
     {
@@ -267,7 +271,9 @@ impl CodeGenStatus {
         }
         self.add_stck(1);
     }
-
+    fn push_grobal(&mut self, num: usize) {
+        self.push_usize(num);
+    }
     // stackの上に人にの整数定数をかける
     fn mul(&mut self, b: isize) {
         self.outpus
@@ -305,6 +311,15 @@ impl CodeGenStatus {
         self.outpus.push(SeStackCommand::Alloc(1));
         self.add_stck(1);
         self.add_alloc(1);
+    }
+
+    fn load(&mut self, ty: Type) {
+        self.acsess();
+        self.outpus.push(SeStackCommand::Push(1));
+        self.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
+        //こいつはpush分の計算がいる基準が違う
+        self.outpus.push(SeStackCommand::ReadAddr);
+        // 下のメモリを消費して上に積むからスタックサイズは変わらない
     }
 
     fn call(&mut self, ty: Type) {

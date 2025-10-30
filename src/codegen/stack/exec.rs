@@ -125,7 +125,10 @@ impl StackMachine {
                 }
                 Goto => {
                     let addr = self.stack.pop().unwrap();
-                    ip = labels[&addr];
+                    ip = labels
+                        .get(&addr)
+                        .cloned()
+                        .unwrap_or_else(|| panic!("None {}", addr));
                     continue;
                 }
 
