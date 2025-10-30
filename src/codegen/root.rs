@@ -8,7 +8,7 @@ use crate::op::{Arithmetic, BinaryOp, Comparison};
 use crate::{sema::ast::*, visualize::OneLine};
 
 fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
-    cgs.outpus.clear();
+    cgs.outputs.clear();
 
     let func_end = cgs.name_gen.slabel();
     cgs.func_end = Some(func_end);
@@ -17,18 +17,18 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
         gen_stmt::stmt(*s, cgs);
     }
 
-    cgs.outpus.push(StackCommand::Label(func_end));
-    cgs.outpus.push(StackCommand::FramePop);
+    cgs.outputs.push(StackCommand::Label(func_end));
+    cgs.outputs.push(StackCommand::FramePop);
 
     let func = SFunc::new(
         function.sig,
         function.param_names,
-        cgs.outpus.clone(),
+        cgs.outputs.clone(),
         cgs.name_gen.slabel(),
     );
 
     cgs.funcs.push(func);
-    cgs.outpus.clear();
+    cgs.outputs.clear();
 }
 
 #[allow(dead_code)]
@@ -40,26 +40,26 @@ fn function_proto(function: FunctionProto, cgs: &mut CodeGenStatus) {
                 params: vec![Type::Int],
             })
     {
-        cgs.outpus.clear();
+        cgs.outputs.clear();
 
         let ojcet: Ident = "object".into();
         let child = ScopeNode::add_child(&function.sig.symbol.scope.get_scope().unwrap());
         let sy = Symbol::new(ojcet.clone(), ScopePtr::new(Rc::downgrade(&child)));
         child.borrow_mut().register_symbols(ojcet, Type::Int);
 
-        cgs.outpus.push(StackCommand::Symbol(sy.clone()));
-        cgs.outpus.push(StackCommand::Load(Type::Int));
-        cgs.outpus.push(StackCommand::SellOut);
-        cgs.outpus.push(StackCommand::FramePop);
+        cgs.outputs.push(StackCommand::Symbol(sy.clone()));
+        cgs.outputs.push(StackCommand::Load(Type::Int));
+        cgs.outputs.push(StackCommand::SellOut);
+        cgs.outputs.push(StackCommand::FramePop);
 
         let func = SFunc::new(
             function.sig,
             vec![sy.clone()],
-            cgs.outpus.clone(),
+            cgs.outputs.clone(),
             cgs.name_gen.slabel(),
         );
         cgs.funcs.push(func);
-        cgs.outpus.clear();
+        cgs.outputs.clear();
     }
 }
 
@@ -91,7 +91,10 @@ pub fn generate_program(program: Program) {
     let transpilation = translate(&stream);
     println!("{}", show_bf(&transpilation, cfg!(feature = "debugbf")));
 
-    println!("\nExecution:\n");
+    println!("\nExecution stack:\n");
+    exec_stack_program(&stream);
+    println!("\nExecution bf:\n");
+
     exec_bf(&transpilation);
 
     fn convert(b: SeStackCommand) -> StackInst {
@@ -150,10 +153,10 @@ fn first_out(cgs: &CodeGenStatus) {
                 StackCommand::Branch(a, b) => println!("Branch ({:?},{:?})", a, b),
                 StackCommand::FramePop => println!("{:?}", o),
                 StackCommand::Name(s) => println!("Name {}", s.oneline()),
-                StackCommand::IndexAccess(ty) => {
-                    println!("IndexAccess {}", ty.to_rust_format(),)
-                }
+                StackCommand::IndexAccess(ty) => println!("IndexAccess {}", ty.to_rust_format()),
                 StackCommand::SellOut => println!("{:?}", o),
+                StackCommand::AgsPointerRecalculation(_) => println!("{:?}", o),
+                StackCommand::Comment(this) => println!("Comment {}", this),
             }
         }
     }

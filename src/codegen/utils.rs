@@ -6,22 +6,24 @@ use std::collections::HashMap;
 pub struct SLabel(pub usize);
 #[derive(Debug, Clone)]
 pub enum StackCommand {
-    Push(TypedExpr),        // スタックに値を乗せる
-    BinaryOP(BinaryOp),     // 二項演算子
-    Symbol(Symbol),         //変数のアドレスをスタックに乗せる
-    Name(Symbol),           // 変数名をスタックに乗せる下のAlloca命令と組み合わせて使う
-    Alloc(Type),            //型のサイズだけメモリ確保
-    Store,                  //　計算結果が下　対象は上
-    Load(Type),             //下のメモリから値をロード
-    IndexAccess(Type),      // 下のアドレスから型とオフセットを使ってアドレス計算
-    Label(SLabel),          // ラベル定義
-    Goto(SLabel),           // 無条件ジャンプ
-    Branch(SLabel, SLabel), //True ,False
-    Call(Type),             // 関数呼び出し 下の引数群を使う　アドレス＋引数群
-    Return,                 // 関数からの復帰
-    ReturnPoint(SLabel),    // 関数終了後の戻る場所
-    FramePop,               // フレームを削除
-    SellOut,                //一番上を出力
+    Comment(String),                // コメント
+    Push(TypedExpr),                // スタックに値を乗せる
+    BinaryOP(BinaryOp),             // 二項演算子
+    Symbol(Symbol),                 //変数のアドレスをスタックに乗せる
+    Name(Symbol),                   // 変数名をスタックに乗せる下のAlloca命令と組み合わせて使う
+    Alloc(Type),                    //型のサイズだけメモリ確保
+    Store,                          //　計算結果が下　対象は上
+    Load(Type),                     //下のメモリから値をロード
+    IndexAccess(Type),              // 下のアドレスから型とオフセットを使ってアドレス計算
+    Label(SLabel),                  // ラベル定義
+    Goto(SLabel),                   // 無条件ジャンプ
+    Branch(SLabel, SLabel),         //True ,False
+    AgsPointerRecalculation(usize), //下のagsに対してpointerのmemoey計算を行う，次の関数offsetを基準に変更
+    Call(Type),                     // 関数呼び出し 下の引数群を使う　アドレス＋引数群
+    Return,                         // 関数からの復帰
+    ReturnPoint(SLabel),            // 関数終了後の戻る場所
+    FramePop,                       // フレームを削除
+    SellOut,                        //一番上を出力
 }
 
 #[derive(Debug, Clone)]
@@ -52,7 +54,7 @@ pub fn load(fnc: impl Fn(TypedExpr, &mut CodeGenStatus), expr: TypedExpr, cgs: &
     let ty = expr.r#type.clone();
     fnc(expr, cgs);
     if cgs.is_left_val() && !ty.is_address() {
-        cgs.outpus.push(StackCommand::Load(ty));
+        cgs.outputs.push(StackCommand::Load(ty));
     }
 }
 
@@ -87,7 +89,7 @@ impl CodeGenSpace {
 
 pub struct CodeGenStatus {
     pub name_gen: NameGenerator,
-    pub outpus: Vec<StackCommand>,
+    pub outputs: Vec<StackCommand>,
     pub func_end: Option<SLabel>,
     pub funcs: Vec<SFunc>,
 }
@@ -102,32 +104,34 @@ impl CodeGenStatus {
     pub fn new() -> Self {
         Self {
             name_gen: NameGenerator::new(),
-            outpus: Vec::new(),
+            outputs: Vec::new(),
             func_end: None,
             funcs: Vec::new(),
         }
     }
 
     pub fn is_left_val(&self) -> bool {
-        if let Some(last) = self.outpus.last() {
+        if let Some(last) = self.outputs.last() {
+            let typematch = |x: &SemaExpr| match x {
+                SemaExpr::Assign(_) => false,
+                SemaExpr::Binary(_) => false,
+                SemaExpr::Call(_) => false,
+                SemaExpr::Char(_) => false,
+                SemaExpr::String(_) => false,
+                SemaExpr::Symbol(_) => false,
+                SemaExpr::NumInt(_) => false,
+                SemaExpr::NumFloat(_) => false,
+                SemaExpr::Subscript(_) => true,
+                SemaExpr::MemberAccess(_) => true,
+                SemaExpr::Ternary(_) => false,
+                SemaExpr::Unary(_) => false,
+                SemaExpr::Sizeof(_) => false,
+                SemaExpr::Cast(_) => false,
+                SemaExpr::Comma(_) => false,
+            };
             match last {
-                StackCommand::Push(te) => match &te.expr {
-                    SemaExpr::Assign(_) => false,
-                    SemaExpr::Binary(_) => false,
-                    SemaExpr::Call(_) => false,
-                    SemaExpr::Char(_) => false,
-                    SemaExpr::String(_) => false,
-                    SemaExpr::Symbol(_) => false,
-                    SemaExpr::NumInt(_) => false,
-                    SemaExpr::NumFloat(_) => false,
-                    SemaExpr::Subscript(_) => true,
-                    SemaExpr::MemberAccess(_) => true,
-                    SemaExpr::Ternary(_) => false,
-                    SemaExpr::Unary(_) => false,
-                    SemaExpr::Sizeof(_) => false,
-                    SemaExpr::Cast(_) => false,
-                    SemaExpr::Comma(_) => false,
-                },
+                StackCommand::Push(te) => typematch(&te.r#expr),
+                StackCommand::AgsPointerRecalculation(_) => false,
                 StackCommand::BinaryOP(_) => false,
                 StackCommand::Symbol(_) => true,
                 StackCommand::Alloc(_) => false,
@@ -143,6 +147,7 @@ impl CodeGenStatus {
                 StackCommand::IndexAccess(_) => true,
                 StackCommand::Branch(_, _) => false,
                 StackCommand::SellOut => false,
+                StackCommand::Comment(_) => false,
             }
         } else {
             false

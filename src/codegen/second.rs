@@ -6,7 +6,6 @@ use super::StackCommand;
 use super::utils::SFunc;
 use crate::op::*;
 use crate::sema::ast::*;
-use crate::visualize::OneLine;
 
 type Address = usize;
 
@@ -114,6 +113,7 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                 .iter()
                 .filter(|x| !x.get_type().unwrap().is_void())
                 .for_each(|x| {
+                    // 順序固定　Symbol＋Nameの順序を維持
                     cgs.add_stck(1);
                     cgs.symbol_table.insert(x.clone(), cgs.head_sack_func());
                 });
@@ -126,12 +126,8 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                     cgs.outpus.push(SeStackCommand::BinaryOP(binary_op));
                     cgs.sub_stack(1);
                 }
-                StackCommand::Symbol(symbol) => match symbol.get_type().unwrap() {
-                    Type::Func(_) => cgs.push_usize(cgs.symbol_table[&symbol]),
-                    _ => {
-                        cgs.push_usize(cgs.symbol_table[&symbol]);
-                    }
-                },
+                StackCommand::Symbol(symbol) => cgs.push_usize(cgs.symbol_table[&symbol]),
+
                 StackCommand::Name(symbol) => {
                     _ = cgs.symbol_table.insert(symbol, cgs.head_sack_func())
                 }
@@ -145,14 +141,13 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                 }
                 StackCommand::Load(ty) => {
                     cgs.acsess();
-
                     cgs.outpus.push(SeStackCommand::Push(1));
                     cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
                     //こいつはpush分の計算がいる基準が違う
                     cgs.outpus.push(SeStackCommand::ReadAddr);
                     // 下のメモリを消費して上に積むからスタックサイズは変わらない
                 } //下のメモリから値をロード
-                StackCommand::IndexAccess(Type) => {} // 下のアドレスから型とオフセットを使ってアドレス計算
+                StackCommand::IndexAccess(ype) => {} // 下のアドレスから型とオフセットを使ってアドレス計算
                 StackCommand::Label(this) => cgs.outpus.push(SeStackCommand::Label(this.into())),
                 StackCommand::Goto(this) => {
                     cgs.outpus.push(SeStackCommand::Push(this.into()));
@@ -191,6 +186,16 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                     cgs.outpus.push(SeStackCommand::SellOut);
                     cgs.sub_stack(1);
                 }
+                StackCommand::AgsPointerRecalculation(num) => {
+                    cgs.outpus
+                        .push(SeStackCommand::Comment("memory_recalculation_start".into()));
+                    let new_base = cgs.head_sack_func() - num;
+                    cgs.outpus.push(SeStackCommand::Push(new_base));
+                    cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::minus()));
+                    cgs.outpus
+                        .push(SeStackCommand::Comment("memory_recalculation_end".into()));
+                }
+                StackCommand::Comment(com) => cgs.outpus.push(SeStackCommand::Comment(com)),
             }
         }
 
@@ -249,6 +254,17 @@ impl CodeGenStatus {
     }
     fn push_usize(&mut self, num: usize) {
         self.outpus.push(SeStackCommand::Push(num));
+        self.add_stck(1);
+    }
+    fn push_isize(&mut self, num: isize) {
+        if num < 0 {
+            self.outpus.push(SeStackCommand::Push(0));
+            self.outpus.push(SeStackCommand::Push(num.abs() as usize));
+            self.outpus
+                .push(SeStackCommand::BinaryOP(BinaryOp::minus()));
+        } else {
+            self.outpus.push(SeStackCommand::Push(num as usize));
+        }
         self.add_stck(1);
     }
 
