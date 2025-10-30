@@ -47,6 +47,7 @@ fn function_proto(function: FunctionProto, cgs: &mut CodeGenStatus) {
         let sy = Symbol::new(ojcet.clone(), ScopePtr::new(Rc::downgrade(&child)));
         child.borrow_mut().register_symbols(ojcet, Type::Int);
         cgs.outputs.push(StackCommand::Symbol(sy.clone()));
+        cgs.outputs.push(StackCommand::AcsessUseLa);
         cgs.outputs.push(StackCommand::Load(Type::Int));
         cgs.outputs.push(StackCommand::SellOut);
         cgs.outputs.push(StackCommand::FramePop);
@@ -88,7 +89,7 @@ pub fn generate_program(program: Program) {
 
     dbg!(&stream);
     let transpilation = translate(&stream);
-    println!("{}", show_bf(&transpilation, cfg!(feature = "debugbf")));
+    // println!("{}", show_bf(&transpilation, cfg!(feature = "debugbf")));
 
     println!("\nExecution stack:\n");
     exec_stack_program(&stream);
@@ -154,9 +155,11 @@ fn first_out(cgs: &CodeGenStatus) {
                 StackCommand::Name(s) => println!("Name {}", s.oneline()),
                 StackCommand::IndexAccess(ty) => println!("IndexAccess {}", ty.to_rust_format()),
                 StackCommand::SellOut => println!("{:?}", o),
-                StackCommand::AgsPointerRecalculation(_) => println!("{:?}", o),
                 StackCommand::Comment(this) => println!("Comment {}", this),
                 StackCommand::GlobalAddress => println!("{:?}", o),
+                StackCommand::Address => println!("{:?}", o),
+                StackCommand::AcsessUseGa => println!("{:?}", o),
+                StackCommand::AcsessUseLa => println!("{:?}", o),
             }
         }
     }

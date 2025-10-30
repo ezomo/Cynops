@@ -94,6 +94,7 @@ fn initialize_variable(
             // 式の初期化: 値を評価してスタックに乗せる
             gen_expr(typed_expr, cgs);
             cgs.outputs.push(StackCommand::Symbol(object.clone()));
+            cgs.outputs.push(StackCommand::AcsessUseLa);
             cgs.outputs.push(StackCommand::Store);
         }
         InitData::Compound(_) => {

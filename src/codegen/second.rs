@@ -105,6 +105,7 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
         {
             {
                 cgs.add_stck(1); // Grobal address  分
+                // ここが基準なので0
                 cgs.grobal_address = cgs.head_sack_func();
             }
             func.param_names
@@ -125,13 +126,12 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                     cgs.sub_stack(1);
                 }
                 StackCommand::Symbol(symbol) => cgs.push_usize(cgs.symbol_table[&symbol]),
-
                 StackCommand::Name(symbol) => {
                     _ = cgs.symbol_table.insert(symbol, cgs.head_sack_func())
                 }
                 StackCommand::Alloc(ty) => cgs.alloc(&ty),
                 StackCommand::Store => {
-                    cgs.acsess();
+                    // cgs.acsess();
                     cgs.outpus.push(SeStackCommand::WriteAddr);
                     cgs.sub_stack(2);
 
@@ -156,53 +156,57 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                     cgs.outpus
                         .push(SeStackCommand::Push(cgs.head_sack_func() + 1));
                     cgs.outpus.push(SeStackCommand::WriteAddr);
-
-                    // println!("{},{}", cgs.head_sack_all(), cgs.head_sack_func());
                     cgs.sub_stack(1); //writeaddrでアドレスを2消費する
-                    // println!("{},{}", cgs.head_sack_all(), cgs.head_sack_func());
                 }
                 StackCommand::FramePop => {
                     let delete = cgs.alloced + palam_size + 1;
                     cgs.outpus.push(SeStackCommand::DeAlloc(delete));
                     // println!("Alloc_{} {}", cgs.head_sack_func(), cgs.head_sack_func());
-                    println!("{}+ {}", cgs.alloced, palam_size);
+                    println!("{} + {}", cgs.alloced, palam_size);
                     cgs.sub_stack(delete);
                     // +1は継承したgrobal address分
 
                     cgs.outpus.push(SeStackCommand::Goto);
                     //存在するだけで呼び出されていない関数もある．
                 }
-                StackCommand::ReturnPoint(repo) => cgs.push_label(repo),
+                StackCommand::ReturnPoint(repo) => {
+                    println!("___{}", cgs.head_sack_func());
+                    cgs.push_label(repo)
+                }
                 StackCommand::SellOut => {
                     cgs.outpus.push(SeStackCommand::SellOut);
                     // cgs.outpus.push(SeStackCommand::DeAlloc(1));
                     cgs.sub_stack(1);
                 }
-                StackCommand::AgsPointerRecalculation(num) => {
-                    cgs.outpus
-                        .push(SeStackCommand::Comment("memory_recalculation_start".into()));
-                    let new_base = cgs.head_sack_func() - num;
-                    cgs.outpus.push(SeStackCommand::Push(new_base));
-                    cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::minus()));
-                    cgs.outpus
-                        .push(SeStackCommand::Comment("memory_recalculation_end".into()));
-                }
+
                 StackCommand::Comment(com) => cgs.outpus.push(SeStackCommand::Comment(com)),
                 StackCommand::GlobalAddress => {
                     cgs.outpus
                         .push(SeStackCommand::Comment("push_global_address_start".into()));
 
                     {
-                        cgs.outpus.push(SeStackCommand::Push(cgs.grobal_address));
-                        cgs.add_stck(1);
-                        cgs.load(Type::Int);
-                        cgs.outpus.push(SeStackCommand::Push(cgs.head_sack_func()));
+                        cgs.load_grobal_address();
+                        cgs.outpus
+                            .push(SeStackCommand::Push(cgs.head_sack_func() - 1));
+                        // 自分自身は新たな1となるので-1
                         cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
                     }
 
                     cgs.outpus
                         .push(SeStackCommand::Comment("push_global_address_end".into()));
                 }
+                StackCommand::Address => {
+                    cgs.load_grobal_address();
+                    cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
+                    cgs.sub_stack(1);
+                }
+                StackCommand::AcsessUseGa => {
+                    cgs.load_grobal_address();
+                    cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::minus()));
+                    cgs.sub_stack(1);
+                    cgs.acsess();
+                }
+                StackCommand::AcsessUseLa => cgs.acsess(),
             }
         }
 
@@ -314,12 +318,19 @@ impl CodeGenStatus {
     }
 
     fn load(&mut self, ty: Type) {
-        self.acsess();
+        // self.acsess();
         self.outpus.push(SeStackCommand::Push(1));
         self.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
         //こいつはpush分の計算がいる基準が違う
         self.outpus.push(SeStackCommand::ReadAddr);
         // 下のメモリを消費して上に積むからスタックサイズは変わらない
+    }
+
+    fn load_grobal_address(&mut self) {
+        self.outpus.push(SeStackCommand::Push(self.grobal_address));
+        self.add_stck(1);
+        self.acsess();
+        self.load(Type::Int);
     }
 
     fn call(&mut self, ty: Type) {
@@ -347,6 +358,10 @@ impl CodeGenStatus {
                 .filter(|x| !x.is_void())
                 .count(),
         );
+
+        // グローバルアドレス分
+        self.sub_stack(1);
+
         // println!("CallE {} {}", self.head_sack_all(), self.head_sack_func());
     }
 }

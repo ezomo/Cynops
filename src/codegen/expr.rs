@@ -29,6 +29,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
                 Type::Func(_) => cgs.outputs.push(StackCommand::Symbol(symbol.clone())),
                 _ => {
                     cgs.outputs.push(StackCommand::Symbol(symbol.clone()));
+                    cgs.outputs.push(StackCommand::AcsessUseLa);
                     cgs.outputs
                         .push(StackCommand::Load(symbol.get_type().unwrap()));
                 }
@@ -56,11 +57,8 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             cgs.outputs.push(StackCommand::ReturnPoint(return_point));
             cgs.outputs.push(StackCommand::GlobalAddress);
 
-            for (i, arg) in (0..=call.args.len()).rev().zip(call.args.into_iter()) {
+            for arg in call.args.into_iter() {
                 gen_expr(*arg.clone(), cgs);
-                if matches!(arg.r#type, Type::Pointer(inner) if !matches!(*inner, Type::Func(_))) {
-                    cgs.outputs.push(StackCommand::AgsPointerRecalculation(i));
-                }
             }
             gen_expr_left(*call.func.clone(), cgs);
             cgs.outputs.push(StackCommand::Call(call.func.r#type));
@@ -70,10 +68,17 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             UnaryOp::Bang => {}
 
             UnaryOp::Tilde => {}
-            UnaryOp::Ampersand => gen_expr_left(*unary.expr, cgs),
+            UnaryOp::Ampersand => {
+                gen_expr_left(*unary.expr, cgs);
+                cgs.outputs.pop();
+
+                cgs.outputs.push(StackCommand::Address);
+            }
 
             UnaryOp::Asterisk => {
                 gen_expr(*unary.expr.clone(), cgs);
+                cgs.outputs.push(StackCommand::AcsessUseGa);
+
                 cgs.outputs.push(StackCommand::Load(typed_expr.r#type));
             }
 
@@ -111,7 +116,14 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
 pub fn gen_expr_left(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
     match typed_expr.expr {
         SemaExpr::String(_) => cgs.outputs.push(typed_expr.into()),
-        SemaExpr::Symbol(ident) => cgs.outputs.push(StackCommand::Symbol(ident)),
+
+        SemaExpr::Symbol(ident) => match ident.get_type().unwrap() {
+            Type::Func(_) => cgs.outputs.push(StackCommand::Symbol(ident)),
+            _ => {
+                cgs.outputs.push(StackCommand::Symbol(ident));
+                cgs.outputs.push(StackCommand::AcsessUseLa);
+            }
+        },
         SemaExpr::Unary(unary) => match unary.op {
             UnaryOp::Bang => {}
 
@@ -121,6 +133,7 @@ pub fn gen_expr_left(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             UnaryOp::Asterisk => {
                 gen_expr_left(*unary.expr.clone(), cgs);
                 cgs.outputs.push(StackCommand::Load(unary.expr.r#type));
+                cgs.outputs.push(StackCommand::AcsessUseGa);
             }
 
             UnaryOp::Minus => {}

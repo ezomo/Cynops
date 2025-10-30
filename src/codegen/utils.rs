@@ -6,25 +6,27 @@ use std::collections::HashMap;
 pub struct SLabel(pub usize);
 #[derive(Debug, Clone)]
 pub enum StackCommand {
-    Comment(String),                // コメント
-    Push(TypedExpr),                // スタックに値を乗せる
-    BinaryOP(BinaryOp),             // 二項演算子
-    Symbol(Symbol),                 //変数のアドレスをスタックに乗せる
-    Name(Symbol),                   // 変数名をスタックに乗せる下のAlloca命令と組み合わせて使う
-    Alloc(Type),                    //型のサイズだけメモリ確保
-    Store,                          //　計算結果が下　対象は上
-    Load(Type),                     //下のメモリから値をロード
-    IndexAccess(Type),              // 下のアドレスから型とオフセットを使ってアドレス計算
-    Label(SLabel),                  // ラベル定義
-    Goto(SLabel),                   // 無条件ジャンプ
-    Branch(SLabel, SLabel),         //True ,False
-    AgsPointerRecalculation(usize), //下のagsに対してpointerのmemoey計算を行う，次の関数offsetを基準に変更
-    Call(Type),                     // 関数呼び出し 下の引数群を使う　アドレス＋引数群
-    Return,                         // 関数からの復帰
-    ReturnPoint(SLabel),            // 関数終了後の戻る場所
-    FramePop,                       // フレームを削除
-    SellOut,                        //一番上を出力
-    GlobalAddress,                  //グローバルアドレスをスタックに乗せる
+    Comment(String),        // コメント
+    Push(TypedExpr),        // スタックに値を乗せる
+    BinaryOP(BinaryOp),     // 二項演算子
+    Symbol(Symbol),         //変数のアドレスをスタックに乗せる
+    Name(Symbol),           // 変数名をスタックに乗せる下のAlloca命令と組み合わせて使う
+    Alloc(Type),            //型のサイズだけメモリ確保
+    Store,                  //　計算結果が下　対象は上
+    Load(Type),             //下のメモリから値をロード
+    IndexAccess(Type),      // 下のアドレスから型とオフセットを使ってアドレス計算
+    Label(SLabel),          // ラベル定義
+    Goto(SLabel),           // 無条件ジャンプ
+    Branch(SLabel, SLabel), //True ,False
+    Call(Type),             // 関数呼び出し 下の引数群を使う　アドレス＋引数群
+    Return,                 // 関数からの復帰
+    ReturnPoint(SLabel),    // 関数終了後の戻る場所
+    FramePop,               // フレームを削除
+    SellOut,                //一番上を出力
+    GlobalAddress,          //グローバルアドレスをスタックに乗せる
+    Address,                //変数のグローバルアドレスをスタックに
+    AcsessUseGa,            //メンバアクセス グローバルアドレスできるようにする
+    AcsessUseLa,            //メンバアクセス グローバルアドレスできるようにする
 }
 
 #[derive(Debug, Clone)]
@@ -132,7 +134,6 @@ impl CodeGenStatus {
             };
             match last {
                 StackCommand::Push(te) => typematch(&te.r#expr),
-                StackCommand::AgsPointerRecalculation(_) => false,
                 StackCommand::BinaryOP(_) => false,
                 StackCommand::Symbol(_) => true,
                 StackCommand::Alloc(_) => false,
@@ -150,6 +151,9 @@ impl CodeGenStatus {
                 StackCommand::SellOut => false,
                 StackCommand::Comment(_) => false,
                 StackCommand::GlobalAddress => true,
+                StackCommand::Address => true,
+                StackCommand::AcsessUseGa => true, //怪しい
+                StackCommand::AcsessUseLa => true, //怪しい
             }
         } else {
             false
