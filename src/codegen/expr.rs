@@ -69,16 +69,19 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
 
             UnaryOp::Tilde => {}
             UnaryOp::Ampersand => {
-                gen_expr_left(*unary.expr, cgs);
-                cgs.outputs.pop();
+                gen_expr_left(*unary.expr.clone(), cgs);
 
-                cgs.outputs.push(StackCommand::Address);
+                if !matches!(unary.expr.r#type, Type::Func(_)) {
+                    cgs.outputs.pop();
+
+                    cgs.outputs.push(StackCommand::Address);
+                }
             }
 
             UnaryOp::Asterisk => {
                 gen_expr(*unary.expr.clone(), cgs);
-                cgs.outputs.push(StackCommand::AcsessUseGa);
 
+                cgs.outputs.push(StackCommand::AcsessUseGa);
                 cgs.outputs.push(StackCommand::Load(typed_expr.r#type));
             }
 
@@ -132,8 +135,11 @@ pub fn gen_expr_left(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
 
             UnaryOp::Asterisk => {
                 gen_expr_left(*unary.expr.clone(), cgs);
-                cgs.outputs.push(StackCommand::Load(unary.expr.r#type));
-                cgs.outputs.push(StackCommand::AcsessUseGa);
+                cgs.outputs
+                    .push(StackCommand::Load(unary.expr.clone().r#type));
+                if !matches!(typed_expr.r#type, Type::Func(_)) {
+                    cgs.outputs.push(StackCommand::AcsessUseGa);
+                }
             }
 
             UnaryOp::Minus => {}

@@ -33,7 +33,7 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
 
 #[allow(dead_code)]
 fn function_proto(function: FunctionProto, cgs: &mut CodeGenStatus) {
-    if function.sig.symbol.ident == "sellout".into()
+    if function.sig.symbol.ident == "cellout".into()
         && function.sig.symbol.get_type().unwrap()
             == Type::Func(Func {
                 return_type: Type::Void.into(),
