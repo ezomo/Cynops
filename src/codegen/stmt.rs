@@ -164,14 +164,7 @@ fn declare_struct(init: Struct, _cgs: &mut CodeGenStatus) {
     );
 }
 
-fn declare_union(init: Union, _cgs: &mut CodeGenStatus) {
-    println!(
-        "{} = type {{[ {} x i8 ]}}",
-        init.symbol.scope.ptr.upgrade().unwrap().borrow().symbols[init.ident.as_ref().unwrap()]
-            .to_llvm_format(),
-        init.size()
-    );
-}
+fn declare_union(init: Union, _cgs: &mut CodeGenStatus) {}
 
 fn declare_enum(init: Enum, cgs: &mut CodeGenStatus) {
     let mut start = 0;

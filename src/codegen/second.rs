@@ -161,21 +161,15 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                 StackCommand::FramePop => {
                     let delete = cgs.alloced + palam_size + 1;
                     cgs.outpus.push(SeStackCommand::DeAlloc(delete));
-                    // println!("Alloc_{} {}", cgs.head_sack_func(), cgs.head_sack_func());
-                    println!("{} + {}", cgs.alloced, palam_size);
                     cgs.sub_stack(delete);
                     // +1は継承したgrobal address分
 
                     cgs.outpus.push(SeStackCommand::Goto);
                     //存在するだけで呼び出されていない関数もある．
                 }
-                StackCommand::ReturnPoint(repo) => {
-                    println!("___{}", cgs.head_sack_func());
-                    cgs.push_label(repo)
-                }
+                StackCommand::ReturnPoint(repo) => cgs.push_label(repo),
                 StackCommand::SellOut => {
                     cgs.outpus.push(SeStackCommand::SellOut);
-                    // cgs.outpus.push(SeStackCommand::DeAlloc(1));
                     cgs.sub_stack(1);
                 }
 

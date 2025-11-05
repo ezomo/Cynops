@@ -89,7 +89,7 @@ pub fn generate_program(program: Program) {
 
     dbg!(&stream);
     let transpilation = translate(&stream);
-    // println!("{}", show_bf(&transpilation, cfg!(feature = "debugbf")));
+    println!("{}", show_bf(&transpilation, cfg!(feature = "debugbf")));
 
     println!("\nExecution stack:\n");
     exec_stack_program(&stream);

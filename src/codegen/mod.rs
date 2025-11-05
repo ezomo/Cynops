@@ -4,6 +4,7 @@ pub mod root;
 pub mod second;
 pub mod stack;
 pub mod stmt;
+pub mod r#type;
 pub mod utils;
 
 pub use expr::*;
