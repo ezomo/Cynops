@@ -4,6 +4,7 @@ use std::usize;
 use super::SLabel;
 use super::StackCommand;
 use super::utils::SFunc;
+use crate::codegen::r#type::Size;
 use crate::op::*;
 use crate::sema::ast::*;
 
@@ -143,7 +144,10 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                     // 一下のアドレス，その下の実値
                 }
                 StackCommand::Load(ty) => cgs.load(ty),
-                StackCommand::IndexAccess(ype) => {} // 下のアドレスから型とオフセットを使ってアドレス計算
+                StackCommand::IndexAccess(ty) => {
+                    cgs.mul(ty.size() as isize);
+                    cgs.add();
+                } // 下のアドレスから型とオフセットを使ってアドレス計算
                 StackCommand::Label(this) => cgs.outpus.push(SeStackCommand::Label(this.into())),
                 StackCommand::Goto(this) => {
                     cgs.outpus.push(SeStackCommand::Push(this.into()));
@@ -305,6 +309,11 @@ impl CodeGenStatus {
         self.outpus.push(SeStackCommand::Comment("mul_end".into()));
     }
 
+    fn add(&mut self) {
+        self.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
+        self.sub_stack(1);
+    }
+
     fn acsess(&mut self) {
         self.outpus
             .push(SeStackCommand::Push(self.head_sack_func() - 1));
@@ -314,10 +323,10 @@ impl CodeGenStatus {
         self.mul(-1);
     }
 
-    fn alloc(&mut self, _ty: &Type) {
-        self.outpus.push(SeStackCommand::Alloc(1));
-        self.add_stck(1);
-        self.add_alloc(1);
+    fn alloc(&mut self, ty: &Type) {
+        self.outpus.push(SeStackCommand::Alloc(ty.size()));
+        self.add_stck(ty.size());
+        self.add_alloc(ty.size());
     }
 
     fn load(&mut self, ty: Type) {

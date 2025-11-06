@@ -25,7 +25,7 @@ pub struct Func {
     pub params: Vec<Type>,
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Clone, Eq)]
 pub enum Type {
     Void,
     Error, //エラー時に使う
@@ -41,6 +41,12 @@ pub enum Type {
     Array(Array),
     Unresolved, //後でなくすかも
     Typedef(Symbol),
+}
+
+impl std::fmt::Debug for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.flat().to_rust_format())
+    }
 }
 
 impl PartialEq for Type {

@@ -27,6 +27,10 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             let ty = symbol.get_type().unwrap();
             match ty {
                 Type::Func(_) => cgs.outputs.push(StackCommand::Symbol(symbol.clone())),
+                Type::Array(_) => {
+                    cgs.outputs.push(StackCommand::Symbol(symbol.clone()));
+                    cgs.outputs.push(StackCommand::AcsessUseLa);
+                }
                 _ => {
                     cgs.outputs.push(StackCommand::Symbol(symbol.clone()));
                     cgs.outputs.push(StackCommand::AcsessUseLa);
@@ -82,7 +86,11 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
                 gen_expr(*unary.expr.clone(), cgs);
 
                 cgs.outputs.push(StackCommand::AcsessUseGa);
-                cgs.outputs.push(StackCommand::Load(typed_expr.r#type));
+
+                //配列は読み込めないのよ　どうしようかな？
+                if typed_expr.r#type.as_array().is_none() {
+                    cgs.outputs.push(StackCommand::Load(typed_expr.r#type));
+                }
             }
 
             UnaryOp::Minus => {}
@@ -93,7 +101,12 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             gen_expr(*subscript.subject.clone(), cgs);
             gen_expr(*subscript.index.clone(), cgs);
             cgs.outputs
-                .push(StackCommand::IndexAccess(subscript.subject.r#type.clone()));
+                .push(StackCommand::IndexAccess(typed_expr.r#type.clone()));
+
+            if !typed_expr.r#type.is_address() {
+                cgs.outputs
+                    .push(StackCommand::Load(typed_expr.r#type.clone()));
+            }
         }
         SemaExpr::MemberAccess(member_access) => match member_access.kind {
             MemberAccessOp::Dot => match &member_access.base.r#type {

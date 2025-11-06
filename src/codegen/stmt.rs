@@ -118,13 +118,14 @@ fn initialize_variable(
 
                     for i in combos {
                         let tmp = i.clone();
-                        cgs.outputs
-                            .push(StackCommand::Push(match init_data.clone().acsess(i) {
-                                InitData::Compound(_) => panic!(),
-                                InitData::Expr(this) => this,
-                            }));
+                        match init_data.clone().acsess(i) {
+                            InitData::Compound(_) => panic!(),
+                            InitData::Expr(this) => gen_expr(this, cgs),
+                        }
 
                         cgs.outputs.push(StackCommand::Symbol(object.clone()));
+                        cgs.outputs.push(StackCommand::AcsessUseLa);
+
                         for i in (0..tmp.len()).rev() {
                             let ty = arr.types(tmp.len() - i - 1);
                             let offset = tmp[tmp.len() - i - 1];

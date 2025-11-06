@@ -120,8 +120,11 @@ pub fn generate_program(program: Program) {
         gen_top_level(item, &mut cgs);
     }
 
-    first_out(&cgs);
-    println!("===");
+    cgs.funcs.iter().for_each(|x| {
+        eprintln!("{}", x.sig.symbol.ident.name);
+        dbg!(&x.body);
+    });
+    eprintln!("===");
     let s = super::second::start(cgs.funcs);
     use super::bf::*;
     use super::stack::*;
@@ -132,13 +135,13 @@ pub fn generate_program(program: Program) {
 
     dbg!(&stream);
     let transpilation = translate(&stream);
-    println!("{}", show_bf(&transpilation, cfg!(feature = "debugbf")));
 
-    println!("\nExecution stack:\n");
+    println!("{}", show_bf(&transpilation, true));
+
+    eprintln!("\nExecution stack:\n");
     exec_stack_program(&stream);
-    println!("\nExecution bf:\n");
 
-    exec_bf(&transpilation);
+    // exec_bf(&transpilation);
 
     fn convert(b: SeStackCommand) -> StackInst {
         match b {
@@ -173,39 +176,6 @@ pub fn generate_program(program: Program) {
             SeStackCommand::SellOut => StackInst::PutChar,
             SeStackCommand::Copy => StackInst::Copy,
             SeStackCommand::Input => StackInst::Input,
-        }
-    }
-}
-
-fn first_out(cgs: &CodeGenStatus) {
-    for f in cgs.funcs.iter() {
-        println!("{}:", f.sig.symbol.ident.get_name());
-        for o in f.body.iter() {
-            print!(" ");
-            match o {
-                StackCommand::Push(this) => println!("Push {}", this.oneline()),
-                StackCommand::BinaryOP(this) => println!("{:?}", this),
-                StackCommand::Symbol(this) => println!("Symbol {}", this.oneline()),
-                StackCommand::Alloc(this) => println!("Alloca {}", this.to_rust_format()),
-                StackCommand::Store => println!("{:?}", o), //　計算結果が下　対象は上
-                StackCommand::Load(ty) => println!("Load {:?}", ty.to_rust_format()),
-                StackCommand::Label(this) => println!("Label {:?}", this), // ラベル定義
-                StackCommand::Goto(this) => println!("Jump {:?}", this),
-                StackCommand::Call(_) => println!("{:?}", o),
-                StackCommand::Return => println!("{:?}", o),
-                StackCommand::ReturnPoint(_) => println!("{:?}", o),
-                StackCommand::Branch(a, b) => println!("Branch ({:?},{:?})", a, b),
-                StackCommand::FramePop => println!("{:?}", o),
-                StackCommand::Name(s) => println!("Name {}", s.oneline()),
-                StackCommand::IndexAccess(ty) => println!("IndexAccess {}", ty.to_rust_format()),
-                StackCommand::SellOut => println!("{:?}", o),
-                StackCommand::Comment(this) => println!("Comment {}", this),
-                StackCommand::GlobalAddress => println!("{:?}", o),
-                StackCommand::Address => println!("{:?}", o),
-                StackCommand::AcsessUseGa => println!("{:?}", o),
-                StackCommand::AcsessUseLa => println!("{:?}", o),
-                StackCommand::Input => println!("{:?}", o),
-            }
         }
     }
 }

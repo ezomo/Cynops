@@ -69,7 +69,7 @@ fn parse_bracs(code: &[FastBF]) -> HashMap<usize, usize> {
 
 fn output(b: u8) {
     use std::io::{self, Write};
-    let mut stdout = io::stdout();
-    stdout.write_all(&[b]).unwrap();
-    stdout.flush().unwrap();
+    let mut stderr = io::stderr();
+    stderr.write_all(&[b]).unwrap();
+    stderr.flush().unwrap();
 }

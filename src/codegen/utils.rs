@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy)]
 pub struct SLabel(pub usize);
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum StackCommand {
     Comment(String),        // コメント
     Push(TypedExpr),        // スタックに値を乗せる
@@ -28,6 +28,36 @@ pub enum StackCommand {
     AcsessUseGa,            //メンバアクセス グローバルアドレスできるようにする
     AcsessUseLa,            //メンバアクセス グローバルアドレスできるようにする
     Input,
+}
+
+impl std::fmt::Debug for StackCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use crate::visualize::OneLine;
+        match self {
+            StackCommand::Push(this) => write!(f, "Push {}", this.oneline()),
+            StackCommand::BinaryOP(this) => write!(f, "BinaryOP {:?}", this),
+            StackCommand::Symbol(this) => write!(f, "Symbol {}", this.oneline()),
+            StackCommand::Alloc(this) => write!(f, "Alloca {}", this.to_rust_format()),
+            StackCommand::Store => write!(f, "Store"),
+            StackCommand::Load(ty) => write!(f, "Load {}", ty.to_rust_format()),
+            StackCommand::Label(this) => write!(f, "Label {:?}", this),
+            StackCommand::Goto(this) => write!(f, "Jump {:?}", this),
+            StackCommand::Call(this) => write!(f, "Call {:?}", this),
+            StackCommand::Return => write!(f, "Return"),
+            StackCommand::ReturnPoint(this) => write!(f, "ReturnPoint {:?}", this),
+            StackCommand::Branch(a, b) => write!(f, "Branch ({:?}, {:?})", a, b),
+            StackCommand::FramePop => write!(f, "FramePop"),
+            StackCommand::Name(s) => write!(f, "Name {}", s.oneline()),
+            StackCommand::IndexAccess(ty) => write!(f, "IndexAccess {}", ty.to_rust_format()),
+            StackCommand::SellOut => write!(f, "SellOut"),
+            StackCommand::Comment(this) => write!(f, "Comment {}", this),
+            StackCommand::GlobalAddress => write!(f, "GlobalAddress"),
+            StackCommand::Address => write!(f, "Address"),
+            StackCommand::AcsessUseGa => write!(f, "AccessUseGa"),
+            StackCommand::AcsessUseLa => write!(f, "AccessUseLa"),
+            StackCommand::Input => write!(f, "Input"),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -249,7 +279,7 @@ impl Type {
             Type::Double => false,
             Type::Char => false,
             Type::Pointer(_) => true,
-            Type::Array(_) => false,
+            Type::Array(_) => true,
             Type::Func(_) => true,
             Type::Struct(_) => false,
             Type::Enum(_) => false,
