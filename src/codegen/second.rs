@@ -252,6 +252,10 @@ impl CodeGenStatus {
                 self.outpus.push(SeStackCommand::Push(this));
                 self.add_stck(1);
             }
+            SemaExpr::Char(this) => {
+                self.outpus.push(SeStackCommand::Push(this as usize));
+                self.add_stck(1);
+            }
             _ => unreachable!(),
         }
     }

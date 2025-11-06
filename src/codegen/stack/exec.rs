@@ -11,7 +11,6 @@ pub fn exec_stack_program(code: &[StackInst]) {
 #[derive(Default)]
 pub struct StackMachine {
     pub stack: Vec<Word>,
-    pub ip: usize,
 }
 
 impl StackMachine {
@@ -56,9 +55,7 @@ impl StackMachine {
                     self.stack
                         .push(io::stdin().bytes().next().unwrap().unwrap() as u16);
                 }
-                PutChar => {
-                    print!("{}", self.stack.pop().unwrap() as u8 as char);
-                }
+                PutChar => output(self.stack.pop().unwrap() as u8),
 
                 Alloc(n) => {
                     let len = self.stack.len();
@@ -198,4 +195,11 @@ impl StackMachine {
             ip += 1;
         }
     }
+}
+
+fn output(b: u8) {
+    use std::io::{self, Write};
+    let mut stdout = io::stdout();
+    stdout.write_all(&[b]).unwrap();
+    stdout.flush().unwrap();
 }

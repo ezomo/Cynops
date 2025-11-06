@@ -9,7 +9,6 @@ pub fn exec_bf(bf: &[BF]) {
     let mut ip = 0;
     let mut stack = vec![0 as u16];
     let mut head = 0;
-    let mut stdin = std::io::stdin();
 
     while ip < bf.len() {
         use BF::*;
@@ -32,7 +31,7 @@ pub fn exec_bf(bf: &[BF]) {
             Inc => stack[head] = stack[head].wrapping_add(1),
             Dec => stack[head] = stack[head].wrapping_sub(1),
             Input => stack[head] = io::stdin().bytes().next().unwrap().unwrap() as u16,
-            Output => print!("{}", stack[head] as u8 as char),
+            Output => output(stack[head] as u8),
             LBrac => {
                 if stack[head] == 0 {
                     ip = map[&ip];
@@ -66,4 +65,11 @@ fn parse_bracs(code: &[FastBF]) -> HashMap<usize, usize> {
     }
 
     map
+}
+
+fn output(b: u8) {
+    use std::io::{self, Write};
+    let mut stdout = io::stdout();
+    stdout.write_all(&[b]).unwrap();
+    stdout.flush().unwrap();
 }

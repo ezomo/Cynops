@@ -107,7 +107,10 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             Sizeof::Type(ty) => {}
             Sizeof::TypedExpr(num) => {}
         },
-        SemaExpr::Cast(cast) => {}
+        SemaExpr::Cast(cast) => {
+            // どうせ今はintしかないので
+            gen_expr(*cast.expr, cgs);
+        }
         SemaExpr::Comma(comma) => {
             for exper in comma.assigns {
                 gen_expr(exper, cgs);
