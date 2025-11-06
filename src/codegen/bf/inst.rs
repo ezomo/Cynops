@@ -103,6 +103,10 @@ pub fn emit_bf(inst: StackInst, bf: &mut Vec<BF>) {
             bf.push(Right);
             bf.extend(repeat_n(Inc, b as _));
         }
+        StackInst::Input => {
+            bf.push(Right);
+            bf.push(BF::Input);
+        }
         Swap => bf.extend(BF::parse(
             "
             <[->>+<<] // Move 1 into 3

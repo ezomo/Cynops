@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-
 use super::*;
+use std::collections::HashMap;
+use std::io::{self, Read};
 
 pub fn exec_stack_program(code: &[StackInst]) {
     let mut stack_machine = StackMachine::default();
@@ -52,6 +52,10 @@ impl StackMachine {
                 }
                 Nop | Label(_) | Comment(_) => (),
                 Push(b) => self.stack.push(b.clone()),
+                Input => {
+                    self.stack
+                        .push(io::stdin().bytes().next().unwrap().unwrap() as u16);
+                }
                 PutChar => {
                     print!("{}", self.stack.pop().unwrap() as u8 as char);
                 }

@@ -1,3 +1,5 @@
+use std::fmt::write;
+
 use super::*;
 
 #[derive(Default, Clone, PartialEq, Hash, Eq, PartialOrd, Ord)]
@@ -61,6 +63,7 @@ pub enum StackInst {
 
     // IO
     PutChar,
+    Input,
 }
 
 impl StackInst {
@@ -98,6 +101,7 @@ impl StackInst {
         match self {
             Comment(_) | Debug(_) | Nop => (0, Some(0)),
             Push(_) => (0, Some(1)),
+            Input => (0, Some(1)),
             Move(_) => (1, Some(0)),
             Copy => (1, Some(2)),
             Swap => (2, Some(2)),
@@ -126,8 +130,9 @@ impl std::fmt::Debug for StackInst {
         match self {
             Nop => write!(f, "Nop"),
             Debug(l) => write!(f, "Debug({})", l),
-            Comment(c) => write!(f, "/* {} */", c),
+            Comment(c) => write!(f, "// {} ", c),
             Push(c) => write!(f, "Push({})", c),
+            Input => write!(f, "Input"),
             Move(d) => write!(f, "Move({})", d),
             Swap => write!(f, "Swap"),
             Copy => write!(f, "Copy"),
@@ -151,7 +156,7 @@ impl std::fmt::Debug for StackInst {
             Branch(t, e) => write!(f, "Branch({}, {})", t, e),
             Goto => write!(f, "Goto"),
             Exit => write!(f, "Exit"),
-            PutChar => write!(f, "PrintChar"),
+            PutChar => write!(f, "PutChar"),
             Eq => write!(f, "Eq"),
             Neq => write!(f, "Neq"),
             Lt => write!(f, "Lt"),
