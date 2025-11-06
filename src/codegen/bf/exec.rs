@@ -1,7 +1,6 @@
-use std::collections::HashMap;
-use std::io::Read;
-
 use super::*;
+use std::collections::HashMap;
+use std::io::{self, Read};
 
 pub fn exec_bf(bf: &[BF]) {
     let fast = bf.iter().cloned().map(FastBF::from).collect::<Vec<_>>();
@@ -32,11 +31,7 @@ pub fn exec_bf(bf: &[BF]) {
             }
             Inc => stack[head] = stack[head].wrapping_add(1),
             Dec => stack[head] = stack[head].wrapping_sub(1),
-            Input => {
-                let mut buf = [0];
-                stdin.read_exact(&mut buf).expect("No input");
-                stack[head] = buf[0] as u16;
-            }
+            Input => stack[head] = io::stdin().bytes().next().unwrap().unwrap() as u16,
             Output => print!("{}", stack[head] as u8 as char),
             LBrac => {
                 if stack[head] == 0 {

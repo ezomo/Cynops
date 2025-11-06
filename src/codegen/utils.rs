@@ -27,6 +27,7 @@ pub enum StackCommand {
     Address,                //変数のグローバルアドレスをスタックに
     AcsessUseGa,            //メンバアクセス グローバルアドレスできるようにする
     AcsessUseLa,            //メンバアクセス グローバルアドレスできるようにする
+    Input,
 }
 
 #[derive(Debug, Clone)]
@@ -154,6 +155,7 @@ impl CodeGenStatus {
                 StackCommand::Address => true,
                 StackCommand::AcsessUseGa => true, //怪しい
                 StackCommand::AcsessUseLa => true, //怪しい
+                StackCommand::Input => false,
             }
         } else {
             false

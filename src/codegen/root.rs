@@ -33,34 +33,77 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
 
 #[allow(dead_code)]
 fn function_proto(function: FunctionProto, cgs: &mut CodeGenStatus) {
-    if function.sig.symbol.ident == "cellout".into()
+    if &function.sig.symbol.ident == &"cellout".into()
         && function.sig.symbol.get_type().unwrap()
             == Type::Func(Func {
                 return_type: Type::Void.into(),
                 params: vec![Type::Int],
             })
     {
-        cgs.outputs.clear();
-
-        let ojcet: Ident = "object".into();
-        let child = ScopeNode::add_child(&function.sig.symbol.scope.get_scope().unwrap());
-        let sy = Symbol::new(ojcet.clone(), ScopePtr::new(Rc::downgrade(&child)));
-        child.borrow_mut().register_symbols(ojcet, Type::Int);
-        cgs.outputs.push(StackCommand::Symbol(sy.clone()));
-        cgs.outputs.push(StackCommand::AcsessUseLa);
-        cgs.outputs.push(StackCommand::Load(Type::Int));
-        cgs.outputs.push(StackCommand::SellOut);
-        cgs.outputs.push(StackCommand::FramePop);
-
-        let func = SFunc::new(
-            function.sig,
-            vec![sy.clone()],
-            cgs.outputs.clone(),
-            cgs.name_gen.slabel(),
-        );
-        cgs.funcs.push(func);
-        cgs.outputs.clear();
+        cellout(function, cgs);
+    } else if function.sig.symbol.ident == "cellin".into()
+        && function.sig.symbol.get_type().unwrap()
+            == Type::Func(Func {
+                return_type: Type::Int.into(),
+                params: vec![Type::Void],
+            })
+    {
+        cellin(function, cgs);
     }
+}
+
+fn cellout(function: FunctionProto, cgs: &mut CodeGenStatus) {
+    cgs.outputs.clear();
+
+    let ojcet: Ident = "object".into();
+    let child = ScopeNode::add_child(&function.sig.symbol.scope.get_scope().unwrap());
+    let sy = Symbol::new(ojcet.clone(), ScopePtr::new(Rc::downgrade(&child)));
+    child.borrow_mut().register_symbols(ojcet, Type::Int);
+    cgs.outputs.push(StackCommand::Symbol(sy.clone()));
+    cgs.outputs.push(StackCommand::AcsessUseLa);
+    cgs.outputs.push(StackCommand::Load(Type::Int));
+    cgs.outputs.push(StackCommand::SellOut);
+    cgs.outputs.push(StackCommand::FramePop);
+
+    let func = SFunc::new(
+        function.sig,
+        vec![sy.clone()],
+        cgs.outputs.clone(),
+        cgs.name_gen.slabel(),
+    );
+    cgs.funcs.push(func);
+    cgs.outputs.clear();
+}
+
+fn cellin(function: FunctionProto, cgs: &mut CodeGenStatus) {
+    cgs.outputs.clear();
+
+    let func_end = cgs.name_gen.slabel();
+    cgs.func_end = Some(func_end);
+
+    {
+        cgs.outputs.push(StackCommand::Input);
+        cgs.outputs.push(StackCommand::Return);
+
+        //いらないはずなんだけな TODO
+        {
+            cgs.outputs.push(StackCommand::Goto(cgs.func_end.unwrap()));
+            cgs.outputs.push(StackCommand::Label(cgs.name_gen.slabel())); //未到達空間回避
+        }
+    }
+
+    cgs.outputs.push(StackCommand::Label(func_end));
+    cgs.outputs.push(StackCommand::FramePop);
+
+    let func = SFunc::new(
+        function.sig,
+        vec![],
+        cgs.outputs.clone(),
+        cgs.name_gen.slabel(),
+    );
+
+    cgs.funcs.push(func);
+    cgs.outputs.clear();
 }
 
 fn gen_top_level(top_level: TopLevel, cgs: &mut CodeGenStatus) {
@@ -129,6 +172,7 @@ pub fn generate_program(program: Program) {
             SeStackCommand::Comment(this) => StackInst::Comment(this), // 無条件ジャンプ
             SeStackCommand::SellOut => StackInst::PutChar,
             SeStackCommand::Copy => StackInst::Copy,
+            SeStackCommand::Input => StackInst::Input,
         }
     }
 }
@@ -160,6 +204,7 @@ fn first_out(cgs: &CodeGenStatus) {
                 StackCommand::Address => println!("{:?}", o),
                 StackCommand::AcsessUseGa => println!("{:?}", o),
                 StackCommand::AcsessUseLa => println!("{:?}", o),
+                StackCommand::Input => println!("{:?}", o),
             }
         }
     }
@@ -173,7 +218,7 @@ fn test() {
     // let stream = vec![Label(1), Push(0), Push(65), Push(1), StkStr, PutChar, Exit];
 
     let stream2 = vec![Label(1), Input, PutChar, Exit];
-    exec_stack_program(&stream2);
+    // exec_stack_program(&stream2);
 
     let transpilation = translate(&stream2);
     // println!("{}", show_bf(&transpilation, cfg!(feature = "debugbf")));

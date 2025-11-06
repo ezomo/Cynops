@@ -24,6 +24,7 @@ pub enum SeStackCommand {
     Exit,
     Copy,
     SellOut,
+    Input,
 }
 
 impl From<SLabel> for Address {
@@ -121,6 +122,10 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
         for cmd in func.body {
             match cmd {
                 StackCommand::Push(TypedExpr { expr, .. }) => cgs.push_expr(expr),
+                StackCommand::Input => {
+                    cgs.outpus.push(SeStackCommand::Input);
+                    cgs.add_stck(1);
+                }
                 StackCommand::BinaryOP(binary_op) => {
                     cgs.outpus.push(SeStackCommand::BinaryOP(binary_op));
                     cgs.sub_stack(1);
