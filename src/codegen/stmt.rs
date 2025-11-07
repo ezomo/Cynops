@@ -298,34 +298,35 @@ mod controls {
             gen_expr(*init, cgs);
         }
 
-        // ループ条件判定の開始位置
-        cgs.outputs.push(StackCommand::Label(label_start));
+        // 条件判定へ
+        cgs.outputs.push(label_start.into());
 
-        // 条件判定
         if let Some(cond) = for_stmt.cond {
             gen_expr(*cond, cgs);
+            // 条件が真なら本体へ、偽なら終了
             cgs.outputs
                 .push(StackCommand::Branch(label_body, label_end));
         } else {
-            // 条件がない場合は常に本体を実行する無限ループ
+            // 条件なしの場合は無限ループ
             cgs.outputs.push(StackCommand::Goto(label_body));
         }
 
         // ループ本体
-        cgs.outputs.push(StackCommand::Label(label_body));
+        cgs.outputs.push(label_body.into());
         stmt(*for_stmt.body, cgs);
+        cgs.outputs.push(StackCommand::Goto(label_step));
 
         // ステップ（後処理）
-        cgs.outputs.push(StackCommand::Label(label_step));
+        cgs.outputs.push(label_step.into());
         if let Some(step) = for_stmt.step {
             gen_expr(*step, cgs);
         }
 
-        // 再び条件チェックへ
+        // 再び条件判定へ
         cgs.outputs.push(StackCommand::Goto(label_start));
 
         // ループ終了
-        cgs.outputs.push(StackCommand::Label(label_end));
+        cgs.outputs.push(label_end.into());
     }
 
     pub fn r#switch(switch_stmt: Switch, cgs: &mut CodeGenStatus) {}
