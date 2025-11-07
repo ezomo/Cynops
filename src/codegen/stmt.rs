@@ -264,6 +264,11 @@ mod controls {
         let label_body = cgs.name_gen.slabel();
         let label_end = cgs.name_gen.slabel();
 
+        // Labelをまたいで行動することはできない 使用
+        {
+            cgs.outputs.push(StackCommand::Goto(label_start));
+        }
+
         // ループの先頭ラベル
         cgs.outputs.push(StackCommand::Label(label_start));
 
@@ -296,6 +301,10 @@ mod controls {
         // 初期化式
         if let Some(init) = for_stmt.init {
             gen_expr(*init, cgs);
+        }
+
+        {
+            cgs.outputs.push(StackCommand::Goto(label_start));
         }
 
         // 条件判定へ

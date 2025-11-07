@@ -27,7 +27,7 @@ impl StackMachine {
 
         let mut ip = 0;
         loop {
-            // println!(
+            // eprintln!(
             //     "{:?}",
             //     self.stack
             //         .clone()
