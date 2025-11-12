@@ -40,7 +40,7 @@ fn function_proto(function: FunctionProto, cgs: &mut CodeGenStatus) {
                 params: vec![Type::Int],
             })
     {
-        cellout(function, cgs);
+        outchar(function, cgs);
     } else if function.sig.symbol.ident == "getchar".into()
         && function.sig.symbol.get_type().unwrap()
             == Type::Func(Func {
@@ -48,11 +48,11 @@ fn function_proto(function: FunctionProto, cgs: &mut CodeGenStatus) {
                 params: vec![Type::Void],
             })
     {
-        cellin(function, cgs);
+        getchar(function, cgs);
     }
 }
 
-fn cellout(function: FunctionProto, cgs: &mut CodeGenStatus) {
+fn outchar(function: FunctionProto, cgs: &mut CodeGenStatus) {
     cgs.outputs.clear();
 
     let ojcet: Ident = "object".into();
@@ -75,7 +75,7 @@ fn cellout(function: FunctionProto, cgs: &mut CodeGenStatus) {
     cgs.outputs.clear();
 }
 
-fn cellin(function: FunctionProto, cgs: &mut CodeGenStatus) {
+fn getchar(function: FunctionProto, cgs: &mut CodeGenStatus) {
     cgs.outputs.clear();
 
     let func_end = cgs.name_gen.slabel();
