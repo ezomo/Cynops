@@ -33,7 +33,7 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
 
 #[allow(dead_code)]
 fn function_proto(function: FunctionProto, cgs: &mut CodeGenStatus) {
-    if &function.sig.symbol.ident == &"cellout".into()
+    if &function.sig.symbol.ident == &"putchar".into()
         && function.sig.symbol.get_type().unwrap()
             == Type::Func(Func {
                 return_type: Type::Void.into(),
@@ -41,7 +41,7 @@ fn function_proto(function: FunctionProto, cgs: &mut CodeGenStatus) {
             })
     {
         cellout(function, cgs);
-    } else if function.sig.symbol.ident == "cellin".into()
+    } else if function.sig.symbol.ident == "getchar".into()
         && function.sig.symbol.get_type().unwrap()
             == Type::Func(Func {
                 return_type: Type::Int.into(),
