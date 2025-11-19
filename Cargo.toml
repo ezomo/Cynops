@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-ordered-float = "5.0.0"
+ordered-float = "5.1.0"
 normalize-line-endings = "0.3"
