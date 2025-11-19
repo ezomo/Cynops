@@ -1,3 +1,8 @@
+use crate::{
+    sema::ast::Call,
+    sema::ast::{Symbol, TypedExpr},
+};
+
 use super::*;
 
 pub fn codegen_if_fn<C, T, E>(cond: C, then: T, else_opt: Option<E>, cgs: &mut CodeGenStatus)
@@ -70,4 +75,30 @@ where
 
     // 終了ラベル
     cgs.outputs.push(StackCommand::Label(label_end));
+}
+
+//
+pub fn codegen_call_fn(call: Call, cgs: &mut CodeGenStatus) {
+    let return_point = cgs.name_gen.slabel();
+    if !call.func.r#type.as_func().unwrap().return_type.is_void() {
+        cgs.outputs.push(StackCommand::Alloc(
+            call.func
+                .r#type
+                .as_func()
+                .unwrap()
+                .return_type
+                .as_ref()
+                .clone(),
+        ));
+    }
+
+    cgs.outputs.push(StackCommand::ReturnPoint(return_point));
+    cgs.outputs.push(StackCommand::GlobalAddress);
+
+    for arg in call.args.into_iter() {
+        gen_expr(arg.clone(), cgs);
+    }
+    gen_expr_left(*call.func.clone(), cgs);
+    cgs.outputs.push(StackCommand::Call(call.func.r#type));
+    cgs.outputs.push(StackCommand::Label(return_point));
 }

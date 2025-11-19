@@ -5,11 +5,83 @@ use crate::visualize::OneLine;
 
 pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
     match typed_expr.expr {
-        SemaExpr::Binary(binary) => {
-            gen_expr(*binary.lhs, cgs);
-            gen_expr(*binary.rhs, cgs);
-            cgs.outputs.push(binary.op.into());
-        }
+        SemaExpr::Binary(binary) => match binary.op {
+            BinaryOp::Comparison(Comparison::Greater)
+                if cgs.insert_function.get(&InsertFunction::Greater).is_some() =>
+            {
+                codegen_call_fn(
+                    Call::new(
+                        cgs.insert_function
+                            .get(&InsertFunction::Greater)
+                            .unwrap()
+                            .clone()
+                            .into(),
+                        vec![*binary.rhs, *binary.lhs],
+                    ),
+                    cgs,
+                );
+            }
+
+            BinaryOp::Comparison(Comparison::Less)
+                if cgs.insert_function.get(&InsertFunction::Less).is_some() =>
+            {
+                codegen_call_fn(
+                    Call::new(
+                        cgs.insert_function
+                            .get(&InsertFunction::Less)
+                            .unwrap()
+                            .clone()
+                            .into(),
+                        vec![*binary.rhs, *binary.lhs],
+                    ),
+                    cgs,
+                );
+            }
+
+            BinaryOp::Comparison(Comparison::GreaterEqual)
+                if cgs
+                    .insert_function
+                    .get(&InsertFunction::GreaterEqual)
+                    .is_some() =>
+            {
+                codegen_call_fn(
+                    Call::new(
+                        cgs.insert_function
+                            .get(&InsertFunction::GreaterEqual)
+                            .unwrap()
+                            .clone()
+                            .into(),
+                        vec![*binary.rhs, *binary.lhs],
+                    ),
+                    cgs,
+                );
+            }
+
+            BinaryOp::Comparison(Comparison::LessEqual)
+                if cgs
+                    .insert_function
+                    .get(&InsertFunction::LessEqual)
+                    .is_some() =>
+            {
+                codegen_call_fn(
+                    Call::new(
+                        cgs.insert_function
+                            .get(&InsertFunction::LessEqual)
+                            .unwrap()
+                            .clone()
+                            .into(),
+                        vec![*binary.rhs, *binary.lhs],
+                    ),
+                    cgs,
+                );
+            }
+
+            _ => {
+                gen_expr(*binary.lhs, cgs);
+                gen_expr(*binary.rhs, cgs);
+                cgs.outputs.push(binary.op.into());
+            }
+        },
         SemaExpr::Assign(assign) => match assign.op {
             AssignOp::Equal => {
                 gen_expr(*assign.rhs, cgs);
@@ -45,28 +117,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
                 call.func.oneline()
             )));
 
-            let return_point = cgs.name_gen.slabel();
-            if !call.func.r#type.as_func().unwrap().return_type.is_void() {
-                cgs.outputs.push(StackCommand::Alloc(
-                    call.func
-                        .r#type
-                        .as_func()
-                        .unwrap()
-                        .return_type
-                        .as_ref()
-                        .clone(),
-                ));
-            }
-
-            cgs.outputs.push(StackCommand::ReturnPoint(return_point));
-            cgs.outputs.push(StackCommand::GlobalAddress);
-
-            for arg in call.args.into_iter() {
-                gen_expr(*arg.clone(), cgs);
-            }
-            gen_expr_left(*call.func.clone(), cgs);
-            cgs.outputs.push(StackCommand::Call(call.func.r#type));
-            cgs.outputs.push(StackCommand::Label(return_point));
+            codegen_call_fn(call, cgs);
         }
         SemaExpr::Unary(unary) => match unary.op {
             UnaryOp::Bang => {}

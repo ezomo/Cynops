@@ -33,7 +33,15 @@ pub struct Assign {
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Call {
     pub func: Box<TypedExpr>,
-    pub args: Vec<Box<TypedExpr>>,
+    pub args: Vec<TypedExpr>,
+}
+impl Call {
+    pub fn new(func: TypedExpr, args: Vec<TypedExpr>) -> Self {
+        Call {
+            func: Box::new(func),
+            args: args,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
@@ -149,7 +157,7 @@ impl SemaExpr {
     pub fn call(func: TypedExpr, args: Vec<TypedExpr>) -> Self {
         SemaExpr::Call(Call {
             func: Box::new(func),
-            args: args.into_iter().map(Box::new).collect(),
+            args: args.into_iter().collect(),
         })
     }
 

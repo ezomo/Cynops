@@ -587,7 +587,7 @@ fn resolve_sema_expr(expr: &SemaExpr, session: &mut Session) -> TypeCheckResult<
             for arg in &call.args {
                 let mut arg_result = resolve_typed_expr(arg, session);
                 errors.append(&mut arg_result.errors);
-                resolved_args.push(Box::new(arg_result.result));
+                resolved_args.push(arg_result.result);
             }
 
             // 関数呼び出しの型チェック
@@ -659,7 +659,7 @@ fn resolve_sema_expr(expr: &SemaExpr, session: &mut Session) -> TypeCheckResult<
 
 fn check_function_call(
     func_expr: &TypedExpr,
-    args: &[Box<TypedExpr>],
+    args: &[TypedExpr],
     _session: &mut Session,
     errors: &mut Vec<TypeError>,
 ) {

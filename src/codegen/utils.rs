@@ -1,5 +1,6 @@
 use crate::op::*;
 use crate::sema::ast::*;
+use core::str;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy)]
@@ -123,11 +124,26 @@ impl CodeGenSpace {
     }
 }
 
+use strum_macros::EnumString;
+
+#[derive(EnumString, Debug, Eq, Hash, PartialEq)]
+pub enum InsertFunction {
+    #[strum(serialize = "Greater")]
+    Greater,
+    #[strum(serialize = "Less")]
+    Less,
+    #[strum(serialize = "LessEqual")]
+    LessEqual,
+    #[strum(serialize = "GreaterEqual")]
+    GreaterEqual,
+}
+
 pub struct CodeGenStatus {
     pub name_gen: NameGenerator,
     pub outputs: Vec<StackCommand>,
     pub func_end: Option<SLabel>,
     pub funcs: Vec<SFunc>,
+    pub insert_function: HashMap<InsertFunction, Symbol>,
 }
 
 impl Block {
@@ -143,6 +159,7 @@ impl CodeGenStatus {
             outputs: Vec::new(),
             func_end: None,
             funcs: Vec::new(),
+            insert_function: HashMap::new(),
         }
     }
 
@@ -326,6 +343,15 @@ impl Type {
             Type::Union(this) => format!("%{}", this.symbol.ident.to_string()),
             Type::Typedef(this) => this.get_type().unwrap().to_llvm_format(),
             _ => todo!("未対応の型: {:?}", self),
+        }
+    }
+}
+
+impl From<Symbol> for TypedExpr {
+    fn from(this: Symbol) -> Self {
+        Self {
+            r#type: this.get_type().unwrap(),
+            expr: SemaExpr::Symbol(this),
         }
     }
 }

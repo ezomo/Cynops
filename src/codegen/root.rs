@@ -1,11 +1,14 @@
 use std::rc::Rc;
 
+use super::bf::*;
+use super::stack::*;
 use super::stmt as gen_stmt;
 use super::{CodeGenStatus, StackCommand};
 use crate::codegen::SFunc;
 use crate::codegen::second::SeStackCommand;
 use crate::op::{Arithmetic, BinaryOp, Comparison, Logical, UnaryOp};
 use crate::sema::ast::*;
+use crate::visualize::Visualize;
 
 fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
     cgs.outputs.clear();
@@ -116,6 +119,34 @@ fn gen_top_level(top_level: TopLevel, cgs: &mut CodeGenStatus) {
 
 pub fn generate_program(program: Program) {
     let mut cgs = CodeGenStatus::new();
+    let (fine_ex, _session) = fine_expr("src/codegen/expr.c");
+    // sessionは必要，
+    {
+        for item in fine_ex.items {
+            gen_top_level(item, &mut cgs);
+        }
+
+        cgs.funcs.iter().for_each(|x| {
+            if x.sig
+                .symbol
+                .ident
+                .get_name()
+                .parse::<InsertFunction>()
+                .is_ok()
+            {
+                cgs.insert_function.insert(
+                    x.sig
+                        .symbol
+                        .ident
+                        .get_name()
+                        .parse::<InsertFunction>()
+                        .unwrap(),
+                    x.sig.symbol.clone(),
+                );
+            }
+        });
+    }
+
     for item in program.items {
         gen_top_level(item, &mut cgs);
     }
@@ -128,8 +159,7 @@ pub fn generate_program(program: Program) {
     // eprintln!("===");
 
     let s = super::second::start(cgs.funcs);
-    use super::bf::*;
-    use super::stack::*;
+
     let stream = s
         .iter()
         .map(|x| convert(x.clone()))
@@ -139,56 +169,72 @@ pub fn generate_program(program: Program) {
     let transpilation = translate(&stream);
 
     println!("{}", show_bf(&transpilation));
+}
 
-    // eprintln!("\nExecution stack:\n");
-    // exec_stack_program(&stream);
-    // eprintln!("\nEtack end:\n");
+fn fine_expr(filename: impl ToString) -> (Program, Session) {
+    use crate::*;
 
-    // eprintln!("bf in");
-    // exec_bf(&transpilation);
-    // eprintln!("\nend");
+    let mut input = fs::read_to_string(filename.to_string()).unwrap();
 
-    fn convert(b: SeStackCommand) -> StackInst {
-        match b {
-            SeStackCommand::Push(usize) => StackInst::Push(usize as u16),
-            SeStackCommand::Branch(a, b) => StackInst::Branch(a as u16, b as u16), //True ,False
-            SeStackCommand::BinaryOP(op) => match op {
-                BinaryOp::Arithmetic(a) => match a {
-                    Arithmetic::Plus => StackInst::Add,
-                    Arithmetic::Asterisk => StackInst::Mul,
-                    Arithmetic::Minus => StackInst::Sub,
-                    Arithmetic::Slash => StackInst::Div,
-                    Arithmetic::Percent => StackInst::Mod,
-                    _ => unreachable!(),
-                },
-                BinaryOp::Comparison(a) => match a {
-                    Comparison::EqualEqual => StackInst::Eq,
-                    Comparison::Greater => StackInst::Gr,
-                    Comparison::GreaterEqual => StackInst::GrEq,
-                    Comparison::Less => StackInst::Lt,
-                    Comparison::LessEqual => StackInst::LtEq,
-                    Comparison::NotEqual => StackInst::Neq,
-                },
-                BinaryOp::Logical(a) => match a {
-                    Logical::AmpersandAmpersand => StackInst::And,
-                    Logical::PipePipe => StackInst::Or,
-                },
-            }, // 二項演算子
-            SeStackCommand::UnaryOp(op) => match op {
-                UnaryOp::Minus => StackInst::Negate,
+    input = String::from_iter(normalized(input.chars()));
+
+    preprocessor::remove_comments(&mut input);
+    preprocessor::unescape_char_literals(&mut input);
+
+    let mut token = lexer::tokenize(&input);
+    let mut session = parser::ParseSession::new();
+    let mut program: ast::Program = parser::program(&mut session, &mut token);
+
+    let mut simp_session = Session::new();
+    sema::simplification::program(&mut program, &mut simp_session);
+
+    let mut sema_session = sema::ast::Session::new();
+    let new_program = sema::convert::program(&program, &mut sema_session);
+    let type_check_result = sema::r#type::program(&new_program, &mut sema_session);
+
+    (type_check_result.result, sema_session)
+}
+
+fn convert(b: SeStackCommand) -> StackInst {
+    match b {
+        SeStackCommand::Push(usize) => StackInst::Push(usize as u16),
+        SeStackCommand::Branch(a, b) => StackInst::Branch(a as u16, b as u16), //True ,False
+        SeStackCommand::BinaryOP(op) => match op {
+            BinaryOp::Arithmetic(a) => match a {
+                Arithmetic::Plus => StackInst::Add,
+                Arithmetic::Asterisk => StackInst::Mul,
+                Arithmetic::Minus => StackInst::Sub,
+                Arithmetic::Slash => StackInst::Div,
+                Arithmetic::Percent => StackInst::Mod,
                 _ => unreachable!(),
             },
-            SeStackCommand::Alloc(address) => StackInst::Alloc(address), //型のサイズだけメモリ確保
-            SeStackCommand::DeAlloc(a) => StackInst::Dealloc(a),         //型のサイズだけメモリ確保
-            SeStackCommand::WriteAddr => StackInst::StkStr,
-            SeStackCommand::ReadAddr => StackInst::StkRead,
-            SeStackCommand::Label(address) => StackInst::Label(address as u16), // ラベル定義
-            SeStackCommand::Goto => StackInst::Goto,
-            SeStackCommand::Exit => StackInst::Exit,
-            SeStackCommand::Comment(this) => StackInst::Comment(this), // 無条件ジャンプ
-            SeStackCommand::SellOut => StackInst::PutChar,
-            SeStackCommand::Copy => StackInst::Copy,
-            SeStackCommand::Input => StackInst::Input,
-        }
+            BinaryOp::Comparison(a) => match a {
+                Comparison::EqualEqual => StackInst::Eq,
+                Comparison::Greater => StackInst::Gr,
+                Comparison::GreaterEqual => StackInst::GrEq,
+                Comparison::Less => StackInst::Lt,
+                Comparison::LessEqual => StackInst::LtEq,
+                Comparison::NotEqual => StackInst::Neq,
+            },
+            BinaryOp::Logical(a) => match a {
+                Logical::AmpersandAmpersand => StackInst::And,
+                Logical::PipePipe => StackInst::Or,
+            },
+        }, // 二項演算子
+        SeStackCommand::UnaryOp(op) => match op {
+            UnaryOp::Minus => StackInst::Negate,
+            _ => unreachable!(),
+        },
+        SeStackCommand::Alloc(address) => StackInst::Alloc(address), //型のサイズだけメモリ確保
+        SeStackCommand::DeAlloc(a) => StackInst::Dealloc(a),         //型のサイズだけメモリ確保
+        SeStackCommand::WriteAddr => StackInst::StkStr,
+        SeStackCommand::ReadAddr => StackInst::StkRead,
+        SeStackCommand::Label(address) => StackInst::Label(address as u16), // ラベル定義
+        SeStackCommand::Goto => StackInst::Goto,
+        SeStackCommand::Exit => StackInst::Exit,
+        SeStackCommand::Comment(this) => StackInst::Comment(this), // 無条件ジャンプ
+        SeStackCommand::SellOut => StackInst::PutChar,
+        SeStackCommand::Copy => StackInst::Copy,
+        SeStackCommand::Input => StackInst::Input,
     }
 }
