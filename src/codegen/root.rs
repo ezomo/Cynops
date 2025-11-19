@@ -4,8 +4,8 @@ use super::stmt as gen_stmt;
 use super::{CodeGenStatus, StackCommand};
 use crate::codegen::SFunc;
 use crate::codegen::second::SeStackCommand;
-use crate::op::{Arithmetic, BinaryOp, Comparison};
-use crate::{sema::ast::*, visualize::OneLine};
+use crate::op::{Arithmetic, BinaryOp, Comparison, Logical, UnaryOp};
+use crate::sema::ast::*;
 
 fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
     cgs.outputs.clear();
@@ -120,11 +120,13 @@ pub fn generate_program(program: Program) {
         gen_top_level(item, &mut cgs);
     }
 
-    cgs.funcs.iter().for_each(|x| {
-        eprintln!("{}", x.sig.symbol.ident.name);
-        dbg!(&x.body);
-    });
-    eprintln!("===");
+    // cgs.funcs.iter().for_each(|x| {
+    //     eprintln!("{}", x.sig.symbol.ident.name);
+    //     dbg!(&x.body);
+    // });
+
+    // eprintln!("===");
+
     let s = super::second::start(cgs.funcs);
     use super::bf::*;
     use super::stack::*;
@@ -133,15 +135,18 @@ pub fn generate_program(program: Program) {
         .map(|x| convert(x.clone()))
         .collect::<Vec<StackInst>>();
 
-    dbg!(&stream);
+    // dbg!(&stream);
     let transpilation = translate(&stream);
 
     println!("{}", show_bf(&transpilation, true));
 
-    eprintln!("\nExecution stack:\n");
-    exec_stack_program(&stream);
+    // eprintln!("\nExecution stack:\n");
+    // exec_stack_program(&stream);
+    // eprintln!("\nEtack end:\n");
 
+    // eprintln!("bf in");
     // exec_bf(&transpilation);
+    // eprintln!("\nend");
 
     fn convert(b: SeStackCommand) -> StackInst {
         match b {
@@ -153,6 +158,7 @@ pub fn generate_program(program: Program) {
                     Arithmetic::Asterisk => StackInst::Mul,
                     Arithmetic::Minus => StackInst::Sub,
                     Arithmetic::Slash => StackInst::Div,
+                    Arithmetic::Percent => StackInst::Mod,
                     _ => unreachable!(),
                 },
                 BinaryOp::Comparison(a) => match a {
@@ -163,8 +169,15 @@ pub fn generate_program(program: Program) {
                     Comparison::LessEqual => StackInst::LtEq,
                     Comparison::NotEqual => StackInst::Neq,
                 },
-                _ => unreachable!(),
+                BinaryOp::Logical(a) => match a {
+                    Logical::AmpersandAmpersand => StackInst::And,
+                    Logical::PipePipe => StackInst::Or,
+                },
             }, // 二項演算子
+            SeStackCommand::UnaryOp(op) => match op {
+                UnaryOp::Minus => StackInst::Negate,
+                _ => unreachable!(),
+            },
             SeStackCommand::Alloc(address) => StackInst::Alloc(address), //型のサイズだけメモリ確保
             SeStackCommand::DeAlloc(a) => StackInst::Dealloc(a),         //型のサイズだけメモリ確保
             SeStackCommand::WriteAddr => StackInst::StkStr,

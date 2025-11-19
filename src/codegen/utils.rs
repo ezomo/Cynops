@@ -1,14 +1,16 @@
 use crate::op::*;
 use crate::sema::ast::*;
 use std::collections::HashMap;
+use std::fmt::write;
 
 #[derive(Debug, Clone, Copy)]
 pub struct SLabel(pub usize);
 #[derive(Clone)]
 pub enum StackCommand {
-    Comment(String),        // コメント
-    Push(TypedExpr),        // スタックに値を乗せる
-    BinaryOP(BinaryOp),     // 二項演算子
+    Comment(String),    // コメント
+    Push(TypedExpr),    // スタックに値を乗せる
+    BinaryOP(BinaryOp), // 二項演算子
+    UnaryOp(UnaryOp),
     Symbol(Symbol),         //変数のアドレスをスタックに乗せる
     Name(Symbol),           // 変数名をスタックに乗せる下のAlloca命令と組み合わせて使う
     Alloc(Type),            //型のサイズだけメモリ確保
@@ -36,6 +38,7 @@ impl std::fmt::Debug for StackCommand {
         match self {
             StackCommand::Push(this) => write!(f, "Push {}", this.oneline()),
             StackCommand::BinaryOP(this) => write!(f, "BinaryOP {:?}", this),
+            StackCommand::UnaryOp(this) => write!(f, "UnaryOp{:?}", this),
             StackCommand::Symbol(this) => write!(f, "Symbol {}", this.oneline()),
             StackCommand::Alloc(this) => write!(f, "Alloca {}", this.to_rust_format()),
             StackCommand::Store => write!(f, "Store"),
@@ -166,6 +169,7 @@ impl CodeGenStatus {
             match last {
                 StackCommand::Push(te) => typematch(&te.r#expr),
                 StackCommand::BinaryOP(_) => false,
+                StackCommand::UnaryOp(_) => false,
                 StackCommand::Symbol(_) => true,
                 StackCommand::Alloc(_) => false,
                 StackCommand::Store => false,

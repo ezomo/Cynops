@@ -166,7 +166,7 @@ fn process(args: &mut Vec<String>) {
         // 7. Code generation（エラーがある場合は実行しない）
         if options.run_codegen {
             if type_errors.is_empty() {
-                eprintln!("; === Code Generation ===");
+                // eprintln!("; === Code Generation ===");
                 codegen::generate_program(typed_prog);
             } else {
                 eprintln!("コード生成をスキップします（型エラーがあるため）");

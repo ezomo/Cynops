@@ -7,6 +7,7 @@ use super::utils::SFunc;
 use crate::codegen::r#type::Size;
 use crate::op::*;
 use crate::sema::ast::*;
+use crate::visualize::OneLine;
 
 type Address = usize;
 
@@ -15,6 +16,7 @@ pub enum SeStackCommand {
     Push(usize),              // スタックに値を乗せる
     Branch(Address, Address), //True ,False
     BinaryOP(BinaryOp),       // 二項演算子
+    UnaryOp(UnaryOp),         //単演算子
     Alloc(Address),           //型のサイズだけメモリ確保
     DeAlloc(Address),         //型のサイズだけメモリ確保
     WriteAddr,                // stackの一番上の値をアドレスに書き込み
@@ -25,6 +27,7 @@ pub enum SeStackCommand {
     Exit,
     Copy,
     SellOut,
+
     Input,
 }
 
@@ -131,6 +134,10 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                     cgs.outpus.push(SeStackCommand::BinaryOP(binary_op));
                     cgs.sub_stack(1);
                 }
+                StackCommand::UnaryOp(unary_op) => {
+                    cgs.outpus.push(SeStackCommand::UnaryOp(unary_op))
+                }
+
                 StackCommand::Symbol(symbol) => cgs.push_usize(cgs.symbol_table[&symbol]),
                 StackCommand::Name(symbol) => {
                     _ = cgs.symbol_table.insert(symbol, cgs.head_sack_func())
@@ -260,7 +267,7 @@ impl CodeGenStatus {
                 self.outpus.push(SeStackCommand::Push(this as usize));
                 self.add_stck(1);
             }
-            _ => unreachable!(),
+            _ => unreachable!("{:?}", sema_expr.oneline()),
         }
     }
     fn push_label(&mut self, label: SLabel) {

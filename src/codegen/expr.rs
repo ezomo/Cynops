@@ -93,7 +93,10 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
                 }
             }
 
-            UnaryOp::Minus => {}
+            UnaryOp::Minus => {
+                gen_expr(*unary.expr, cgs);
+                cgs.outputs.push(StackCommand::UnaryOp(UnaryOp::minus()));
+            }
             _ => unreachable!("use simplification"),
         },
         SemaExpr::Ternary(ternary) => {}
@@ -166,7 +169,7 @@ pub fn gen_expr_left(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             gen_expr(*subscript.subject.clone(), cgs);
             gen_expr(*subscript.index.clone(), cgs);
             cgs.outputs
-                .push(StackCommand::IndexAccess(subscript.subject.r#type.clone()));
+                .push(StackCommand::IndexAccess(typed_expr.r#type.clone()));
         }
         SemaExpr::MemberAccess(member_access) => match member_access.kind {
             MemberAccessOp::Dot => match &member_access.base.r#type {
