@@ -1,6 +1,5 @@
 use super::*;
 use crate::sema::ast::*;
-
 pub fn stmt(stmt: Stmt, cgs: &mut CodeGenStatus) {
     match stmt {
         Stmt::Block(block) => self::block(block, cgs),
@@ -225,69 +224,27 @@ mod controls {
     use super::*;
 
     pub fn r#if(if_stmt: If, cgs: &mut CodeGenStatus) {
-        match if_stmt.else_branch {
-            Some(else_blach) => {
-                let label_then = cgs.name_gen.slabel();
-                let label_else = cgs.name_gen.slabel();
-                let label_end = cgs.name_gen.slabel();
-                gen_expr(*if_stmt.cond, cgs);
+        let If {
+            cond,
+            then_branch,
+            else_branch,
+        } = if_stmt;
 
-                cgs.outputs
-                    .push(StackCommand::Branch(label_then, label_else));
-
-                cgs.outputs.push(label_then.into());
-                stmt(*if_stmt.then_branch, cgs);
-                cgs.outputs.push(StackCommand::Goto(label_end));
-
-                cgs.outputs.push(label_else.into());
-                stmt(*else_blach, cgs);
-                cgs.outputs.push(StackCommand::Goto(label_end));
-
-                cgs.outputs.push(label_end.into());
-            }
-            None => {
-                let label_then = cgs.name_gen.slabel();
-                let label_end = cgs.name_gen.slabel();
-                gen_expr(*if_stmt.cond, cgs);
-                cgs.outputs
-                    .push(StackCommand::Branch(label_then, label_end));
-                cgs.outputs.push(label_then.into());
-                stmt(*if_stmt.then_branch, cgs);
-                cgs.outputs.push(StackCommand::Goto(label_end));
-                cgs.outputs.push(label_end.into());
-            }
-        }
+        codegen_if_fn(
+            move |cgs: &mut CodeGenStatus| gen_expr(*cond, cgs),
+            move |cgs: &mut CodeGenStatus| stmt(*then_branch, cgs),
+            else_branch.map(|else_box| move |cgs: &mut CodeGenStatus| stmt(*else_box, cgs)),
+            cgs,
+        );
     }
 
     pub fn r#while(while_stmt: While, cgs: &mut CodeGenStatus) {
-        let label_start = cgs.name_gen.slabel();
-        let label_body = cgs.name_gen.slabel();
-        let label_end = cgs.name_gen.slabel();
-
-        // Labelをまたいで行動することはできない 使用
-        {
-            cgs.outputs.push(StackCommand::Goto(label_start));
-        }
-
-        // ループの先頭ラベル
-        cgs.outputs.push(StackCommand::Label(label_start));
-
-        // 条件式を評価
-        gen_expr(*while_stmt.cond, cgs);
-
-        // 条件が真なら body へ、偽なら end へ
-        cgs.outputs
-            .push(StackCommand::Branch(label_body, label_end));
-
-        // ループ本体
-        cgs.outputs.push(StackCommand::Label(label_body));
-        stmt(*while_stmt.body, cgs);
-
-        // 本体実行後、再び条件評価へ戻る
-        cgs.outputs.push(StackCommand::Goto(label_start));
-
-        // 終了ラベル
-        cgs.outputs.push(StackCommand::Label(label_end));
+        let While { cond, body } = while_stmt;
+        codegen_while_fn(
+            move |cgs: &mut CodeGenStatus| gen_expr(*cond, cgs),
+            move |cgs: &mut CodeGenStatus| stmt(*body, cgs),
+            cgs,
+        );
     }
 
     pub fn r#do_while(do_while_stmt: DoWhile, cgs: &mut CodeGenStatus) {}

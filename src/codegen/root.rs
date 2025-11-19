@@ -138,7 +138,7 @@ pub fn generate_program(program: Program) {
     // dbg!(&stream);
     let transpilation = translate(&stream);
 
-    println!("{}", show_bf(&transpilation, true));
+    println!("{}", show_bf(&transpilation));
 
     // eprintln!("\nExecution stack:\n");
     // exec_stack_program(&stream);
@@ -191,22 +191,4 @@ pub fn generate_program(program: Program) {
             SeStackCommand::Input => StackInst::Input,
         }
     }
-}
-
-#[test]
-fn test() {
-    use super::bf::*;
-    use super::stack::*;
-    use stack::inst::StackInst::*;
-    // let stream = vec![Label(1), Push(0), Push(65), Push(1), StkStr, PutChar, Exit];
-
-    let stream2 = vec![Label(1), Input, PutChar, Exit];
-    // exec_stack_program(&stream2);
-
-    let transpilation = translate(&stream2);
-    // println!("{}", show_bf(&transpilation, cfg!(feature = "debugbf")));
-
-    // println!("\nExecution:\n");
-
-    exec_bf(&transpilation);
 }

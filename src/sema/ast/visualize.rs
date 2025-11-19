@@ -392,7 +392,7 @@ impl Visualize for FunctionProto {
         self.visualize_with_context(0, true, &[]);
     }
 
-    fn visualize_with_context(&self, indent: usize, is_last: bool, prefix: &[bool]) {
+    fn visualize_with_context(&self, indent: usize, _: bool, prefix: &[bool]) {
         print_branch(
             "FunctionProto",
             &self.sig.symbol.oneline(),

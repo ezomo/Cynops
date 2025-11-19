@@ -1,7 +1,6 @@
 use crate::op::*;
 use crate::sema::ast::*;
 use std::collections::HashMap;
-use std::fmt::write;
 
 #[derive(Debug, Clone, Copy)]
 pub struct SLabel(pub usize);

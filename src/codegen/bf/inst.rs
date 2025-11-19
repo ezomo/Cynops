@@ -4,7 +4,6 @@ use crate::codegen::stack::StackInst;
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub enum BF {
-    Dbg(&'static str),
     Profile(StackInst),
     Left,   // `<`
     Right,  // `>`
@@ -53,18 +52,12 @@ impl BF {
     }
 }
 
-pub fn show_bf(code: &[BF], dbg_info: bool) -> String {
+pub fn show_bf(code: &[BF]) -> String {
     let mut s = String::new();
 
     for i in code {
         use BF::*;
         match i {
-            Dbg(c) => {
-                if dbg_info {
-                    s += &format!("\n`{}`: ", c);
-                }
-                continue;
-            }
             Profile(_) => (),
             _ => s.push(i.clone().show()),
         }
