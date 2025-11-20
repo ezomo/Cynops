@@ -1,5 +1,6 @@
 int sgn(int);
 int abs(int);
+void putchar(int a);
 
 int sgn(int a) {
     int r = 1;
@@ -19,18 +20,36 @@ int abs(int x) {
 }
 
 int not(int a) {
-    if (a == 1) {
-        return 0;
-    } else {
-        return 1;
-    }
+    if (a >= 32768) {
+        return 0;  // 負
+    } else
+        return 1;  // 正
 }
 
 // a > b
-int Greater(int a, int b) { return 3; }
+int Greater(int a, int b) {
+    int a_abs = abs(a);
+    int a_sgn = sgn(a);
 
-int Less(int a, int b) { return 3; }
+    int b_abs = abs(b);
+    int b_sgn = sgn(b);
 
-int GreaterEqual(int a, int b) { return 3; }
+    if (a_sgn < b_sgn) {
+        return 0;
+    } else if (a_sgn > b_sgn) {
+        return 1;
+    } else {
+        if (a_sgn == 0) {
+            return not(a > b);
+        }
 
-int LessEqual(int a, int b) { return 3; }
+        return (a > b);
+    }
+    return 0;
+}
+
+int Less(int a, int b) { return Greater(b, a); }
+
+int GreaterEqual(int a, int b) { return Greater(a, b) || a == b; }
+
+int LessEqual(int a, int b) { return Less(a, b) || a == b; }

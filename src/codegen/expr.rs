@@ -16,7 +16,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
                             .unwrap()
                             .clone()
                             .into(),
-                        vec![*binary.rhs, *binary.lhs],
+                        vec![*binary.lhs, *binary.rhs],
                     ),
                     cgs,
                 );
@@ -32,7 +32,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
                             .unwrap()
                             .clone()
                             .into(),
-                        vec![*binary.rhs, *binary.lhs],
+                        vec![*binary.lhs, *binary.rhs],
                     ),
                     cgs,
                 );
@@ -51,7 +51,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
                             .unwrap()
                             .clone()
                             .into(),
-                        vec![*binary.rhs, *binary.lhs],
+                        vec![*binary.lhs, *binary.rhs],
                     ),
                     cgs,
                 );
@@ -70,7 +70,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
                             .unwrap()
                             .clone()
                             .into(),
-                        vec![*binary.rhs, *binary.lhs],
+                        vec![*binary.lhs, *binary.rhs],
                     ),
                     cgs,
                 );
