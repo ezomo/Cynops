@@ -15,9 +15,11 @@ pub fn stmt(stmt: Stmt, cgs: &mut CodeGenStatus) {
 }
 
 pub fn block(block: Block, cgs: &mut CodeGenStatus) {
+    cgs.outputs.push(StackCommand::BlockStart);
     for _stmt in block.into_vec() {
         stmt(*_stmt, cgs);
     }
+    cgs.outputs.push(StackCommand::BlockEnd);
 }
 
 fn declstmt(declstmt: DeclStmt, cgs: &mut CodeGenStatus) {

@@ -37,16 +37,25 @@ impl From<SLabel> for Address {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct CodeGenStatus {
     pub outpus: Vec<SeStackCommand>,
     pub grobal_address: usize,
     pub stack_size_func: usize,
-    pub alloced: usize,
+    pub alloced: Vec<usize>,
     pub symbol_table: HashMap<Symbol, Address>,
 }
 
 impl CodeGenStatus {
+    fn new() -> Self {
+        Self {
+            outpus: Vec::default(),
+            grobal_address: 0,
+            stack_size_func: 0,
+            alloced: vec![0],
+            symbol_table: HashMap::new(),
+        }
+    }
     fn add_stck(&mut self, size: usize) {
         self.stack_size_func += size;
     }
@@ -62,19 +71,19 @@ impl CodeGenStatus {
     }
 
     fn add_alloc(&mut self, size: usize) {
-        self.alloced += size;
+        *self.alloced.last_mut().unwrap() += size;
     }
     fn reset_alloc(&mut self) {
-        self.alloced = 0;
+        self.alloced = vec![0];
     }
 
     fn sub_alloc(&mut self, size: usize) {
-        self.alloced -= size;
+        *self.alloced.last_mut().unwrap() -= size;
     }
 }
 
 pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
-    let mut cgs = CodeGenStatus::default();
+    let mut cgs = CodeGenStatus::new();
 
     let mut entry: Option<Symbol> = None;
     for func in &inputs {
@@ -175,7 +184,7 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                     cgs.sub_stack(1); //writeaddrでアドレスを2消費する
                 }
                 StackCommand::FramePop => {
-                    let delete = cgs.alloced + palam_size + 1;
+                    let delete = cgs.alloced.iter().sum::<usize>() + palam_size + 1;
                     cgs.outpus.push(SeStackCommand::DeAlloc(delete));
                     cgs.sub_stack(delete);
                     // +1は継承したgrobal address分
@@ -217,6 +226,14 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                     cgs.acsess();
                 }
                 StackCommand::AcsessUseLa => cgs.acsess(),
+                StackCommand::BlockStart => {
+                    cgs.alloced.push(0);
+                }
+                StackCommand::BlockEnd => {
+                    let dealloc_size = cgs.alloced.pop().unwrap();
+                    cgs.outpus.push(SeStackCommand::DeAlloc(dealloc_size));
+                    cgs.sub_stack(dealloc_size);
+                }
             }
         }
 

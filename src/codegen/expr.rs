@@ -150,7 +150,19 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             }
             _ => unreachable!("use simplification"),
         },
-        SemaExpr::Ternary(ternary) => {}
+        SemaExpr::Ternary(ternary) => {
+            let Ternary {
+                cond,
+                then_branch,
+                else_branch,
+            } = ternary;
+            codegen_if_fn(
+                move |cgs: &mut CodeGenStatus| gen_expr(*cond, cgs),
+                move |cgs: &mut CodeGenStatus| gen_expr(*then_branch, cgs),
+                Some(move |cgs: &mut CodeGenStatus| gen_expr(*else_branch, cgs)),
+                cgs,
+            );
+        }
         SemaExpr::Subscript(subscript) => {
             gen_expr(*subscript.subject.clone(), cgs);
             gen_expr(*subscript.index.clone(), cgs);

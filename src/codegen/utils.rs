@@ -30,6 +30,8 @@ pub enum StackCommand {
     AcsessUseGa,            //メンバアクセス グローバルアドレスできるようにする
     AcsessUseLa,            //メンバアクセス グローバルアドレスできるようにする
     Input,
+    BlockStart,
+    BlockEnd,
 }
 
 impl std::fmt::Debug for StackCommand {
@@ -59,6 +61,8 @@ impl std::fmt::Debug for StackCommand {
             StackCommand::AcsessUseGa => write!(f, "AccessUseGa"),
             StackCommand::AcsessUseLa => write!(f, "AccessUseLa"),
             StackCommand::Input => write!(f, "Input"),
+            StackCommand::BlockStart => write!(f, "BlockStart"),
+            StackCommand::BlockEnd => write!(f, "BlockEnd"),
         }
     }
 }
@@ -206,6 +210,8 @@ impl CodeGenStatus {
                 StackCommand::AcsessUseGa => true, //怪しい
                 StackCommand::AcsessUseLa => true, //怪しい
                 StackCommand::Input => false,
+                StackCommand::BlockStart => false,
+                StackCommand::BlockEnd => false,
             }
         } else {
             false
