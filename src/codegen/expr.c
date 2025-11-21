@@ -53,3 +53,11 @@ int Less(int a, int b) { return Greater(b, a); }
 int GreaterEqual(int a, int b) { return Greater(a, b) || a == b; }
 
 int LessEqual(int a, int b) { return Less(a, b) || a == b; }
+
+int Ternary(int a, int b, int c) {
+    if (a != 0) {
+        return b;
+    } else {
+        return c;
+    }
+}

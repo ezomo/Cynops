@@ -29,9 +29,10 @@ pub enum StackCommand {
     Address,                //変数のグローバルアドレスをスタックに
     AcsessUseGa,            //メンバアクセス グローバルアドレスできるようにする
     AcsessUseLa,            //メンバアクセス グローバルアドレスできるようにする
-    Input,
-    BlockStart,
-    BlockEnd,
+    Input,                  //入力
+    BlockStart,             //ブロック開始
+    BlockEnd,               //ブロック終了
+    Pop(Type),              //型のサイズだけスタックを削除
 }
 
 impl std::fmt::Debug for StackCommand {
@@ -63,6 +64,7 @@ impl std::fmt::Debug for StackCommand {
             StackCommand::Input => write!(f, "Input"),
             StackCommand::BlockStart => write!(f, "BlockStart"),
             StackCommand::BlockEnd => write!(f, "BlockEnd"),
+            StackCommand::Pop(ty) => write!(f, "Pop {}", ty.to_rust_format()),
         }
     }
 }
@@ -140,6 +142,8 @@ pub enum InsertFunction {
     LessEqual,
     #[strum(serialize = "GreaterEqual")]
     GreaterEqual,
+    #[strum(serialize = "Ternary")]
+    Ternary,
 }
 
 pub struct CodeGenStatus {
@@ -212,6 +216,7 @@ impl CodeGenStatus {
                 StackCommand::Input => false,
                 StackCommand::BlockStart => false,
                 StackCommand::BlockEnd => false,
+                StackCommand::Pop(_) => false,
             }
         } else {
             false

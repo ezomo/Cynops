@@ -10,7 +10,11 @@ pub fn stmt(stmt: Stmt, cgs: &mut CodeGenStatus) {
         Stmt::Return(ret) => r#return(ret, cgs),
         Stmt::Goto(goto) => self::goto(goto, cgs),
         Stmt::Label(label) => self::label(label, cgs),
-        Stmt::ExprStmt(expr) => gen_expr(expr, cgs),
+        Stmt::ExprStmt(expr) => {
+            let ty = expr.r#type.clone();
+            gen_expr(expr, cgs);
+            cgs.outputs.push(StackCommand::Pop(ty));
+        }
     }
 }
 
@@ -259,7 +263,9 @@ mod controls {
 
         // 初期化式
         if let Some(init) = for_stmt.init {
+            let ty = init.r#type.clone();
             gen_expr(*init, cgs);
+            cgs.outputs.push(StackCommand::Pop(ty));
         }
 
         {
@@ -287,7 +293,9 @@ mod controls {
         // ステップ（後処理）
         cgs.outputs.push(label_step.into());
         if let Some(step) = for_stmt.step {
+            let ty = step.r#type.clone();
             gen_expr(*step, cgs);
+            cgs.outputs.push(StackCommand::Pop(ty));
         }
 
         // 再び条件判定へ

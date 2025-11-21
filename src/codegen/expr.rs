@@ -85,9 +85,11 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
         SemaExpr::Assign(assign) => match assign.op {
             AssignOp::Equal => {
                 gen_expr(*assign.rhs, cgs);
-                gen_expr_left(*assign.lhs, cgs);
-
+                gen_expr_left(*assign.lhs.clone(), cgs);
                 cgs.outputs.push(StackCommand::Store);
+
+                // 非効率ではあるが，面倒なのだ
+                gen_expr(*assign.lhs, cgs);
             }
             _ => unreachable!(),
         },
@@ -151,15 +153,15 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             _ => unreachable!("use simplification"),
         },
         SemaExpr::Ternary(ternary) => {
-            let Ternary {
-                cond,
-                then_branch,
-                else_branch,
-            } = ternary;
-            codegen_if_fn(
-                move |cgs: &mut CodeGenStatus| gen_expr(*cond, cgs),
-                move |cgs: &mut CodeGenStatus| gen_expr(*then_branch, cgs),
-                Some(move |cgs: &mut CodeGenStatus| gen_expr(*else_branch, cgs)),
+            codegen_call_fn(
+                Call::new(
+                    cgs.insert_function
+                        .get(&InsertFunction::Ternary)
+                        .unwrap()
+                        .clone()
+                        .into(),
+                    vec![*ternary.cond, *ternary.then_branch, *ternary.else_branch],
+                ),
                 cgs,
             );
         }
@@ -190,10 +192,13 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             // どうせ今はintしかないので
             gen_expr(*cast.expr, cgs);
         }
-        SemaExpr::Comma(comma) => {
-            for exper in comma.assigns {
+        SemaExpr::Comma(mut comma) => {
+            for exper in comma.assigns.drain(..comma.assigns.len() - 1) {
+                let ty = exper.r#type.clone();
                 gen_expr(exper, cgs);
+                cgs.outputs.push(StackCommand::Pop(ty));
             }
+            gen_expr(comma.assigns.pop().unwrap(), cgs);
         }
     }
 }

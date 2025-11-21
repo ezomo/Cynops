@@ -8,7 +8,6 @@ use crate::codegen::SFunc;
 use crate::codegen::second::SeStackCommand;
 use crate::op::{Arithmetic, BinaryOp, Comparison, Logical, UnaryOp};
 use crate::sema::ast::*;
-use crate::visualize::Visualize;
 
 fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
     cgs.outputs.clear();

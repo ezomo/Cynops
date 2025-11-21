@@ -149,6 +149,7 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
 
                 StackCommand::Symbol(symbol) => cgs.push_usize(cgs.symbol_table[&symbol]),
                 StackCommand::Name(symbol) => {
+                    // つまり配列の場合は先頭のアドレスが一番下になる．
                     _ = cgs.symbol_table.insert(symbol, cgs.head_sack_func())
                 }
                 StackCommand::Alloc(ty) => cgs.alloc(&ty),
@@ -233,6 +234,13 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                     let dealloc_size = cgs.alloced.pop().unwrap();
                     cgs.outpus.push(SeStackCommand::DeAlloc(dealloc_size));
                     cgs.sub_stack(dealloc_size);
+                }
+                StackCommand::Pop(ty) => {
+                    cgs.outpus.push(SeStackCommand::Comment("Pop_start".into()));
+                    let size = ty.size();
+                    cgs.outpus.push(SeStackCommand::DeAlloc(size));
+                    cgs.sub_stack(size);
+                    cgs.outpus.push(SeStackCommand::Comment("Pop_end".into()));
                 }
             }
         }
@@ -338,6 +346,7 @@ impl CodeGenStatus {
         self.sub_stack(1);
     }
 
+    // グローバルアドレスをローカルアドレスに変換してスタックに乗せる
     fn acsess(&mut self) {
         self.outpus
             .push(SeStackCommand::Push(self.head_sack_func() - 1));
@@ -354,12 +363,15 @@ impl CodeGenStatus {
     }
 
     fn load(&mut self, ty: Type) {
-        // self.acsess();
-        self.outpus.push(SeStackCommand::Push(1));
-        self.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
-        //こいつはpush分の計算がいる基準が違う
-        self.outpus.push(SeStackCommand::ReadAddr);
-        // 下のメモリを消費して上に積むからスタックサイズは変わらない
+        let mut load_one = || {
+            self.outpus.push(SeStackCommand::Push(1));
+            self.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
+            //こいつはpush分の計算がいる基準が違う
+            self.outpus.push(SeStackCommand::ReadAddr);
+            // 下のメモリを消費して上に積むからスタックサイズは変わらない
+        };
+
+        load_one();
     }
 
     fn load_grobal_address(&mut self) {
