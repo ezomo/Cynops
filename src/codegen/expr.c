@@ -1,6 +1,8 @@
+void exit(void);
+void putchar(int a);
+
 int sgn(int);
 int abs(int);
-void putchar(int a);
 
 int sgn(int a) {
     int r = 1;
@@ -77,7 +79,7 @@ int Slash(int a, int b) {
             putchar((int)error[i]);
         }
 
-        return 0;
+        exit();
     }
 
     int r = 1;
@@ -97,8 +99,17 @@ int Slash(int a, int b) {
 }
 
 int Mod(int a, int b) {
+    char error[23] = {'\n', 'e', 'r', 'r', 'o', 'r', ':', ' ',
+                      'm',  'o', 'd', 'u', 'l', 'o', ' ', 'b',
+                      'y',  ' ', 'z', 'e', 'r', 'o', '\n'};
+
     if (b == 0) {
-        // TODO print error
+        // Slashと同じ理由で配列は外で定義した後で直す TODO
+        int i = 0;
+        for (i = 0; i < 23; i++) {
+            putchar((int)error[i]);
+        }
+        exit();
     }
 
     int q = Slash(a, b);
