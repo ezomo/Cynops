@@ -66,15 +66,15 @@ int Slash(int a, int b) {
     int a_abs = abs(a);
     int b_abs = abs(b);
 
-    int error[23] = {'\n', 'e', 'r', 'r', 'o', 'r,', ':', ' ',
-                     'd',  'i', 'v', 'i', 'd', 'e',  ' ', 'b',
-                     'y',  ' ', 'z', 'e', 'r', 'o',  '\n'};
+    char error[23] = {'\n', 'e', 'r', 'r', 'o', 'r,', ':', ' ',
+                      'd',  'i', 'v', 'i', 'd', 'e',  ' ', 'b',
+                      'y',  ' ', 'z', 'e', 'r', 'o',  '\n'};
 
     if (b_abs == 0) {  //
         // なぜかここでerrorを定義するとcompileできない　TODO
         int i = 0;
         for (i = 0; i < 23; i++) {
-            putchar(error[i]);
+            putchar((int)error[i]);
         }
 
         return 0;

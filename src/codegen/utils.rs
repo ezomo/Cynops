@@ -2,9 +2,24 @@ use crate::op::*;
 use crate::sema::ast::*;
 use core::str;
 use std::collections::HashMap;
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 
 #[derive(Debug, Clone, Copy)]
 pub struct SLabel(pub usize);
+
+#[derive(EnumIter)]
+pub enum SLabelReserved {
+    Entry = 1,
+    Exit = 2,
+}
+
+impl From<SLabelReserved> for SLabel {
+    fn from(value: SLabelReserved) -> Self {
+        SLabel(value as usize)
+    }
+}
+
 #[derive(Clone)]
 pub enum StackCommand {
     Comment(String),    // コメント
@@ -93,14 +108,6 @@ impl SFunc {
     }
 }
 
-pub fn load(fnc: impl Fn(TypedExpr, &mut CodeGenStatus), expr: TypedExpr, cgs: &mut CodeGenStatus) {
-    let ty = expr.r#type.clone();
-    fnc(expr, cgs);
-    if cgs.is_left_val() && !ty.is_address() {
-        cgs.outputs.push(StackCommand::Load(ty));
-    }
-}
-
 impl From<TypedExpr> for StackCommand {
     fn from(expr: TypedExpr) -> Self {
         StackCommand::Push(expr)
@@ -175,58 +182,6 @@ impl CodeGenStatus {
         }
     }
 
-    pub fn is_left_val(&self) -> bool {
-        if let Some(last) = self.outputs.last() {
-            let typematch = |x: &SemaExpr| match x {
-                SemaExpr::Assign(_) => false,
-                SemaExpr::Binary(_) => false,
-                SemaExpr::Call(_) => false,
-                SemaExpr::Char(_) => false,
-                SemaExpr::String(_) => false,
-                SemaExpr::Symbol(_) => false,
-                SemaExpr::NumInt(_) => false,
-                SemaExpr::NumFloat(_) => false,
-                SemaExpr::Subscript(_) => true,
-                SemaExpr::MemberAccess(_) => true,
-                SemaExpr::Ternary(_) => false,
-                SemaExpr::Unary(_) => false,
-                SemaExpr::Sizeof(_) => false,
-                SemaExpr::Cast(_) => false,
-                SemaExpr::Comma(_) => false,
-            };
-            match last {
-                StackCommand::Push(te) => typematch(&te.r#expr),
-                StackCommand::BinaryOP(_) => false,
-                StackCommand::UnaryOp(_) => false,
-                StackCommand::Symbol(_) => true,
-                StackCommand::Alloc(_) => false,
-                StackCommand::Store => false,
-                StackCommand::Load(_) => true,
-                StackCommand::Label(_) => false,
-                StackCommand::Goto(_) => false,
-                StackCommand::Call(_) => false, //多分？ pointer等の値を検討
-                StackCommand::Return => false,  //多分？
-                StackCommand::ReturnPoint(_) => false, //多分
-                StackCommand::FramePop => false,
-                StackCommand::Name(_) => false,
-                StackCommand::IndexAccess(_) => true,
-                StackCommand::Branch(_, _) => false,
-                StackCommand::SellOut => false,
-                StackCommand::Comment(_) => false,
-                StackCommand::GlobalAddress => true,
-                StackCommand::Address => true,
-                StackCommand::AcsessUseGa => true, //怪しい
-                StackCommand::AcsessUseLa => true, //怪しい
-                StackCommand::Input => false,
-                StackCommand::BlockStart => false,
-                StackCommand::BlockEnd => false,
-                StackCommand::Pop(_) => false,
-            }
-        } else {
-            false
-        }
-    }
-
     pub fn register_variable(&self, sybmol: Symbol, string: String) {
         sybmol
             .scope
@@ -266,7 +221,9 @@ impl NameGenerator {
     // 1はentry_point
     // 2はexit_point
     pub fn new() -> Self {
-        Self { counter: 2 }
+        Self {
+            counter: SLabelReserved::iter().map(|v| v as usize).max().unwrap(),
+        }
     }
 
     fn next(&mut self) -> usize {

@@ -42,7 +42,7 @@ fn function_proto(function: FunctionProto, cgs: &mut CodeGenStatus) {
                 params: vec![Type::Int],
             })
     {
-        outchar(function, cgs);
+        putchar(function, cgs);
     } else if function.sig.symbol.ident == "getchar".into()
         && function.sig.symbol.get_type().unwrap()
             == Type::Func(Func {
@@ -51,10 +51,18 @@ fn function_proto(function: FunctionProto, cgs: &mut CodeGenStatus) {
             })
     {
         getchar(function, cgs);
+    } else if function.sig.symbol.ident == "exit".into()
+        && function.sig.symbol.get_type().unwrap()
+            == Type::Func(Func {
+                return_type: Type::Void.into(),
+                params: vec![Type::Void],
+            })
+    {
+        exit(function, cgs);
     }
 }
 
-fn outchar(function: FunctionProto, cgs: &mut CodeGenStatus) {
+fn putchar(function: FunctionProto, cgs: &mut CodeGenStatus) {
     cgs.outputs.clear();
 
     let ojcet: Ident = "object".into();
@@ -92,6 +100,32 @@ fn getchar(function: FunctionProto, cgs: &mut CodeGenStatus) {
             cgs.outputs.push(StackCommand::Goto(cgs.func_end.unwrap()));
             cgs.outputs.push(StackCommand::Label(cgs.name_gen.slabel())); //未到達空間回避
         }
+    }
+
+    cgs.outputs.push(StackCommand::Label(func_end));
+    cgs.outputs.push(StackCommand::FramePop);
+
+    let func = SFunc::new(
+        function.sig,
+        vec![],
+        cgs.outputs.clone(),
+        cgs.name_gen.slabel(),
+    );
+
+    cgs.funcs.push(func);
+    cgs.outputs.clear();
+}
+
+fn exit(function: FunctionProto, cgs: &mut CodeGenStatus) {
+    cgs.outputs.clear();
+
+    let func_end = cgs.name_gen.slabel();
+    cgs.func_end = Some(func_end);
+
+    {
+        cgs.outputs
+            .push(StackCommand::Goto(SLabelReserved::Exit.into()));
+        cgs.outputs.push(StackCommand::Label(cgs.name_gen.slabel())); //未到達空間回避
     }
 
     cgs.outputs.push(StackCommand::Label(func_end));

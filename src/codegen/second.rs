@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::usize;
 
-use super::SLabel;
 use super::StackCommand;
 use super::utils::SFunc;
+use super::{SLabel, SLabelReserved};
 use crate::codegen::r#type::Size;
 use crate::op::*;
 use crate::sema::ast::*;
@@ -96,8 +96,9 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
 
     // エントリーポイント設定
     {
-        cgs.outpus.insert(0, SeStackCommand::Label(1));
-        cgs.push_label(SLabel(2));
+        cgs.outpus
+            .insert(0, SeStackCommand::Label(SLabelReserved::Entry as usize));
+        cgs.push_label(SLabelReserved::Exit.into());
         cgs.push_grobal(0); // Grobal address for main
         cgs.push_label(SLabel(cgs.symbol_table[&entry.unwrap()]));
         cgs.outpus.push(SeStackCommand::Goto);
@@ -249,7 +250,8 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
     }
 
     {
-        cgs.outpus.push(SeStackCommand::Label(2));
+        cgs.outpus
+            .push(SeStackCommand::Label(SLabelReserved::Exit as usize));
         cgs.outpus.push(SeStackCommand::Exit);
     }
 
