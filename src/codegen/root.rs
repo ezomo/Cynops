@@ -204,7 +204,11 @@ fn convert(b: SeStackCommand) -> StackInst {
                 Arithmetic::Asterisk => StackInst::Mul,
                 Arithmetic::Minus => StackInst::Sub,
                 Arithmetic::Slash => StackInst::Div,
-                Arithmetic::Percent => StackInst::Mod,
+                Arithmetic::Caret => StackInst::Xor,
+                Arithmetic::Pipe => StackInst::Or,
+                Arithmetic::Ampersand => StackInst::And,
+                Arithmetic::GreaterGreater => StackInst::RShift,
+                Arithmetic::LessLess => StackInst::LShift,
                 _ => unreachable!(),
             },
             BinaryOp::Comparison(a) => match a {
@@ -216,12 +220,13 @@ fn convert(b: SeStackCommand) -> StackInst {
                 Comparison::NotEqual => StackInst::Neq,
             },
             BinaryOp::Logical(a) => match a {
-                Logical::AmpersandAmpersand => StackInst::And,
-                Logical::PipePipe => StackInst::Or,
+                Logical::AmpersandAmpersand => StackInst::LAnd,
+                Logical::PipePipe => StackInst::LOr,
             },
         }, // 二項演算子
         SeStackCommand::UnaryOp(op) => match op {
             UnaryOp::Minus => StackInst::Negate,
+            UnaryOp::Bang => StackInst::Not,
             _ => unreachable!(),
         },
         SeStackCommand::Alloc(address) => StackInst::Alloc(address), //型のサイズだけメモリ確保

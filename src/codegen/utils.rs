@@ -144,6 +144,10 @@ pub enum InsertFunction {
     GreaterEqual,
     #[strum(serialize = "Ternary")]
     Ternary,
+    #[strum(serialize = "Slash")]
+    Slash,
+    #[strum(serialize = "Mod")]
+    Mod,
 }
 
 pub struct CodeGenStatus {

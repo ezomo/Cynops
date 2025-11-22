@@ -4,7 +4,7 @@ void putchar(int a);
 
 int sgn(int a) {
     int r = 1;
-    if (32767 <= a && a <= 65535) {
+    if (32767 <= a) {
         r = 0;  // 負数
     }
 
@@ -59,5 +59,39 @@ int Ternary(int a, int b, int c) {
         return b;
     } else {
         return c;
+    }
+}
+
+int Slash(int a, int b) {
+    int a_abs = abs(a);
+    int b_abs = abs(b);
+
+    int error[23] = {'\n', 'e', 'r', 'r', 'o', 'r,', ':', ' ',
+                     'd',  'i', 'v', 'i', 'd', 'e',  ' ', 'b',
+                     'y',  ' ', 'z', 'e', 'r', 'o',  '\n'};
+
+    if (b_abs == 0) {  //
+        // なぜかここでerrorを定義するとcompileできない　TODO
+        int i = 0;
+        for (i = 0; i < 23; i++) {
+            putchar(error[i]);
+        }
+
+        return 0;
+    }
+
+    int r = 1;
+
+    // 標準で使える/記号はなぜかb=1の時機能しなかった．
+    if (b_abs == 1) {
+        r = a_abs;
+    } else {
+        r = a_abs / b_abs;
+    }
+
+    if (sgn(a) != sgn(b)) {
+        return -r;
+    } else {
+        return r;
     }
 }

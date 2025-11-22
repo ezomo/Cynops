@@ -76,6 +76,38 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
                 );
             }
 
+            BinaryOp::Arithmetic(Arithmetic::Percent)
+                if cgs.insert_function.get(&InsertFunction::Mod).is_some() =>
+            {
+                codegen_call_fn(
+                    Call::new(
+                        cgs.insert_function
+                            .get(&InsertFunction::Mod)
+                            .unwrap()
+                            .clone()
+                            .into(),
+                        vec![*binary.lhs, *binary.rhs],
+                    ),
+                    cgs,
+                );
+            }
+
+            BinaryOp::Arithmetic(Arithmetic::Slash)
+                if cgs.insert_function.get(&InsertFunction::Slash).is_some() =>
+            {
+                codegen_call_fn(
+                    Call::new(
+                        cgs.insert_function
+                            .get(&InsertFunction::Slash)
+                            .unwrap()
+                            .clone()
+                            .into(),
+                        vec![*binary.lhs, *binary.rhs],
+                    ),
+                    cgs,
+                );
+            }
+
             _ => {
                 gen_expr(*binary.lhs, cgs);
                 gen_expr(*binary.rhs, cgs);
