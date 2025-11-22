@@ -95,3 +95,15 @@ int Slash(int a, int b) {
         return r;
     }
 }
+
+int Mod(int a, int b) {
+    if (b == 0) {
+        // TODO print error
+    }
+
+    int q = Slash(a, b);
+    int r = a - q * b;
+
+    if (Less(r, 0)) r += Ternary(Greater(b, 0), b, -b);
+    return r;
+}
