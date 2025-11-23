@@ -68,12 +68,10 @@ int Slash(int a, int b) {
     int a_abs = abs(a);
     int b_abs = abs(b);
 
-    char error[23] = {'\n', 'e', 'r', 'r', 'o', 'r,', ':', ' ',
-                      'd',  'i', 'v', 'i', 'd', 'e',  ' ', 'b',
-                      'y',  ' ', 'z', 'e', 'r', 'o',  '\n'};
-
     if (b_abs == 0) {  //
-        // なぜかここでerrorを定義するとcompileできない　TODO
+        char error[23] = {'\n', 'e', 'r', 'r', 'o', 'r,', ':', ' ',
+                          'd',  'i', 'v', 'i', 'd', 'e',  ' ', 'b',
+                          'y',  ' ', 'z', 'e', 'r', 'o',  '\n'};
         int i = 0;
         for (i = 0; i < 23; i++) {
             putchar((int)error[i]);
@@ -99,12 +97,10 @@ int Slash(int a, int b) {
 }
 
 int Mod(int a, int b) {
-    char error[23] = {'\n', 'e', 'r', 'r', 'o', 'r', ':', ' ',
-                      'm',  'o', 'd', 'u', 'l', 'o', ' ', 'b',
-                      'y',  ' ', 'z', 'e', 'r', 'o', '\n'};
-
     if (b == 0) {
-        // Slashと同じ理由で配列は外で定義した後で直す TODO
+        char error[23] = {'\n', 'e', 'r', 'r', 'o', 'r', ':', ' ',
+                          'm',  'o', 'd', 'u', 'l', 'o', ' ', 'b',
+                          'y',  ' ', 'z', 'e', 'r', 'o', '\n'};
         int i = 0;
         for (i = 0; i < 23; i++) {
             putchar((int)error[i]);

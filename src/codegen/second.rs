@@ -1,9 +1,11 @@
 use std::collections::HashMap;
+use std::process::Output;
 use std::usize;
 
 use super::StackCommand;
 use super::utils::SFunc;
 use super::{SLabel, SLabelReserved};
+use crate::codegen::NameGenerator;
 use crate::codegen::r#type::Size;
 use crate::op::*;
 use crate::sema::ast::*;
@@ -82,7 +84,7 @@ impl CodeGenStatus {
     }
 }
 
-pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
+pub fn start(inputs: Vec<SFunc>, name_gen: &mut NameGenerator) -> Vec<SeStackCommand> {
     let mut cgs = CodeGenStatus::new();
 
     let mut entry: Option<Symbol> = None;
@@ -188,10 +190,12 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                 StackCommand::FramePop => {
                     let delete = cgs.alloced.iter().sum::<usize>() + palam_size + 1;
                     cgs.outpus.push(SeStackCommand::DeAlloc(delete));
-                    cgs.sub_stack(delete);
+                    // cgs.sub_stack(delete);
                     // +1は継承したgrobal address分
 
                     cgs.outpus.push(SeStackCommand::Goto);
+                    cgs.outpus
+                        .push(SeStackCommand::Label(name_gen.slabel().into()));
                     //存在するだけで呼び出されていない関数もある．
                 }
                 StackCommand::ReturnPoint(repo) => cgs.push_label(repo),
@@ -245,8 +249,6 @@ pub fn start(inputs: Vec<SFunc>) -> Vec<SeStackCommand> {
                 }
             }
         }
-
-        // 関数が呼び出されていた場合は-1
     }
 
     {

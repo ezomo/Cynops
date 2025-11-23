@@ -22,6 +22,9 @@ fn function_def(function: FunctionDef, cgs: &mut CodeGenStatus) {
     cgs.outputs.push(StackCommand::Label(func_end));
     cgs.outputs.push(StackCommand::FramePop);
 
+    cgs.outputs
+        .push(StackCommand::Goto(SLabelReserved::Exit.into())); //絶対に到達しないけど構造上必要
+
     let func = SFunc::new(
         function.sig,
         function.param_names,
@@ -74,6 +77,8 @@ fn putchar(function: FunctionProto, cgs: &mut CodeGenStatus) {
     cgs.outputs.push(StackCommand::Load(Type::Int));
     cgs.outputs.push(StackCommand::SellOut);
     cgs.outputs.push(StackCommand::FramePop);
+    cgs.outputs
+        .push(StackCommand::Goto(SLabelReserved::Exit.into())); //絶対に到達しないけど構造上必要
 
     let func = SFunc::new(
         function.sig,
@@ -104,6 +109,8 @@ fn getchar(function: FunctionProto, cgs: &mut CodeGenStatus) {
 
     cgs.outputs.push(StackCommand::Label(func_end));
     cgs.outputs.push(StackCommand::FramePop);
+    cgs.outputs
+        .push(StackCommand::Goto(SLabelReserved::Exit.into())); //絶対に到達しないけど構造上必要
 
     let func = SFunc::new(
         function.sig,
@@ -130,6 +137,8 @@ fn exit(function: FunctionProto, cgs: &mut CodeGenStatus) {
 
     cgs.outputs.push(StackCommand::Label(func_end));
     cgs.outputs.push(StackCommand::FramePop);
+    cgs.outputs
+        .push(StackCommand::Goto(SLabelReserved::Exit.into())); //絶対に到達しないけど構造上必要
 
     let func = SFunc::new(
         function.sig,
@@ -191,7 +200,7 @@ pub fn generate_program(program: Program) {
 
     // eprintln!("===");
 
-    let s = super::second::start(cgs.funcs);
+    let s = super::second::start(cgs.funcs, &mut cgs.name_gen);
 
     let stream = s
         .iter()

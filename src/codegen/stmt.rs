@@ -211,9 +211,9 @@ fn r#return(ret: Return, cgs: &mut CodeGenStatus) {
         gen_expr(*expr.clone(), cgs);
         cgs.outputs.push(StackCommand::Return);
     }
-
-    cgs.outputs.push(StackCommand::Goto(cgs.func_end.unwrap()));
-    cgs.outputs.push(StackCommand::Label(cgs.name_gen.slabel())); //未到達空間回避
+    cgs.outputs.push(StackCommand::FramePop);
+    // cgs.outputs.push(StackCommand::Goto(cgs.func_end.unwrap()));
+    // cgs.outputs.push(StackCommand::Label(cgs.name_gen.slabel())); //未到達空間回避
 }
 
 fn goto(goto: Goto, _cgs: &mut CodeGenStatus) {
