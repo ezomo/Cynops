@@ -207,7 +207,6 @@ pub fn generate_program(program: Program) {
         .map(|x| convert(x.clone()))
         .collect::<Vec<StackInst>>();
 
-    // dbg!(&stream);
     let transpilation = translate(&stream);
 
     println!("{}", show_bf(&transpilation));
@@ -237,7 +236,7 @@ fn fine_expr(filename: impl ToString) -> (Program, Session) {
     (type_check_result.result, sema_session)
 }
 
-fn convert(b: SeStackCommand) -> StackInst {
+pub fn convert(b: SeStackCommand) -> StackInst {
     match b {
         SeStackCommand::Push(usize) => StackInst::Push(usize as u16),
         SeStackCommand::Branch(a, b) => StackInst::Branch(a as u16, b as u16), //True ,False

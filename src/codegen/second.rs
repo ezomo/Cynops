@@ -6,6 +6,7 @@ use super::StackCommand;
 use super::utils::SFunc;
 use super::{SLabel, SLabelReserved};
 use crate::codegen::NameGenerator;
+use crate::codegen::stack::{StackInst, StackMachine};
 use crate::codegen::r#type::Size;
 use crate::op::*;
 use crate::sema::ast::*;
@@ -416,4 +417,32 @@ impl CodeGenStatus {
 
         // println!("CallE {} {}", self.head_sack_all(), self.head_sack_func());
     }
+
+    fn Swap(&mut self) {
+        self.outpus.extend([
+            SeStackCommand::Push(2),
+            SeStackCommand::ReadAddr,
+            SeStackCommand::Push(2),
+            SeStackCommand::ReadAddr,
+            SeStackCommand::Push(3),
+            SeStackCommand::WriteAddr,
+            SeStackCommand::Push(1),
+            SeStackCommand::WriteAddr,
+            SeStackCommand::Exit,
+        ]);
+    }
 }
+
+// #[test]
+// fn test() {
+//     use super::convert;
+//     use SeStackCommand::*;
+//     let mut vec = vec![];
+
+//     let stream = vec
+//         .iter()
+//         .map(|x| convert(x.clone()))
+//         .collect::<Vec<StackInst>>();
+
+//     StackMachine::exec(&mut StackMachine::default(), &stream);
+// }

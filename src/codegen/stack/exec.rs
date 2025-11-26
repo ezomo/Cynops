@@ -27,14 +27,14 @@ impl StackMachine {
 
         let mut ip = 0;
         loop {
-            // eprintln!(
-            //     "{:?}",
-            //     self.stack
-            //         .clone()
-            //         .into_iter()
-            //         .map(|x| x as i16) // u16 → i16 変換（ビットそのまま、補数も自動で解釈）
-            //         .collect::<Vec<i16>>()
-            // );
+            eprintln!(
+                "{:?}",
+                self.stack
+                    .clone()
+                    .into_iter()
+                    .map(|x| x as i16) // u16 → i16 変換（ビットそのまま、補数も自動で解釈）
+                    .collect::<Vec<i16>>()
+            );
             let inst = &code[ip];
 
             let (args, _) = inst.signature();
