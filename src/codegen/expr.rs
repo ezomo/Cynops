@@ -262,7 +262,7 @@ pub fn gen_expr_left(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
         },
         SemaExpr::Ternary(ternary) => {}
         SemaExpr::Subscript(subscript) => {
-            gen_expr(*subscript.subject.clone(), cgs);
+            gen_expr_left(*subscript.subject.clone(), cgs);
             gen_expr(*subscript.index.clone(), cgs);
             cgs.outputs
                 .push(StackCommand::IndexAccess(typed_expr.r#type.clone()));

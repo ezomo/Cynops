@@ -126,14 +126,11 @@ pub fn start(inputs: Vec<SFunc>, name_gen: &mut NameGenerator) -> Vec<SeStackCom
                 // ここが基準なので0
                 cgs.grobal_address = cgs.head_sack_func();
             }
-            func.param_names
-                .iter()
-                .filter(|x| !x.get_type().unwrap().is_void())
-                .for_each(|x| {
-                    // 順序固定　Symbol＋Nameの順序を維持
-                    cgs.add_stck(1);
-                    cgs.symbol_table.insert(x.clone(), cgs.head_sack_func());
-                });
+            func.param_names.iter().for_each(|x| {
+                // 順序固定　Symbol＋Nameの順序を維持
+                cgs.add_stck(x.get_type().unwrap().size());
+                cgs.symbol_table.insert(x.clone(), cgs.head_sack_func());
+            });
         }
 
         for cmd in func.body {
@@ -388,6 +385,9 @@ impl CodeGenStatus {
             self.swap();
         }
         self.outpus.push(SeStackCommand::DeAlloc(1));
+
+        // よくない直す　TODO
+        self.add_stck(ty.size() - 1);
     }
 
     fn load_grobal_address(&mut self) {
@@ -406,7 +406,6 @@ impl CodeGenStatus {
 
         // 返り値
         if !ty.as_func().unwrap().return_type.is_void() {
-            // self.sub_stack(1);
             self.sub_alloc(1);
         }
 
@@ -419,8 +418,8 @@ impl CodeGenStatus {
                 .unwrap()
                 .params
                 .iter()
-                .filter(|x| !x.is_void())
-                .count(),
+                .map(|x| x.size())
+                .sum::<usize>(),
         );
 
         // グローバルアドレス分
