@@ -368,15 +368,26 @@ impl CodeGenStatus {
     }
 
     fn load(&mut self, ty: Type) {
-        let mut load_one = || {
-            self.outpus.push(SeStackCommand::Push(1));
-            self.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
+        let load_one = |cgs: &mut CodeGenStatus| {
+            cgs.outpus.push(SeStackCommand::Push(1));
+            cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
             //こいつはpush分の計算がいる基準が違う
-            self.outpus.push(SeStackCommand::ReadAddr);
+            cgs.outpus.push(SeStackCommand::ReadAddr);
             // 下のメモリを消費して上に積むからスタックサイズは変わらない
         };
 
-        load_one();
+        for i in (1..=ty.size()).rev() {
+            self.outpus.push(SeStackCommand::Push(1));
+            self.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
+            self.outpus.push(SeStackCommand::Copy);
+            {
+                self.outpus.push(SeStackCommand::Push(i - 1));
+                self.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
+            }
+            load_one(self);
+            self.swap();
+        }
+        self.outpus.push(SeStackCommand::DeAlloc(1));
     }
 
     fn load_grobal_address(&mut self) {
@@ -418,7 +429,7 @@ impl CodeGenStatus {
         // println!("CallE {} {}", self.head_sack_all(), self.head_sack_func());
     }
 
-    fn Swap(&mut self) {
+    fn swap(&mut self) {
         self.outpus.extend([
             SeStackCommand::Push(2),
             SeStackCommand::ReadAddr,
@@ -428,7 +439,6 @@ impl CodeGenStatus {
             SeStackCommand::WriteAddr,
             SeStackCommand::Push(1),
             SeStackCommand::WriteAddr,
-            SeStackCommand::Exit,
         ]);
     }
 }
