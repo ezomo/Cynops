@@ -114,8 +114,8 @@ pub fn start(inputs: Vec<SFunc>, name_gen: &mut NameGenerator) -> Vec<SeStackCom
         let palam_size = func
             .param_names
             .iter()
-            .filter(|x| !x.get_type().unwrap().is_void())
-            .count(); //一旦型は無視
+            .map(|x| x.get_type().unwrap().size())
+            .sum::<usize>(); //一旦型は無視
         cgs.outpus
             .push(SeStackCommand::Comment(func.sig.symbol.ident.name.clone()));
         cgs.outpus.push(SeStackCommand::Label(func.entry.into()));

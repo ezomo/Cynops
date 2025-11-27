@@ -133,10 +133,6 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             let ty = symbol.get_type().unwrap();
             match ty {
                 Type::Func(_) => cgs.outputs.push(StackCommand::Symbol(symbol.clone())),
-                Type::Array(_) => {
-                    cgs.outputs.push(StackCommand::Symbol(symbol.clone()));
-                    cgs.outputs.push(StackCommand::AcsessUseLa);
-                }
                 _ => {
                     cgs.outputs.push(StackCommand::Symbol(symbol.clone()));
                     cgs.outputs.push(StackCommand::AcsessUseLa);
@@ -198,7 +194,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             );
         }
         SemaExpr::Subscript(subscript) => {
-            gen_expr(*subscript.subject.clone(), cgs);
+            gen_expr_left(*subscript.subject.clone(), cgs);
             gen_expr(*subscript.index.clone(), cgs);
             cgs.outputs
                 .push(StackCommand::IndexAccess(typed_expr.r#type.clone()));
