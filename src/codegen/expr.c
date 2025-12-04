@@ -1,7 +1,8 @@
 void exit(void);
-void putchar(int a);
+void putchar(char a);
+void print_error(char (*s)[0])
 
-int sgn(int);
+    int sgn(int);
 int abs(int);
 
 int sgn(int a) {
@@ -69,14 +70,8 @@ int Slash(int a, int b) {
     int b_abs = abs(b);
 
     if (b_abs == 0) {  //
-        char error[23] = {'\n', 'e', 'r', 'r', 'o', 'r,', ':', ' ',
-                          'd',  'i', 'v', 'i', 'd', 'e',  ' ', 'b',
-                          'y',  ' ', 'z', 'e', 'r', 'o',  '\n'};
-        int i = 0;
-        for (i = 0; i < 23; i++) {
-            putchar((int)error[i]);
-        }
-
+        char error[] = "\nerror:  divide by zero\n";
+        print_error(&error);
         exit();
     }
 
@@ -98,13 +93,8 @@ int Slash(int a, int b) {
 
 int Mod(int a, int b) {
     if (b == 0) {
-        char error[23] = {'\n', 'e', 'r', 'r', 'o', 'r', ':', ' ',
-                          'm',  'o', 'd', 'u', 'l', 'o', ' ', 'b',
-                          'y',  ' ', 'z', 'e', 'r', 'o', '\n'};
-        int i = 0;
-        for (i = 0; i < 23; i++) {
-            putchar((int)error[i]);
-        }
+        char error[] = "\nerror: modulo bys zero \n";
+        print_error(&error);
         exit();
     }
 
@@ -113,4 +103,12 @@ int Mod(int a, int b) {
 
     if (Less(r, 0)) r += Ternary(Greater(b, 0), b, -b);
     return r;
+}
+
+void print_error(char (*s)[0]) {
+    int i = 0;
+    for (i = 0; (*s)[i] != '\0'; i += 1) {
+        putchar((int)(*s)[i]);
+    }
+    return;
 }

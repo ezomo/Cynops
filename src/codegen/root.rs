@@ -42,14 +42,14 @@ fn function_proto(function: FunctionProto, cgs: &mut CodeGenStatus) {
         && function.sig.symbol.get_type().unwrap()
             == Type::Func(Func {
                 return_type: Type::Void.into(),
-                params: vec![Type::Int],
+                params: vec![Type::Char],
             })
     {
         putchar(function, cgs);
     } else if function.sig.symbol.ident == "getchar".into()
         && function.sig.symbol.get_type().unwrap()
             == Type::Func(Func {
-                return_type: Type::Int.into(),
+                return_type: Type::Char.into(),
                 params: vec![Type::Void],
             })
     {
@@ -71,10 +71,10 @@ fn putchar(function: FunctionProto, cgs: &mut CodeGenStatus) {
     let ojcet: Ident = "object".into();
     let child = ScopeNode::add_child(&function.sig.symbol.scope.get_scope().unwrap());
     let sy = Symbol::new(ojcet.clone(), ScopePtr::new(Rc::downgrade(&child)));
-    child.borrow_mut().register_symbols(ojcet, Type::Int);
+    child.borrow_mut().register_symbols(ojcet, Type::Char);
     cgs.outputs.push(StackCommand::Symbol(sy.clone()));
     cgs.outputs.push(StackCommand::AcsessUseLa);
-    cgs.outputs.push(StackCommand::Load(Type::Int));
+    cgs.outputs.push(StackCommand::Load(Type::Char));
     cgs.outputs.push(StackCommand::SellOut);
     cgs.outputs.push(StackCommand::FramePop);
     cgs.outputs
