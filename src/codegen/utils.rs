@@ -37,7 +37,7 @@ pub enum StackCommand {
     Goto(SLabel),           // 無条件ジャンプ
     Branch(SLabel, SLabel), //True ,False
     Call(Type),             // 関数呼び出し 下の引数群を使う　アドレス＋引数群
-    Return,                 // 関数からの復帰
+    Return(Type),           // 関数からの戻り値
     ReturnPoint(SLabel),    // 関数終了後の戻る場所
     FramePop,               // フレームを削除
     SellOut,                //一番上を出力
@@ -65,7 +65,7 @@ impl std::fmt::Debug for StackCommand {
             StackCommand::Label(this) => write!(f, "Label {:?}", this),
             StackCommand::Goto(this) => write!(f, "Jump {:?}", this),
             StackCommand::Call(this) => write!(f, "Call {:?}", this),
-            StackCommand::Return => write!(f, "Return"),
+            StackCommand::Return(this) => write!(f, "Return {:?}", this),
             StackCommand::ReturnPoint(this) => write!(f, "ReturnPoint {:?}", this),
             StackCommand::Branch(a, b) => write!(f, "Branch ({:?}, {:?})", a, b),
             StackCommand::FramePop => write!(f, "FramePop"),

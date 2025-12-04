@@ -213,7 +213,7 @@ fn r#continue(cgs: &mut CodeGenStatus) {}
 fn r#return(ret: Return, cgs: &mut CodeGenStatus) {
     if let Some(expr) = ret.value {
         gen_expr(*expr.clone(), cgs);
-        cgs.outputs.push(StackCommand::Return);
+        cgs.outputs.push(StackCommand::Return(expr.r#type.clone()));
     }
     cgs.outputs.push(StackCommand::FramePop);
     // cgs.outputs.push(StackCommand::Goto(cgs.func_end.unwrap()));

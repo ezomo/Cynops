@@ -174,11 +174,10 @@ pub fn start(inputs: Vec<SFunc>, name_gen: &mut NameGenerator) -> Vec<SeStackCom
                     cgs.sub_stack(1);
                 }
                 StackCommand::Call(ty) => cgs.call(ty),
-                StackCommand::Return => {
+                StackCommand::Return(ty) => {
                     cgs.outpus
                         .push(SeStackCommand::Push(cgs.head_sack_func() + 1));
-                    cgs.outpus.push(SeStackCommand::WriteAddr);
-                    cgs.sub_stack(1); //writeaddrでアドレスを2消費する
+                    cgs.store(ty);
                 }
                 StackCommand::FramePop => {
                     let delete = cgs.alloced.iter().sum::<usize>() + palam_size + 1;

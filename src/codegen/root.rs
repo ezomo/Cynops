@@ -98,7 +98,7 @@ fn getchar(function: FunctionProto, cgs: &mut CodeGenStatus) {
 
     {
         cgs.outputs.push(StackCommand::Input);
-        cgs.outputs.push(StackCommand::Return);
+        cgs.outputs.push(StackCommand::Return(Type::Char));
 
         //いらないはずなんだけな TODO
         {
