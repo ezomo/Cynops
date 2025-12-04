@@ -289,6 +289,12 @@ impl CodeGenStatus {
                 self.outpus.push(SeStackCommand::Push(this as usize));
                 self.add_stck(1);
             }
+            SemaExpr::String(this) => {
+                for &b in this.iter().rev() {
+                    self.outpus.push(SeStackCommand::Push(b as usize));
+                    self.add_stck(1);
+                }
+            }
             _ => unreachable!("{:?}", sema_expr.oneline()),
         }
     }
@@ -472,10 +478,6 @@ mod extended_commands {
             SeStackCommand::ReadAddr,
         ]
         //こいつはpush分の計算がいる基準が違う
-    }
-
-    pub fn copy(n: usize) -> Vec<SeStackCommand> {
-        load_n_by_pointer(n, 0)
     }
 }
 
