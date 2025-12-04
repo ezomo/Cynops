@@ -118,7 +118,8 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             AssignOp::Equal => {
                 gen_expr(*assign.rhs, cgs);
                 gen_expr_left(*assign.lhs.clone(), cgs);
-                cgs.outputs.push(StackCommand::Store);
+                cgs.outputs
+                    .push(StackCommand::Store(typed_expr.r#type.clone()));
 
                 // 非効率ではあるが，面倒なのだ
                 gen_expr(*assign.lhs, cgs);
@@ -260,7 +261,6 @@ pub fn gen_expr_left(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             UnaryOp::Minus => {}
             _ => unreachable!("use simplification"),
         },
-        SemaExpr::Ternary(ternary) => {}
         SemaExpr::Subscript(subscript) => {
             gen_expr_left(*subscript.subject.clone(), cgs);
             gen_expr(*subscript.index.clone(), cgs);

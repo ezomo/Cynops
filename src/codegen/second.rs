@@ -6,6 +6,7 @@ use super::StackCommand;
 use super::utils::SFunc;
 use super::{SLabel, SLabelReserved};
 use crate::codegen::NameGenerator;
+use crate::codegen::second::extended_commands::load_n_by_pointer;
 use crate::codegen::stack::{StackInst, StackMachine};
 use crate::codegen::r#type::Size;
 use crate::op::*;
@@ -154,13 +155,7 @@ pub fn start(inputs: Vec<SFunc>, name_gen: &mut NameGenerator) -> Vec<SeStackCom
                     _ = cgs.symbol_table.insert(symbol, cgs.head_sack_func())
                 }
                 StackCommand::Alloc(ty) => cgs.alloc(&ty),
-                StackCommand::Store => {
-                    // cgs.acsess();
-                    cgs.outpus.push(SeStackCommand::WriteAddr);
-                    cgs.sub_stack(2);
-
-                    // 一下のアドレス，その下の実値
-                }
+                StackCommand::Store(ty) => cgs.store(ty),
                 StackCommand::Load(ty) => cgs.load(ty),
                 StackCommand::IndexAccess(ty) => {
                     cgs.mul(ty.size() as isize);
@@ -365,14 +360,6 @@ impl CodeGenStatus {
     }
 
     fn load(&mut self, ty: Type) {
-        let load_one = |cgs: &mut CodeGenStatus| {
-            cgs.outpus.push(SeStackCommand::Push(1));
-            cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
-            //こいつはpush分の計算がいる基準が違う
-            cgs.outpus.push(SeStackCommand::ReadAddr);
-            // 下のメモリを消費して上に積むからスタックサイズは変わらない
-        };
-
         for i in (1..=ty.size()).rev() {
             self.outpus.push(SeStackCommand::Push(1));
             self.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
@@ -381,13 +368,26 @@ impl CodeGenStatus {
                 self.outpus.push(SeStackCommand::Push(i - 1));
                 self.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
             }
-            load_one(self);
-            self.swap();
+            self.outpus.extend(extended_commands::load_one());
+            self.outpus.extend(extended_commands::swap());
         }
         self.outpus.push(SeStackCommand::DeAlloc(1));
 
         // よくない直す　TODO
         self.add_stck(ty.size() - 1);
+    }
+
+    fn store(&mut self, ty: Type) {
+        for _ in 0..ty.size() {
+            self.outpus.extend(extended_commands::swap());
+            self.outpus.extend(load_n_by_pointer(1, 1));
+            self.outpus.push(SeStackCommand::Push(1));
+            self.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
+            self.outpus.push(SeStackCommand::WriteAddr);
+        }
+        self.outpus.push(SeStackCommand::DeAlloc(1));
+
+        self.sub_stack(ty.size() + 1);
     }
 
     fn load_grobal_address(&mut self) {
@@ -427,9 +427,12 @@ impl CodeGenStatus {
 
         // println!("CallE {} {}", self.head_sack_all(), self.head_sack_func());
     }
+}
 
-    fn swap(&mut self) {
-        self.outpus.extend([
+mod extended_commands {
+    use super::{BinaryOp, SeStackCommand};
+    pub fn swap() -> Vec<SeStackCommand> {
+        vec![
             SeStackCommand::Push(2),
             SeStackCommand::ReadAddr,
             SeStackCommand::Push(2),
@@ -438,20 +441,64 @@ impl CodeGenStatus {
             SeStackCommand::WriteAddr,
             SeStackCommand::Push(1),
             SeStackCommand::WriteAddr,
-        ]);
+        ]
+    }
+
+    pub fn load_n_by_pointer(n: usize, pointer: usize) -> Vec<SeStackCommand> {
+        let mut head = vec![SeStackCommand::Push(pointer)];
+
+        let body = (1..=n).rev().flat_map(|i| {
+            // ここはイテレータを返すため Vec を生成して into_iter() で展開
+            let mut v = Vec::with_capacity(8);
+            v.push(SeStackCommand::Push(1));
+            v.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
+            v.push(SeStackCommand::Copy);
+            v.push(SeStackCommand::Push(i - 1));
+            v.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
+            v.extend(load_one());
+            v.extend(swap());
+            v.into_iter()
+        });
+
+        head.extend(body);
+        head.push(SeStackCommand::DeAlloc(1));
+        head
+    }
+
+    pub fn load_one() -> Vec<SeStackCommand> {
+        vec![
+            SeStackCommand::Push(1),
+            SeStackCommand::BinaryOP(BinaryOp::plus()),
+            SeStackCommand::ReadAddr,
+        ]
+        //こいつはpush分の計算がいる基準が違う
+    }
+
+    pub fn copy(n: usize) -> Vec<SeStackCommand> {
+        load_n_by_pointer(n, 0)
     }
 }
 
-// #[test]
-// fn test() {
-//     use super::convert;
-//     use SeStackCommand::*;
-//     let mut vec = vec![];
+#[test]
+fn test() {
+    use super::convert;
+    use SeStackCommand::*;
+    let mut vec = vec![
+        Push(0),
+        Push(0),
+        Push(50),
+        Push(50),
+        Push(50),
+        Push(100),
+        Push(20),
+        Push(5),
+    ];
 
-//     let stream = vec
-//         .iter()
-//         .map(|x| convert(x.clone()))
-//         .collect::<Vec<StackInst>>();
+    vec.push(SeStackCommand::Exit);
+    let stream = vec
+        .iter()
+        .map(|x| convert(x.clone()))
+        .collect::<Vec<StackInst>>();
 
-//     StackMachine::exec(&mut StackMachine::default(), &stream);
-// }
+    StackMachine::exec(&mut StackMachine::default(), &stream);
+}

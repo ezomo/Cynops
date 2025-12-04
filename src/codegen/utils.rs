@@ -2,6 +2,7 @@ use crate::op::*;
 use crate::sema::ast::*;
 use core::str;
 use std::collections::HashMap;
+use std::fmt::write;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
@@ -29,7 +30,7 @@ pub enum StackCommand {
     Symbol(Symbol),         //変数のアドレスをスタックに乗せる
     Name(Symbol),           // 変数名をスタックに乗せる下のAlloca命令と組み合わせて使う
     Alloc(Type),            //型のサイズだけメモリ確保
-    Store,                  //　計算結果が下　対象は上
+    Store(Type),            //　計算結果が下　対象は上
     Load(Type),             //下のメモリから値をロード
     IndexAccess(Type),      // 下のアドレスから型とオフセットを使ってアドレス計算
     Label(SLabel),          // ラベル定義
@@ -59,7 +60,7 @@ impl std::fmt::Debug for StackCommand {
             StackCommand::UnaryOp(this) => write!(f, "UnaryOp{:?}", this),
             StackCommand::Symbol(this) => write!(f, "Symbol {}", this.oneline()),
             StackCommand::Alloc(this) => write!(f, "Alloca {}", this.to_rust_format()),
-            StackCommand::Store => write!(f, "Store"),
+            StackCommand::Store(this) => write!(f, "Store {}", this.to_rust_format()),
             StackCommand::Load(ty) => write!(f, "Load {}", ty.to_rust_format()),
             StackCommand::Label(this) => write!(f, "Label {:?}", this),
             StackCommand::Goto(this) => write!(f, "Jump {:?}", this),

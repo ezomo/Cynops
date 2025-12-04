@@ -27,7 +27,7 @@ impl Size for Type {
 
 impl Size for Func {
     fn size(&self) -> usize {
-        Type::Void.size() // 関数型は void と仮定
+        Type::Int.size() // 関数型は Int と仮定アドレス幅
     }
 }
 

@@ -100,7 +100,7 @@ fn initialize_variable(
             gen_expr(typed_expr, cgs);
             cgs.outputs.push(StackCommand::Symbol(object.clone()));
             cgs.outputs.push(StackCommand::AcsessUseLa);
-            cgs.outputs.push(StackCommand::Store);
+            cgs.outputs.push(StackCommand::Store(var_type.clone()));
         }
         InitData::Compound(_) => {
             // 複合初期化子 {1, 2, 3} または {.a = 1, .b = 2}
@@ -123,9 +123,13 @@ fn initialize_variable(
 
                     for i in combos {
                         let tmp = i.clone();
+                        let ty;
                         match init_data.clone().acsess(i) {
                             InitData::Compound(_) => panic!(),
-                            InitData::Expr(this) => gen_expr(this, cgs),
+                            InitData::Expr(this) => {
+                                ty = this.r#type.clone();
+                                gen_expr(this, cgs)
+                            }
                         }
 
                         cgs.outputs.push(StackCommand::Symbol(object.clone()));
@@ -140,7 +144,7 @@ fn initialize_variable(
                             )));
                             cgs.outputs.push(StackCommand::IndexAccess(ty));
                         }
-                        cgs.outputs.push(StackCommand::Store);
+                        cgs.outputs.push(StackCommand::Store(ty));
                     }
                 }
                 Type::Struct(stru) => {
