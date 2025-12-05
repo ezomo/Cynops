@@ -275,6 +275,9 @@ mod controls {
         let label_step = cgs.name_gen.slabel();
         let label_end = cgs.name_gen.slabel();
 
+        cgs.break_stack
+            .push((label_end.clone(), label_start.clone()));
+
         // 初期化式
         if let Some(init) = for_stmt.init {
             let ty = init.r#type.clone();
@@ -317,6 +320,7 @@ mod controls {
 
         // ループ終了
         cgs.outputs.push(label_end.into());
+        cgs.break_stack.pop();
     }
 
     pub fn r#switch(switch_stmt: Switch, cgs: &mut CodeGenStatus) {}
