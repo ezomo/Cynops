@@ -164,7 +164,8 @@ pub struct CodeGenStatus {
     pub outputs: Vec<StackCommand>,
     pub func_end: Option<SLabel>,
     pub funcs: Vec<SFunc>,
-    pub break_stack: Vec<(SLabel, SLabel)>,
+    pub break_stack: Vec<(SLabel, SLabel)>, // (end, start)
+    pub continue_stack: Vec<SLabel>,        // (start it means condition)
     pub insert_function: HashMap<InsertFunction, Symbol>,
 }
 
@@ -182,6 +183,7 @@ impl CodeGenStatus {
             func_end: None,
             funcs: Vec::new(),
             break_stack: Vec::new(),
+            continue_stack: Vec::new(),
             insert_function: HashMap::new(),
         }
     }

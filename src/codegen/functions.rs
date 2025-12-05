@@ -49,6 +49,7 @@ where
     let label_body = cgs.name_gen.slabel();
     let label_end = cgs.name_gen.slabel();
     cgs.break_stack.push((label_end, label_start));
+    cgs.continue_stack.push(label_start);
 
     // Labelをまたいで行動することはできない 使用
     {

@@ -218,7 +218,15 @@ fn r#break(cgs: &mut CodeGenStatus) {
     }
 }
 
-fn r#continue(cgs: &mut CodeGenStatus) {}
+fn r#continue(cgs: &mut CodeGenStatus) {
+    if let Some(label_cond) = cgs.continue_stack.last() {
+        cgs.outputs.push(StackCommand::ClearStackFrom(*label_cond));
+        cgs.outputs.push(StackCommand::Goto(label_cond.clone()));
+        cgs.outputs.push(StackCommand::Label(cgs.name_gen.slabel())); //未到達空間回避
+    } else {
+        panic!("continue文がループの外で使用されています");
+    }
+}
 
 fn r#return(ret: Return, cgs: &mut CodeGenStatus) {
     if let Some(expr) = ret.value {
