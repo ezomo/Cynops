@@ -2,11 +2,10 @@ use crate::op::*;
 use crate::sema::ast::*;
 use core::str;
 use std::collections::HashMap;
-use std::fmt::write;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 pub struct SLabel(pub usize);
 
 #[derive(EnumIter)]
@@ -46,9 +45,10 @@ pub enum StackCommand {
     AcsessUseGa,            //メンバアクセス グローバルアドレスできるようにする
     AcsessUseLa,            //メンバアクセス グローバルアドレスできるようにする
     Input,                  //入力
-    BlockStart,             //ブロック開始
-    BlockEnd,               //ブロック終了
+    BlockStart(SLabel),     //ブロック開始 label　id としてのSlabel
+    BlockEnd(SLabel),       //ブロック終了
     Pop(Type),              //型のサイズだけスタックを削除
+    ClearStackFrom(SLabel), // Slabelまでのsatckを削除
 }
 
 impl std::fmt::Debug for StackCommand {
@@ -78,9 +78,10 @@ impl std::fmt::Debug for StackCommand {
             StackCommand::AcsessUseGa => write!(f, "AccessUseGa"),
             StackCommand::AcsessUseLa => write!(f, "AccessUseLa"),
             StackCommand::Input => write!(f, "Input"),
-            StackCommand::BlockStart => write!(f, "BlockStart"),
-            StackCommand::BlockEnd => write!(f, "BlockEnd"),
+            StackCommand::BlockStart(this) => write!(f, "BlockStart {:?}", this),
+            StackCommand::BlockEnd(this) => write!(f, "BlockEnd {:?}", this),
             StackCommand::Pop(ty) => write!(f, "Pop {}", ty.to_rust_format()),
+            StackCommand::ClearStackFrom(this) => write!(f, "Break {:?}", this),
         }
     }
 }
@@ -163,6 +164,7 @@ pub struct CodeGenStatus {
     pub outputs: Vec<StackCommand>,
     pub func_end: Option<SLabel>,
     pub funcs: Vec<SFunc>,
+    pub break_stack: Vec<(SLabel, SLabel)>,
     pub insert_function: HashMap<InsertFunction, Symbol>,
 }
 
@@ -179,6 +181,7 @@ impl CodeGenStatus {
             outputs: Vec::new(),
             func_end: None,
             funcs: Vec::new(),
+            break_stack: Vec::new(),
             insert_function: HashMap::new(),
         }
     }

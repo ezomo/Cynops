@@ -19,11 +19,13 @@ pub fn stmt(stmt: Stmt, cgs: &mut CodeGenStatus) {
 }
 
 pub fn block(block: Block, cgs: &mut CodeGenStatus) {
-    cgs.outputs.push(StackCommand::BlockStart);
+    let start_label = cgs.name_gen.slabel();
+    cgs.outputs
+        .push(StackCommand::BlockStart(start_label.clone()));
     for _stmt in block.into_vec() {
         stmt(*_stmt, cgs);
     }
-    cgs.outputs.push(StackCommand::BlockEnd);
+    cgs.outputs.push(StackCommand::BlockEnd(start_label));
 }
 
 fn declstmt(declstmt: DeclStmt, cgs: &mut CodeGenStatus) {
@@ -206,7 +208,15 @@ fn control(control: Control, cgs: &mut CodeGenStatus) {
     }
 }
 
-fn r#break(cgs: &mut CodeGenStatus) {}
+fn r#break(cgs: &mut CodeGenStatus) {
+    if let Some((label_end, label_start)) = cgs.break_stack.last() {
+        cgs.outputs.push(StackCommand::ClearStackFrom(*label_start));
+        cgs.outputs.push(StackCommand::Goto(label_end.clone()));
+        cgs.outputs.push(StackCommand::Label(cgs.name_gen.slabel())); //未到達空間回避
+    } else {
+        panic!("break文がループまたはswitch文の外で使用されています");
+    }
+}
 
 fn r#continue(cgs: &mut CodeGenStatus) {}
 

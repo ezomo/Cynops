@@ -46,6 +46,7 @@ pub struct CodeGenStatus {
     pub outpus: Vec<SeStackCommand>,
     pub grobal_address: usize,
     pub stack_size_func: usize,
+    pub label_stack: HashMap<SLabel, usize>,
     pub alloced: Vec<usize>,
     pub symbol_table: HashMap<Symbol, Address>,
 }
@@ -56,6 +57,7 @@ impl CodeGenStatus {
             outpus: Vec::default(),
             grobal_address: 0,
             stack_size_func: 0,
+            label_stack: HashMap::new(),
             alloced: vec![0],
             symbol_table: HashMap::new(),
         }
@@ -161,11 +163,13 @@ pub fn start(inputs: Vec<SFunc>, name_gen: &mut NameGenerator) -> Vec<SeStackCom
                     cgs.mul(ty.size() as isize);
                     cgs.add();
                 } // 下のアドレスから型とオフセットを使ってアドレス計算
-                StackCommand::Label(this) => cgs.outpus.push(SeStackCommand::Label(this.into())),
-                StackCommand::Goto(this) => {
-                    cgs.outpus.push(SeStackCommand::Push(this.into()));
-                    cgs.outpus.push(SeStackCommand::Goto);
+                StackCommand::Label(this) => {
+                    cgs.outpus.push(SeStackCommand::Label(this.into()));
+                    // cgs.label_stack_push(this);
+
+                    // cgs.alloced.push(0);
                 }
+                StackCommand::Goto(this) => cgs.outpus.extend(extended_commands::goto(this)),
                 StackCommand::Branch(label_true, label_false) => {
                     cgs.outpus.push(SeStackCommand::Branch(
                         label_true.into(),
@@ -175,8 +179,7 @@ pub fn start(inputs: Vec<SFunc>, name_gen: &mut NameGenerator) -> Vec<SeStackCom
                 }
                 StackCommand::Call(ty) => cgs.call(ty),
                 StackCommand::Return(ty) => {
-                    cgs.outpus
-                        .push(SeStackCommand::Push(cgs.head_sack_func() + 1));
+                    cgs.push_usize(cgs.head_sack_func() + 1);
                     cgs.store(ty);
                 }
                 StackCommand::FramePop => {
@@ -224,13 +227,20 @@ pub fn start(inputs: Vec<SFunc>, name_gen: &mut NameGenerator) -> Vec<SeStackCom
                     cgs.acsess();
                 }
                 StackCommand::AcsessUseLa => cgs.acsess(),
-                StackCommand::BlockStart => {
+                StackCommand::BlockStart(this) => {
                     cgs.alloced.push(0);
+                    cgs.label_stack.insert(this.clone(), cgs.alloced.len() - 1);
                 }
-                StackCommand::BlockEnd => {
-                    let dealloc_size = cgs.alloced.pop().unwrap();
+                StackCommand::BlockEnd(this) => {
+                    let dealloc_size = cgs.alloced.drain(cgs.label_stack[&this]..).sum();
+
                     cgs.outpus.push(SeStackCommand::DeAlloc(dealloc_size));
                     cgs.sub_stack(dealloc_size);
+                }
+                StackCommand::ClearStackFrom(this) => {
+                    let dealloc_size = cgs.alloced.drain(cgs.label_stack[&this]..).sum();
+                    cgs.outpus.push(SeStackCommand::DeAlloc(dealloc_size));
+                    // sub_stackはしない　分岐する可能性があるので
                 }
                 StackCommand::Pop(ty) => {
                     cgs.outpus.push(SeStackCommand::Comment("Pop_start".into()));
@@ -435,7 +445,12 @@ impl CodeGenStatus {
 }
 
 mod extended_commands {
-    use super::{BinaryOp, SeStackCommand};
+    use super::{Address, BinaryOp, SeStackCommand};
+
+    pub fn goto<T: Into<Address>>(label: T) -> Vec<SeStackCommand> {
+        vec![SeStackCommand::Push(label.into()), SeStackCommand::Goto]
+    }
+
     pub fn swap() -> Vec<SeStackCommand> {
         vec![
             SeStackCommand::Push(2),
