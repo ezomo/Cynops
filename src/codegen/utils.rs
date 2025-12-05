@@ -81,7 +81,7 @@ impl std::fmt::Debug for StackCommand {
             StackCommand::BlockStart(this) => write!(f, "BlockStart {:?}", this),
             StackCommand::BlockEnd(this) => write!(f, "BlockEnd {:?}", this),
             StackCommand::Pop(ty) => write!(f, "Pop {}", ty.to_rust_format()),
-            StackCommand::ClearStackFrom(this) => write!(f, "Break {:?}", this),
+            StackCommand::ClearStackFrom(this) => write!(f, "ClearStackFrom {:?}", this),
         }
     }
 }

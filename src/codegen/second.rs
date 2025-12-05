@@ -84,7 +84,16 @@ impl CodeGenStatus {
     }
 
     fn sub_alloc(&mut self, size: usize) {
+        if *self.alloced.last().unwrap() == 0 {
+            self.alloced.pop();
+        }
         *self.alloced.last_mut().unwrap() -= size;
+    }
+
+    fn label_stack_push(&mut self, label: SLabel) {
+        self.alloced.push(0);
+        self.label_stack
+            .insert(label.clone(), self.alloced.len() - 1);
     }
 }
 
@@ -165,9 +174,7 @@ pub fn start(inputs: Vec<SFunc>, name_gen: &mut NameGenerator) -> Vec<SeStackCom
                 } // 下のアドレスから型とオフセットを使ってアドレス計算
                 StackCommand::Label(this) => {
                     cgs.outpus.push(SeStackCommand::Label(this.into()));
-                    // cgs.label_stack_push(this);
-
-                    // cgs.alloced.push(0);
+                    cgs.label_stack_push(this);
                 }
                 StackCommand::Goto(this) => cgs.outpus.extend(extended_commands::goto(this)),
                 StackCommand::Branch(label_true, label_false) => {
@@ -228,8 +235,7 @@ pub fn start(inputs: Vec<SFunc>, name_gen: &mut NameGenerator) -> Vec<SeStackCom
                 }
                 StackCommand::AcsessUseLa => cgs.acsess(),
                 StackCommand::BlockStart(this) => {
-                    cgs.alloced.push(0);
-                    cgs.label_stack.insert(this.clone(), cgs.alloced.len() - 1);
+                    cgs.label_stack_push(this);
                 }
                 StackCommand::BlockEnd(this) => {
                     let dealloc_size = cgs.alloced.drain(cgs.label_stack[&this]..).sum();
@@ -238,7 +244,7 @@ pub fn start(inputs: Vec<SFunc>, name_gen: &mut NameGenerator) -> Vec<SeStackCom
                     cgs.sub_stack(dealloc_size);
                 }
                 StackCommand::ClearStackFrom(this) => {
-                    let dealloc_size = cgs.alloced.drain(cgs.label_stack[&this]..).sum();
+                    let dealloc_size = cgs.alloced[cgs.label_stack[&this]..].iter().sum();
                     cgs.outpus.push(SeStackCommand::DeAlloc(dealloc_size));
                     // sub_stackはしない　分岐する可能性があるので
                 }
