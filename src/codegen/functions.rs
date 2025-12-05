@@ -49,7 +49,7 @@ where
     let label_body = cgs.name_gen.slabel();
     let label_end = cgs.name_gen.slabel();
     cgs.break_stack.push((label_end, label_start));
-    cgs.continue_stack.push(label_start);
+    cgs.continue_stack.push((label_start, label_start));
 
     // Labelをまたいで行動することはできない 使用
     {
@@ -75,6 +75,7 @@ where
     // 終了ラベル
     cgs.outputs.push(StackCommand::Label(label_end));
     cgs.break_stack.pop();
+    cgs.continue_stack.pop();
 }
 
 //

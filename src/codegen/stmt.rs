@@ -219,9 +219,9 @@ fn r#break(cgs: &mut CodeGenStatus) {
 }
 
 fn r#continue(cgs: &mut CodeGenStatus) {
-    if let Some(label_cond) = cgs.continue_stack.last() {
-        cgs.outputs.push(StackCommand::ClearStackFrom(*label_cond));
-        cgs.outputs.push(StackCommand::Goto(label_cond.clone()));
+    if let Some((label_f_d, label2goto)) = cgs.continue_stack.last() {
+        cgs.outputs.push(StackCommand::ClearStackFrom(*label_f_d));
+        cgs.outputs.push(StackCommand::Goto(label2goto.clone()));
         cgs.outputs.push(StackCommand::Label(cgs.name_gen.slabel())); //未到達空間回避
     } else {
         panic!("continue文がループの外で使用されています");
@@ -282,6 +282,7 @@ mod controls {
         let label_body = cgs.name_gen.slabel();
         let label_step = cgs.name_gen.slabel();
         let label_end = cgs.name_gen.slabel();
+        cgs.continue_stack.push((label_start, label_step));
 
         cgs.break_stack
             .push((label_end.clone(), label_start.clone()));
@@ -329,6 +330,7 @@ mod controls {
         // ループ終了
         cgs.outputs.push(label_end.into());
         cgs.break_stack.pop();
+        cgs.continue_stack.pop();
     }
 
     pub fn r#switch(switch_stmt: Switch, cgs: &mut CodeGenStatus) {}

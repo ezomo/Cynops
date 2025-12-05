@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::process::Output;
 use std::usize;
 
 use super::StackCommand;
@@ -7,7 +6,6 @@ use super::utils::SFunc;
 use super::{SLabel, SLabelReserved};
 use crate::codegen::NameGenerator;
 use crate::codegen::second::extended_commands::load_n_by_pointer;
-use crate::codegen::stack::{StackInst, StackMachine};
 use crate::codegen::r#type::Size;
 use crate::op::*;
 use crate::sema::ast::*;
@@ -321,17 +319,6 @@ impl CodeGenStatus {
         self.outpus.push(SeStackCommand::Push(num));
         self.add_stck(1);
     }
-    fn push_isize(&mut self, num: isize) {
-        if num < 0 {
-            self.outpus.push(SeStackCommand::Push(0));
-            self.outpus.push(SeStackCommand::Push(num.abs() as usize));
-            self.outpus
-                .push(SeStackCommand::BinaryOP(BinaryOp::minus()));
-        } else {
-            self.outpus.push(SeStackCommand::Push(num as usize));
-        }
-        self.add_stck(1);
-    }
     fn push_grobal(&mut self, num: usize) {
         self.push_usize(num);
     }
@@ -504,6 +491,7 @@ mod extended_commands {
 #[test]
 fn test() {
     use super::convert;
+    use crate::codegen::stack::{StackInst, StackMachine};
     use SeStackCommand::*;
     let mut vec = vec![
         Push(0),
