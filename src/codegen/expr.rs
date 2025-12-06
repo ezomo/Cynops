@@ -239,7 +239,23 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
         SemaExpr::MemberAccess(member_access) => match member_access.kind {
             MemberAccessOp::Dot => match &member_access.base.r#type {
                 Type::Union(_) => {}
-                Type::Struct(_) => {}
+                Type::Struct(st) => {
+                    gen_expr_left(*member_access.base.clone(), cgs);
+                    let pos = st
+                        .member
+                        .iter()
+                        .map(|x| x.ident.clone())
+                        .position(|x| x == member_access.member);
+
+                    let types = st.member.iter().map(|x| x.get_type().unwrap()).collect();
+                    cgs.outputs
+                        .push(StackCommand::MemberAccess(types, pos.unwrap()));
+
+                    if !typed_expr.r#type.is_address() {
+                        cgs.outputs
+                            .push(StackCommand::Load(typed_expr.r#type.clone()));
+                    }
+                }
                 _ => unreachable!(),
             },
             _ => unreachable!(),

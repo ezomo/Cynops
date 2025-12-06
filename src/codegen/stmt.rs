@@ -50,7 +50,10 @@ fn declare_variable(init: Init, cgs: &mut CodeGenStatus) {
 
     // 初期化子がある場合は初期化を実行
     if let Some(init_data) = init.r {
-        initialize_variable(init.l.clone(), init_data, &var_type, cgs);
+        initialize_variable(init_data, &var_type, cgs);
+        cgs.outputs.push(StackCommand::Symbol(init.l));
+        cgs.outputs.push(StackCommand::AcsessUseLa);
+        cgs.outputs.push(StackCommand::Store(var_type.clone()));
     }
 }
 
@@ -90,22 +93,14 @@ impl InitData {
     }
 }
 
-fn initialize_variable(
-    object: Symbol,
-    init_data: InitData,
-    var_type: &Type,
-    cgs: &mut CodeGenStatus,
-) {
+fn initialize_variable(init_data: InitData, var_type: &Type, cgs: &mut CodeGenStatus) {
     match init_data.clone() {
         InitData::Expr(typed_expr) => {
             // 式の初期化: 値を評価してスタックに乗せる
             gen_expr(typed_expr, cgs);
-            cgs.outputs.push(StackCommand::Symbol(object.clone()));
-            cgs.outputs.push(StackCommand::AcsessUseLa);
-            cgs.outputs.push(StackCommand::Store(var_type.clone()));
         }
-        InitData::Compound(_) => {
-            // 複合初期化子 {1, 2, 3} または {.a = 1, .b = 2}
+        InitData::Compound(com) => {
+            // 複合初期化子 {1, 2, 3}
             match var_type {
                 Type::Array(arr) => {
                     let combos =
@@ -129,14 +124,11 @@ fn initialize_variable(
                             InitData::Expr(this) => gen_expr(this, cgs),
                         }
                     }
-
-                    cgs.outputs.push(StackCommand::Symbol(object.clone()));
-                    cgs.outputs.push(StackCommand::AcsessUseLa);
-                    cgs.outputs.push(StackCommand::Store(var_type.clone()));
                 }
                 Type::Struct(st) => {
-                    // init_data
-                    // cgs.outputs.push(StackCommand::Symbol(object.clone()));
+                    (0..com.len()).rev().for_each(|i| {
+                        initialize_variable(com[i].clone(), &st.member[i].get_type().unwrap(), cgs)
+                    });
                 }
                 Type::Union(_) => {
                     panic!("共用体の複合初期化は未対応");

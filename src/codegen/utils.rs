@@ -26,29 +26,30 @@ pub enum StackCommand {
     Push(TypedExpr),    // スタックに値を乗せる
     BinaryOP(BinaryOp), // 二項演算子
     UnaryOp(UnaryOp),
-    Symbol(Symbol),         //変数のアドレスをスタックに乗せる
-    Name(Symbol),           // 変数名をスタックに乗せる下のAlloca命令と組み合わせて使う
-    Alloc(Type),            //型のサイズだけメモリ確保
-    Store(Type),            //　計算結果が下　対象は上
-    Load(Type),             //下のメモリから値をロード
-    IndexAccess(Type),      // 下のアドレスから型とオフセットを使ってアドレス計算
-    Label(SLabel),          // ラベル定義
-    Goto(SLabel),           // 無条件ジャンプ
-    Branch(SLabel, SLabel), //True ,False
-    Call(Type),             // 関数呼び出し 下の引数群を使う　アドレス＋引数群
-    Return(Type),           // 関数からの戻り値
-    ReturnPoint(SLabel),    // 関数終了後の戻る場所
-    FramePop,               // フレームを削除
-    SellOut,                //一番上を出力
-    GlobalAddress,          //グローバルアドレスをスタックに乗せる
-    Address,                //変数のグローバルアドレスをスタックに
-    AcsessUseGa,            //メンバアクセス グローバルアドレスできるようにする
-    AcsessUseLa,            //メンバアクセス グローバルアドレスできるようにする
-    Input,                  //入力
-    BlockStart(SLabel),     //ブロック開始 label　id としてのSlabel
-    BlockEnd(SLabel),       //ブロック終了
-    Pop(Type),              //型のサイズだけスタックを削除
-    ClearStackFrom(SLabel), // Slabelまでのsatckを削除
+    Symbol(Symbol),                 //変数のアドレスをスタックに乗せる
+    Name(Symbol),                   // 変数名をスタックに乗せる下のAlloca命令と組み合わせて使う
+    Alloc(Type),                    //型のサイズだけメモリ確保
+    Store(Type),                    //　計算結果が下　対象は上
+    Load(Type),                     //下のメモリから値をロード
+    IndexAccess(Type),              // 下のアドレスから型とオフセットを使ってアドレス計算
+    Label(SLabel),                  // ラベル定義
+    Goto(SLabel),                   // 無条件ジャンプ
+    Branch(SLabel, SLabel),         //True ,False
+    Call(Type),                     // 関数呼び出し 下の引数群を使う　アドレス＋引数群
+    Return(Type),                   // 関数からの戻り値
+    ReturnPoint(SLabel),            // 関数終了後の戻る場所
+    FramePop,                       // フレームを削除
+    SellOut,                        //一番上を出力
+    GlobalAddress,                  //グローバルアドレスをスタックに乗せる
+    Address,                        //変数のグローバルアドレスをスタックに
+    AcsessUseGa,                    //メンバアクセス グローバルアドレスできるようにする
+    AcsessUseLa,                    //メンバアクセス グローバルアドレスできるようにする
+    Input,                          //入力
+    BlockStart(SLabel),             //ブロック開始 label　id としてのSlabel
+    BlockEnd(SLabel),               //ブロック終了
+    Pop(Type),                      //型のサイズだけスタックを削除
+    ClearStackFrom(SLabel),         // Slabelまでのsatckを削除
+    MemberAccess(Vec<Type>, usize), // メンバアクセス 型リストとメンバのインデックス
 }
 
 impl std::fmt::Debug for StackCommand {
@@ -82,6 +83,9 @@ impl std::fmt::Debug for StackCommand {
             StackCommand::BlockEnd(this) => write!(f, "BlockEnd {:?}", this),
             StackCommand::Pop(ty) => write!(f, "Pop {}", ty.to_rust_format()),
             StackCommand::ClearStackFrom(this) => write!(f, "ClearStackFrom {:?}", this),
+            StackCommand::MemberAccess(ty, id) => {
+                write!(f, "MemberAccess (types: {:?}, id: {})", ty, id)
+            }
         }
     }
 }

@@ -29,7 +29,6 @@ pub enum SeStackCommand {
     Exit,
     Copy,
     SellOut,
-
     Input,
 }
 
@@ -267,6 +266,10 @@ pub fn start(inputs: Vec<SFunc>, name_gen: &mut NameGenerator) -> Vec<SeStackCom
                     cgs.outpus.push(SeStackCommand::DeAlloc(size));
                     cgs.sub_stack(size);
                     cgs.outpus.push(SeStackCommand::Comment("Pop_end".into()));
+                }
+                StackCommand::MemberAccess(ty, id) => {
+                    cgs.push_usize(ty[0..id].iter().map(|x| x.size()).sum());
+                    cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
                 }
             }
         }
