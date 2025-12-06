@@ -91,7 +91,7 @@ int Slash(int a, int b) {
 
 int Mod(int a, int b) {
     if (b == 0) {
-        char error[] = "\nerror: modulo bys zero \n";
+        char error[] = "\nerror: modulo by zero \n";
         print_error(&error);
         exit();
     }
@@ -99,7 +99,6 @@ int Mod(int a, int b) {
     int q = Slash(a, b);
     int r = a - q * b;
 
-    if (Less(r, 0)) r += Ternary(Greater(b, 0), b, -b);
     return r;
 }
 
