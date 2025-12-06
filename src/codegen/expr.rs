@@ -108,6 +108,22 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
                 );
             }
 
+            BinaryOp::Logical(Logical::AmpersandAmpersand)
+                if cgs.insert_function.get(&InsertFunction::Land).is_some() =>
+            {
+                codegen_call_fn(
+                    Call::new(
+                        cgs.insert_function
+                            .get(&InsertFunction::Land)
+                            .unwrap()
+                            .clone()
+                            .into(),
+                        vec![*binary.lhs, *binary.rhs],
+                    ),
+                    cgs,
+                );
+            }
+
             _ => {
                 gen_expr(*binary.lhs, cgs);
                 gen_expr(*binary.rhs, cgs);
@@ -151,9 +167,24 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             codegen_call_fn(call, cgs);
         }
         SemaExpr::Unary(unary) => match unary.op {
-            UnaryOp::Bang => {}
+            UnaryOp::Bang if cgs.insert_function.get(&InsertFunction::Not).is_some() => {
+                codegen_call_fn(
+                    Call::new(
+                        cgs.insert_function
+                            .get(&InsertFunction::Not)
+                            .unwrap()
+                            .clone()
+                            .into(),
+                        vec![*unary.expr],
+                    ),
+                    cgs,
+                );
+            }
 
-            UnaryOp::Tilde => {}
+            UnaryOp::Tilde => {
+                gen_expr(*unary.expr, cgs);
+                cgs.outputs.push(StackCommand::UnaryOp(UnaryOp::bang()));
+            }
             UnaryOp::Ampersand => {
                 gen_expr_left(*unary.expr.clone(), cgs);
 

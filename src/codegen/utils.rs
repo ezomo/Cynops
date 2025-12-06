@@ -157,6 +157,10 @@ pub enum InsertFunction {
     Slash,
     #[strum(serialize = "Mod")]
     Mod,
+    #[strum(serialize = "Not")]
+    Not,
+    #[strum(serialize = "Land")]
+    Land,
 }
 
 pub struct CodeGenStatus {
