@@ -161,7 +161,7 @@ fn gen_top_level(top_level: TopLevel, cgs: &mut CodeGenStatus) {
 
 pub fn generate_program(program: Program) {
     let mut cgs = CodeGenStatus::new();
-    let (fine_ex, _session) = fine_expr("src/codegen/expr.c");
+    let (fine_ex, _session) = fine_expr("src/codegen/insert_c/expr.c");
     // sessionは必要，
     {
         for item in fine_ex.items {
