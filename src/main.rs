@@ -8,7 +8,6 @@ mod op;
 mod parser;
 mod preprocessor;
 mod sema;
-mod test_cases;
 mod token;
 mod typelib;
 use normalize_line_endings::normalized;
