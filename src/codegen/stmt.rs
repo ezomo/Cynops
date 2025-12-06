@@ -123,34 +123,20 @@ fn initialize_variable(
                                 .into_iter()
                             });
 
-                    for i in combos {
-                        let tmp = i.clone();
-                        let ty;
+                    for i in combos.rev() {
                         match init_data.clone().acsess(i) {
                             InitData::Compound(_) => panic!(),
-                            InitData::Expr(this) => {
-                                ty = this.r#type.clone();
-                                gen_expr(this, cgs)
-                            }
+                            InitData::Expr(this) => gen_expr(this, cgs),
                         }
-
-                        cgs.outputs.push(StackCommand::Symbol(object.clone()));
-                        cgs.outputs.push(StackCommand::AcsessUseLa);
-
-                        for i in (0..tmp.len()).rev() {
-                            let ty = arr.types(tmp.len() - i - 1);
-                            let offset = tmp[tmp.len() - i - 1];
-                            cgs.outputs.push(StackCommand::Push(TypedExpr::new(
-                                Type::Int,
-                                SemaExpr::NumInt(offset),
-                            )));
-                            cgs.outputs.push(StackCommand::IndexAccess(ty));
-                        }
-                        cgs.outputs.push(StackCommand::Store(ty));
                     }
+
+                    cgs.outputs.push(StackCommand::Symbol(object.clone()));
+                    cgs.outputs.push(StackCommand::AcsessUseLa);
+                    cgs.outputs.push(StackCommand::Store(var_type.clone()));
                 }
-                Type::Struct(stru) => {
-                    // 構造体の初期化
+                Type::Struct(st) => {
+                    // init_data
+                    // cgs.outputs.push(StackCommand::Symbol(object.clone()));
                 }
                 Type::Union(_) => {
                     panic!("共用体の複合初期化は未対応");
@@ -163,18 +149,7 @@ fn initialize_variable(
     }
 }
 
-fn declare_struct(init: Struct, _cgs: &mut CodeGenStatus) {
-    // 変数を割り当て
-    println!(
-        "{} = type {{{}}}",
-        init.symbol.get_type().unwrap().to_llvm_format(),
-        init.member
-            .iter()
-            .map(|x| x.get_type().unwrap().to_llvm_format())
-            .collect::<Vec<String>>()
-            .join(",")
-    );
-}
+fn declare_struct(_init: Struct, _cgs: &mut CodeGenStatus) {}
 
 fn declare_union(init: Union, _cgs: &mut CodeGenStatus) {}
 
@@ -234,8 +209,6 @@ fn r#return(ret: Return, cgs: &mut CodeGenStatus) {
         cgs.outputs.push(StackCommand::Return(expr.r#type.clone()));
     }
     cgs.outputs.push(StackCommand::FramePop);
-    // cgs.outputs.push(StackCommand::Goto(cgs.func_end.unwrap()));
-    // cgs.outputs.push(StackCommand::Label(cgs.name_gen.slabel())); //未到達空間回避
 }
 
 fn goto(goto: Goto, _cgs: &mut CodeGenStatus) {
