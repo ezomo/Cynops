@@ -103,7 +103,7 @@ int Mod(int a, int b) {
     return r;
 }
 
-int Land(int a, int b) { return int2bool(a) & int2bool(&b); }
+int Land(int a, int b) { return (int2bool(a) & int2bool(b)); }
 
 void print_error(char (*s)[0]) {
     int i = 0;
