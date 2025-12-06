@@ -1,9 +1,9 @@
 void exit(void);
 void putchar(char a);
-void print_error(char (*s)[0])
-
-    int sgn(int);
+void print_error(char (*s)[0]);
+int sgn(int);
 int abs(int);
+int int2bool(int);
 
 int sgn(int a) {
     int r = 1;
@@ -22,11 +22,11 @@ int abs(int x) {
     return n;
 }
 
-int not(int a) {
-    if (a >= 32768) {
-        return 0;  // 負
+int Not(int a) {
+    if (int2bool(a) == 0) {
+        return 1;
     } else
-        return 1;  // 正
+        return 0;
 }
 
 // a > b
@@ -37,18 +37,16 @@ int Greater(int a, int b) {
     int b_abs = abs(b);
     int b_sgn = sgn(b);
 
-    if (a_sgn < b_sgn) {
+    if (b_sgn > a_sgn) {
         return 0;
     } else if (a_sgn > b_sgn) {
         return 1;
     } else {
         if (a_sgn == 0) {
-            return not(a > b);
+            return Not(a_abs > b_abs);
         }
-
-        return (a > b);
+        return (a_abs > b_abs);
     }
-    return 0;
 }
 
 int Less(int a, int b) { return Greater(b, a); }
@@ -105,10 +103,19 @@ int Mod(int a, int b) {
     return r;
 }
 
+int Land(int a, int b) { return int2bool(a) & int2bool(&b); }
+
 void print_error(char (*s)[0]) {
     int i = 0;
     for (i = 0; (*s)[i] != '\0'; i += 1) {
         putchar((int)(*s)[i]);
     }
     return;
+}
+
+int int2bool(int a) {
+    if (a == 0) {
+        return 0;
+    }
+    return 1;
 }
