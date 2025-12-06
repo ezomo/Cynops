@@ -6,3 +6,5 @@ edition = "2024"
 [dependencies]
 ordered-float = "5.1.0"
 normalize-line-endings = "0.3"
+strum = "0.27"
+strum_macros = "0.27"
