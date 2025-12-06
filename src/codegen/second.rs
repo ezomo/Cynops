@@ -1,3 +1,4 @@
+use crate::OneLine;
 use std::collections::HashMap;
 use std::usize;
 
@@ -9,7 +10,6 @@ use crate::codegen::second::extended_commands::load_n_by_pointer;
 use crate::codegen::r#type::Size;
 use crate::op::*;
 use crate::sema::ast::*;
-use crate::visualize::OneLine;
 
 type Address = usize;
 
@@ -81,11 +81,22 @@ impl CodeGenStatus {
         self.alloced = vec![0];
     }
 
-    fn sub_alloc(&mut self, size: usize) {
-        if *self.alloced.last().unwrap() == 0 {
-            self.alloced.pop();
+    // 汚い実装，Label ENDのわからないためゴリ押し
+    fn sub_alloc(&mut self, mut size: usize) {
+        while size > 0 {
+            let last = match self.alloced.last_mut() {
+                Some(x) => x,
+                None => panic!("not enough alloc"),
+            };
+
+            if *last > size {
+                *last -= size;
+                size = 0;
+            } else {
+                size -= *last;
+                self.alloced.pop();
+            }
         }
-        *self.alloced.last_mut().unwrap() -= size;
     }
 
     fn label_stack_push(&mut self, label: SLabel) {
@@ -158,7 +169,11 @@ pub fn start(inputs: Vec<SFunc>, name_gen: &mut NameGenerator) -> Vec<SeStackCom
                     cgs.outpus.push(SeStackCommand::UnaryOp(unary_op))
                 }
 
-                StackCommand::Symbol(symbol) => cgs.push_usize(cgs.symbol_table[&symbol]),
+                StackCommand::Symbol(symbol) => cgs.push_usize(
+                    *cgs.symbol_table
+                        .get(&symbol)
+                        .expect(&format!("symbol not found: {}", symbol.oneline())),
+                ),
                 StackCommand::Name(symbol) => {
                     // つまり配列の場合は先頭のアドレスが一番下になる．
                     _ = cgs.symbol_table.insert(symbol, cgs.head_sack_func())
@@ -407,15 +422,7 @@ impl CodeGenStatus {
 
     fn call(&mut self, ty: Type) {
         self.outpus.push(SeStackCommand::Goto);
-
-        // println!("CallF {} {}", self.head_sack_all(), self.head_sack_func());
-        // Goto消費
         self.sub_stack(1);
-
-        // 返り値
-        if !ty.as_func().unwrap().return_type.is_void() {
-            self.sub_alloc(1);
-        }
 
         // 帰りアドレス分
         self.sub_stack(1);
@@ -432,8 +439,9 @@ impl CodeGenStatus {
 
         // グローバルアドレス分
         self.sub_stack(1);
+        //帰りアドレスのalloc分値が入った後はpushと同じ扱い
 
-        // println!("CallE {} {}", self.head_sack_all(), self.head_sack_func());
+        self.sub_alloc(ty.as_func().unwrap().return_type.size());
     }
 }
 

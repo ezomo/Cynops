@@ -194,7 +194,7 @@ pub fn generate_program(program: Program) {
     }
 
     // cgs.funcs.iter().for_each(|x| {
-    //     eprintln!("{}", x.sig.symbol.ident.name);
+    //     eprintln!("{}:{:?}", x.sig.symbol.ident.name, x.entry);
     //     dbg!(&x.body);
     // });
 
@@ -251,7 +251,7 @@ pub fn convert(b: SeStackCommand) -> StackInst {
                 Arithmetic::Ampersand => StackInst::And,
                 Arithmetic::GreaterGreater => StackInst::RShift,
                 Arithmetic::LessLess => StackInst::LShift,
-                _ => unreachable!(),
+                _ => unreachable!("{:?}", a),
             },
             BinaryOp::Comparison(a) => match a {
                 Comparison::EqualEqual => StackInst::Eq,
