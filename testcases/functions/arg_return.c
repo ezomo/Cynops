@@ -29,7 +29,7 @@ void printf(char (*s)[0]) {
 
 void none(void) { return; }
 int same(int a) { return a; }
-int copy(int* a) { return *a }
+int copy(int* a) { return *a; }
 char(ezomo(void))[6] { return "ezomo\0"; }
 
 void swap(char* a, char* b) {
