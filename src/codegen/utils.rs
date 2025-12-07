@@ -40,10 +40,10 @@ pub enum StackCommand {
     ReturnPoint(SLabel),            // 関数終了後の戻る場所
     FramePop,                       // フレームを削除
     SellOut,                        //一番上を出力
-    GlobalAddress,                  //グローバルアドレスをスタックに乗せる
-    Address,                        //変数のグローバルアドレスをスタックに
-    AcsessUseGa,                    //メンバアクセス グローバルアドレスできるようにする
-    AcsessUseLa,                    //メンバアクセス グローバルアドレスできるようにする
+    GlobalAddress,                  //グローバルアドレスをスタックに乗せる　関数呼び出し時に使用
+    Address,                        //ローカルアドレスをグローバルアドレスに変換してスタックに乗せる
+    AcsessUseGa,                    //メンバアクセス グローバルアドレスで変数にアクセスする
+    AcsessUseLa,                    //メンバアクセス ローカルアドレスで変数にアクセスする
     Input,                          //入力
     BlockStart(SLabel),             //ブロック開始 label　id としてのSlabel
     BlockEnd(SLabel),               //ブロック終了

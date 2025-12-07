@@ -273,8 +273,6 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
 
 pub fn gen_expr_left(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
     match typed_expr.expr {
-        SemaExpr::String(_) => cgs.outputs.push(typed_expr.into()),
-
         SemaExpr::Symbol(ident) => match ident.get_type().unwrap() {
             Type::Func(_) => cgs.outputs.push(StackCommand::Symbol(ident)),
             _ => {
@@ -325,8 +323,6 @@ pub fn gen_expr_left(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             },
             _ => unreachable!(),
         },
-        SemaExpr::Cast(cast) => {}
-
         _ => unreachable!("{:?}", typed_expr.expr.oneline()),
     }
 }

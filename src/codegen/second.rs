@@ -167,7 +167,6 @@ pub fn start(inputs: Vec<SFunc>, name_gen: &mut NameGenerator) -> Vec<SeStackCom
                 StackCommand::UnaryOp(unary_op) => {
                     cgs.outpus.push(SeStackCommand::UnaryOp(unary_op))
                 }
-
                 StackCommand::Symbol(symbol) => cgs.push_usize(
                     *cgs.symbol_table
                         .get(&symbol)
@@ -217,9 +216,9 @@ pub fn start(inputs: Vec<SFunc>, name_gen: &mut NameGenerator) -> Vec<SeStackCom
                     cgs.outpus.push(SeStackCommand::SellOut);
                     cgs.sub_stack(1);
                 }
-
                 StackCommand::Comment(com) => cgs.outpus.push(SeStackCommand::Comment(com)),
                 StackCommand::GlobalAddress => {
+                    // 関数呼び出し時に現状のグローバルアドレスをスタックに乗せる
                     cgs.outpus
                         .push(SeStackCommand::Comment("push_global_address_start".into()));
 
