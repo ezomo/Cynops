@@ -193,10 +193,10 @@ pub fn generate_program(program: Program) {
         gen_top_level(item, &mut cgs);
     }
 
-    // cgs.funcs.iter().for_each(|x| {
-    //     eprintln!("{}:{:?}", x.sig.symbol.ident.name, x.entry);
-    //     dbg!(&x.body);
-    // });
+    cgs.funcs.iter().for_each(|x| {
+        eprintln!("{}:{:?}", x.sig.symbol.ident.name, x.entry);
+        dbg!(&x.body);
+    });
 
     // eprintln!("===");
 

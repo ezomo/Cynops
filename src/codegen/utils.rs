@@ -41,7 +41,7 @@ pub enum StackCommand {
     FramePop,                       // フレームを削除
     SellOut,                        //一番上を出力
     GlobalAddress,                  //グローバルアドレスをスタックに乗せる　関数呼び出し時に使用
-    Address,                        //ローカルアドレスをグローバルアドレスに変換してスタックに乗せる
+    La2GaAddress,                   //ローカルアドレスをグローバルアドレスに変換してスタックに乗せる
     AcsessUseGa,                    //メンバアクセス グローバルアドレスで変数にアクセスする
     AcsessUseLa,                    //メンバアクセス ローカルアドレスで変数にアクセスする
     Input,                          //入力
@@ -75,7 +75,7 @@ impl std::fmt::Debug for StackCommand {
             StackCommand::SellOut => write!(f, "SellOut"),
             StackCommand::Comment(this) => write!(f, "Comment {}", this),
             StackCommand::GlobalAddress => write!(f, "GlobalAddress"),
-            StackCommand::Address => write!(f, "Address"),
+            StackCommand::La2GaAddress => write!(f, "La2GaAddress"),
             StackCommand::AcsessUseGa => write!(f, "AccessUseGa"),
             StackCommand::AcsessUseLa => write!(f, "AccessUseLa"),
             StackCommand::Input => write!(f, "Input"),

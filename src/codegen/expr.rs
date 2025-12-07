@@ -3,6 +3,14 @@ use crate::op::*;
 use crate::sema::ast::*;
 use crate::visualize::OneLine;
 
+fn load(ty: &Type) -> Vec<StackCommand> {
+    vec![StackCommand::AcsessUseGa, StackCommand::Load(ty.clone())]
+}
+
+fn store(ty: &Type) -> Vec<StackCommand> {
+    vec![StackCommand::AcsessUseGa, StackCommand::Store(ty.clone())]
+}
+
 pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
     match typed_expr.expr {
         SemaExpr::Binary(binary) => match binary.op {
@@ -134,8 +142,8 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             AssignOp::Equal => {
                 gen_expr(*assign.rhs, cgs);
                 gen_expr_left(*assign.lhs.clone(), cgs);
-                cgs.outputs
-                    .push(StackCommand::Store(typed_expr.r#type.clone()));
+
+                cgs.outputs.extend(store(&typed_expr.r#type));
 
                 // 非効率ではあるが，面倒なのだ
                 gen_expr(*assign.lhs, cgs);
@@ -180,26 +188,21 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
                     cgs,
                 );
             }
-
             UnaryOp::Tilde => {
                 gen_expr(*unary.expr, cgs);
                 cgs.outputs.push(StackCommand::UnaryOp(UnaryOp::bang()));
             }
             UnaryOp::Ampersand => {
                 gen_expr_left(*unary.expr.clone(), cgs);
-
-                if !matches!(unary.expr.r#type, Type::Func(_)) {
-                    cgs.outputs.pop();
-                    cgs.outputs.push(StackCommand::Address);
-                }
             }
-
             UnaryOp::Asterisk => {
                 gen_expr_left(*unary.expr.clone(), cgs);
-                cgs.outputs.push(StackCommand::AcsessUseGa);
-                cgs.outputs.push(StackCommand::Load(typed_expr.r#type));
-            }
+                cgs.outputs.extend(load(&unary.expr.clone().r#type));
 
+                if !matches!(typed_expr.r#type, Type::Func(_)) {
+                    cgs.outputs.extend(load(&typed_expr.r#type));
+                }
+            }
             UnaryOp::Minus => {
                 gen_expr(*unary.expr, cgs);
                 cgs.outputs.push(StackCommand::UnaryOp(UnaryOp::minus()));
@@ -226,8 +229,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
                 .push(StackCommand::IndexAccess(typed_expr.r#type.clone()));
 
             if !typed_expr.r#type.is_address() {
-                cgs.outputs
-                    .push(StackCommand::Load(typed_expr.r#type.clone()));
+                cgs.outputs.extend(load(&typed_expr.r#type));
             }
         }
         SemaExpr::MemberAccess(member_access) => match member_access.kind {
@@ -245,8 +247,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
                     cgs.outputs
                         .push(StackCommand::MemberAccess(types, pos.unwrap()));
 
-                    cgs.outputs
-                        .push(StackCommand::Load(typed_expr.r#type.clone()));
+                    cgs.outputs.extend(load(&typed_expr.r#type));
                 }
                 _ => unreachable!(),
             },
@@ -277,7 +278,7 @@ pub fn gen_expr_left(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             Type::Func(_) => cgs.outputs.push(StackCommand::Symbol(ident)),
             _ => {
                 cgs.outputs.push(StackCommand::Symbol(ident));
-                cgs.outputs.push(StackCommand::AcsessUseLa);
+                cgs.outputs.push(StackCommand::La2GaAddress);
             }
         },
         SemaExpr::Unary(unary) => match unary.op {
@@ -288,11 +289,10 @@ pub fn gen_expr_left(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
 
             UnaryOp::Asterisk => {
                 gen_expr_left(*unary.expr.clone(), cgs);
-                cgs.outputs
-                    .push(StackCommand::Load(unary.expr.clone().r#type));
-                if !matches!(typed_expr.r#type, Type::Func(_)) {
-                    cgs.outputs.push(StackCommand::AcsessUseGa);
-                }
+                cgs.outputs.extend(load(&unary.expr.clone().r#type));
+                // if !matches!(typed_expr.r#type, Type::Func(_)) {
+                //     cgs.outputs.push(StackCommand::La2GaAddress);
+                // }
             }
 
             UnaryOp::Minus => {}
@@ -323,6 +323,8 @@ pub fn gen_expr_left(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             },
             _ => unreachable!(),
         },
+        SemaExpr::Cast(cast) => {}
+
         _ => unreachable!("{:?}", typed_expr.expr.oneline()),
     }
 }

@@ -180,7 +180,13 @@ pub fn start(inputs: Vec<SFunc>, name_gen: &mut NameGenerator) -> Vec<SeStackCom
                 StackCommand::Store(ty) => cgs.store(ty),
                 StackCommand::Load(ty) => cgs.load(ty),
                 StackCommand::IndexAccess(ty) => {
+                    // 配列の要素は逆向きに配置されているので注意
+                    // int arr[3] = {1,2,3};
+                    // スタック上では
+                    // 3 2 1 のように積まれる場合(1)がarr[0]になる
+                    //すなわち　arrのアドレスも(1)の位置になる
                     cgs.mul(ty.size() as isize);
+                    cgs.mul(-1);
                     cgs.add();
                 } // 下のアドレスから型とオフセットを使ってアドレス計算
                 StackCommand::Label(this) => {
@@ -233,7 +239,7 @@ pub fn start(inputs: Vec<SFunc>, name_gen: &mut NameGenerator) -> Vec<SeStackCom
                     cgs.outpus
                         .push(SeStackCommand::Comment("push_global_address_end".into()));
                 }
-                StackCommand::Address => {
+                StackCommand::La2GaAddress => {
                     cgs.load_grobal_address();
                     cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
                     cgs.sub_stack(1);
@@ -268,7 +274,8 @@ pub fn start(inputs: Vec<SFunc>, name_gen: &mut NameGenerator) -> Vec<SeStackCom
                 }
                 StackCommand::MemberAccess(ty, id) => {
                     cgs.push_usize(ty[0..id].iter().map(|x| x.size()).sum());
-                    cgs.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus()));
+                    cgs.mul(-1);
+                    cgs.add();
                 }
             }
         }
@@ -368,7 +375,7 @@ impl CodeGenStatus {
         self.sub_stack(1);
     }
 
-    // グローバルアドレスをローカルアドレスに変換してスタックに乗せる
+    //現在地からの距離を計算(ローカルアドレス用)
     fn acsess(&mut self) {
         self.outpus
             .push(SeStackCommand::Push(self.head_sack_func() - 1));
