@@ -276,61 +276,6 @@ impl Type {
     pub fn is_void(&self) -> bool {
         matches!(self, Type::Void)
     }
-
-    pub fn is_address(&self) -> bool {
-        match self {
-            Type::Void => false,
-            Type::DotDotDot => false,
-            Type::Int => false,
-            Type::Double => false,
-            Type::Char => false,
-            Type::Pointer(_) => true,
-            Type::Array(_) => true,
-            Type::Func(_) => true,
-            Type::Struct(_) => false,
-            Type::Enum(_) => false,
-            Type::Union(_) => false,
-            Type::Typedef(_) => false,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn to_llvm_format(&self) -> String {
-        match self {
-            Type::Void => "void".to_string(),
-            Type::DotDotDot => "...".to_string(),
-            Type::Int => "i32".to_string(),
-            Type::Double => "double".to_string(),
-            Type::Char => "i8".to_string(),
-            Type::Pointer(ty) => {
-                format!("{}*", ty.to_llvm_format())
-            }
-            Type::Array(arr) => {
-                format!(
-                    "[{} x {}]",
-                    arr.length.as_ref().unwrap().consume_const(),
-                    &arr.array_of.to_llvm_format()
-                )
-            }
-            Type::Func(func) => {
-                format!(
-                    "{} ({})",
-                    func.return_type.to_llvm_format(),
-                    func.params
-                        .iter()
-                        .filter(|x| !x.is_void())
-                        .map(|x| x.to_llvm_format())
-                        .collect::<Vec<String>>()
-                        .join(","),
-                )
-            }
-            Type::Struct(this) => format!("%{}", this.symbol.ident.to_string()),
-            Type::Enum(_) => Type::Int.to_llvm_format(),
-            Type::Union(this) => format!("%{}", this.symbol.ident.to_string()),
-            Type::Typedef(this) => this.get_type().unwrap().to_llvm_format(),
-            _ => todo!("未対応の型: {:?}", self),
-        }
-    }
 }
 
 impl From<Symbol> for TypedExpr {

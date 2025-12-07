@@ -35,5 +35,13 @@ void main(void) {
     print_int(apply(a, b, &div));
     print_int(apply(a, b, &mod));
 
+    int (*fns[])(int, int) = {&add, &sub, &mul, &div, &mod};
+
+    int i = 0;
+
+    for (i = 0; i < 5; i++) {
+        print_int(apply(a, b, fns[i]));
+    }
+
     return;
 }

@@ -228,7 +228,7 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             cgs.outputs
                 .push(StackCommand::IndexAccess(typed_expr.r#type.clone()));
 
-            if !typed_expr.r#type.is_address() {
+            if !matches!(typed_expr.r#type, Type::Func(_)) {
                 cgs.outputs.extend(load(&typed_expr.r#type));
             }
         }

@@ -36,9 +36,9 @@ fn declstmt(declstmt: DeclStmt, cgs: &mut CodeGenStatus) {
             }
         }
         DeclStmt::Typedef(_) => {}
-        DeclStmt::Struct(this) => declare_struct(this, cgs),
         DeclStmt::Enum(this) => declare_enum(this, cgs),
         DeclStmt::Union(this) => declare_union(this, cgs),
+        _ => {}
     }
 }
 
@@ -141,29 +141,9 @@ fn initialize_variable(init_data: InitData, var_type: &Type, cgs: &mut CodeGenSt
     }
 }
 
-fn declare_struct(_init: Struct, _cgs: &mut CodeGenStatus) {}
-
 fn declare_union(init: Union, _cgs: &mut CodeGenStatus) {}
 
-fn declare_enum(init: Enum, cgs: &mut CodeGenStatus) {
-    let mut start = 0;
-
-    for i in 0..init.variants.len() {
-        if let Some(num) = init.variants[i].value {
-            start = num;
-        }
-
-        let name = cgs.name_gen.global_const().to_string();
-        println!(
-            "{} = constant {} {}",
-            name,
-            Type::Int.to_llvm_format(),
-            start
-        );
-        cgs.register_variable(init.variants[i].symbol.clone(), name);
-        start += 1
-    }
-}
+fn declare_enum(init: Enum, cgs: &mut CodeGenStatus) {}
 
 fn control(control: Control, cgs: &mut CodeGenStatus) {
     match control {
