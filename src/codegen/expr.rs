@@ -190,20 +190,14 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
 
                 if !matches!(unary.expr.r#type, Type::Func(_)) {
                     cgs.outputs.pop();
-
                     cgs.outputs.push(StackCommand::Address);
                 }
             }
 
             UnaryOp::Asterisk => {
-                gen_expr(*unary.expr.clone(), cgs);
-
+                gen_expr_left(*unary.expr.clone(), cgs);
                 cgs.outputs.push(StackCommand::AcsessUseGa);
-
-                //配列は読み込めないのよ　どうしようかな？
-                if typed_expr.r#type.as_array().is_none() {
-                    cgs.outputs.push(StackCommand::Load(typed_expr.r#type));
-                }
+                cgs.outputs.push(StackCommand::Load(typed_expr.r#type));
             }
 
             UnaryOp::Minus => {
@@ -251,10 +245,8 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
                     cgs.outputs
                         .push(StackCommand::MemberAccess(types, pos.unwrap()));
 
-                    if !typed_expr.r#type.is_address() {
-                        cgs.outputs
-                            .push(StackCommand::Load(typed_expr.r#type.clone()));
-                    }
+                    cgs.outputs
+                        .push(StackCommand::Load(typed_expr.r#type.clone()));
                 }
                 _ => unreachable!(),
             },
@@ -294,7 +286,7 @@ pub fn gen_expr_left(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             UnaryOp::Bang => {}
 
             UnaryOp::Tilde => {}
-            UnaryOp::Ampersand => gen_expr(*unary.expr, cgs),
+            UnaryOp::Ampersand => gen_expr_left(*unary.expr, cgs),
 
             UnaryOp::Asterisk => {
                 gen_expr_left(*unary.expr.clone(), cgs);
@@ -317,7 +309,18 @@ pub fn gen_expr_left(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
         SemaExpr::MemberAccess(member_access) => match member_access.kind {
             MemberAccessOp::Dot => match &member_access.base.r#type {
                 Type::Union(_) => {}
-                Type::Struct(_) => {}
+                Type::Struct(st) => {
+                    gen_expr_left(*member_access.base.clone(), cgs);
+                    let pos = st
+                        .member
+                        .iter()
+                        .map(|x| x.ident.clone())
+                        .position(|x| x == member_access.member);
+
+                    let types = st.member.iter().map(|x| x.get_type().unwrap()).collect();
+                    cgs.outputs
+                        .push(StackCommand::MemberAccess(types, pos.unwrap()));
+                }
                 _ => unreachable!(),
             },
             _ => unreachable!(),
