@@ -159,6 +159,12 @@ pub enum InsertFunction {
     PrintDouble,
     #[strum(serialize = "InitDouble")]
     InitDouble,
+    #[strum(serialize = "DoubleGreater")]
+    DoubleGreater,
+    #[strum(serialize = "DoubleLess")]
+    DoubleLess,
+    #[strum(serialize = "DoubleEqual")]
+    DoubleEqual,
 }
 
 pub struct CodeGenStatus {

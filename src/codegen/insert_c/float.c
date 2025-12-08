@@ -16,3 +16,21 @@ Double InitDouble(int num, int dp) {
     Double tmp = {num, dp};
     return tmp;
 }
+
+int DoubleGreater(Double a, Double b) {
+    // まず整数部で比較
+    if (a.integer_part > b.integer_part) return 1;
+    if (a.integer_part < b.integer_part) return 0;
+
+    // 整数部が同じなら小数部で比較
+    if (a.decimal_part > b.decimal_part) return 1;
+    return 0;
+}
+int DoubleLess(Double a, Double b) { return DoubleGreater(b, a); }
+
+int DoubleLess(Double a, Double b) { return DoubleGreater(b, a); }
+
+int DoubleEqual(Double a, Double b) {
+    return (a.integer_part == b.integer_part) &&
+           (a.decimal_part == b.decimal_part);
+}

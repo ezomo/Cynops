@@ -11,133 +11,58 @@ fn store(ty: &Type) -> Vec<StackCommand> {
     vec![StackCommand::AcsessUseGa, StackCommand::Store(ty.clone())]
 }
 
+impl BinaryOp {
+    fn insert_map(&self, ty: &Type) -> Option<InsertFunction> {
+        match self {
+            Self::Comparison(com) => match com {
+                Comparison::Greater if ty == &Type::Int => InsertFunction::Greater.into(),
+                Comparison::Less if ty == &Type::Int => InsertFunction::Less.into(),
+                Comparison::GreaterEqual if ty == &Type::Int => InsertFunction::GreaterEqual.into(),
+                Comparison::LessEqual if ty == &Type::Int => InsertFunction::LessEqual.into(),
+
+                Comparison::EqualEqual if ty == &Type::Double => InsertFunction::DoubleEqual.into(),
+                Comparison::Greater if ty == &Type::Double => InsertFunction::DoubleGreater.into(),
+                Comparison::Less if ty == &Type::Double => InsertFunction::DoubleLess.into(),
+                _ => None,
+            },
+            Self::Arithmetic(ari) => match ari {
+                Arithmetic::Slash if ty == &Type::Int => InsertFunction::Slash.into(),
+                Arithmetic::Percent if ty == &Type::Int => InsertFunction::Mod.into(),
+                _ => None,
+            },
+            BinaryOp::Logical(logical) => match logical {
+                Logical::AmpersandAmpersand => InsertFunction::Land.into(),
+                _ => None,
+            },
+        }
+    }
+}
+
+fn try_codegen_binop(cgs: &mut CodeGenStatus, key: InsertFunction, binary: Binary) -> bool {
+    if let Some(func) = cgs.insert_function.get(&key) {
+        codegen_call_fn(
+            Call::new(func.clone().into(), vec![*binary.lhs, *binary.rhs]),
+            cgs,
+        );
+        true
+    } else {
+        false
+    }
+}
+
 pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
     match typed_expr.expr {
-        SemaExpr::Binary(binary) => match binary.op {
-            BinaryOp::Comparison(Comparison::Greater)
-                if cgs.insert_function.get(&InsertFunction::Greater).is_some() =>
-            {
-                codegen_call_fn(
-                    Call::new(
-                        cgs.insert_function
-                            .get(&InsertFunction::Greater)
-                            .unwrap()
-                            .clone()
-                            .into(),
-                        vec![*binary.lhs, *binary.rhs],
-                    ),
-                    cgs,
-                );
+        SemaExpr::Binary(binary) => {
+            let inset_fn = binary.op.insert_map(&typed_expr.r#type);
+            if let Some(key) = inset_fn {
+                if try_codegen_binop(cgs, key, binary.clone()) {
+                    return;
+                }
             }
-
-            BinaryOp::Comparison(Comparison::Less)
-                if cgs.insert_function.get(&InsertFunction::Less).is_some() =>
-            {
-                codegen_call_fn(
-                    Call::new(
-                        cgs.insert_function
-                            .get(&InsertFunction::Less)
-                            .unwrap()
-                            .clone()
-                            .into(),
-                        vec![*binary.lhs, *binary.rhs],
-                    ),
-                    cgs,
-                );
-            }
-
-            BinaryOp::Comparison(Comparison::GreaterEqual)
-                if cgs
-                    .insert_function
-                    .get(&InsertFunction::GreaterEqual)
-                    .is_some() =>
-            {
-                codegen_call_fn(
-                    Call::new(
-                        cgs.insert_function
-                            .get(&InsertFunction::GreaterEqual)
-                            .unwrap()
-                            .clone()
-                            .into(),
-                        vec![*binary.lhs, *binary.rhs],
-                    ),
-                    cgs,
-                );
-            }
-
-            BinaryOp::Comparison(Comparison::LessEqual)
-                if cgs
-                    .insert_function
-                    .get(&InsertFunction::LessEqual)
-                    .is_some() =>
-            {
-                codegen_call_fn(
-                    Call::new(
-                        cgs.insert_function
-                            .get(&InsertFunction::LessEqual)
-                            .unwrap()
-                            .clone()
-                            .into(),
-                        vec![*binary.lhs, *binary.rhs],
-                    ),
-                    cgs,
-                );
-            }
-
-            BinaryOp::Arithmetic(Arithmetic::Percent)
-                if cgs.insert_function.get(&InsertFunction::Mod).is_some() =>
-            {
-                codegen_call_fn(
-                    Call::new(
-                        cgs.insert_function
-                            .get(&InsertFunction::Mod)
-                            .unwrap()
-                            .clone()
-                            .into(),
-                        vec![*binary.lhs, *binary.rhs],
-                    ),
-                    cgs,
-                );
-            }
-
-            BinaryOp::Arithmetic(Arithmetic::Slash)
-                if cgs.insert_function.get(&InsertFunction::Slash).is_some() =>
-            {
-                codegen_call_fn(
-                    Call::new(
-                        cgs.insert_function
-                            .get(&InsertFunction::Slash)
-                            .unwrap()
-                            .clone()
-                            .into(),
-                        vec![*binary.lhs, *binary.rhs],
-                    ),
-                    cgs,
-                );
-            }
-
-            BinaryOp::Logical(Logical::AmpersandAmpersand)
-                if cgs.insert_function.get(&InsertFunction::Land).is_some() =>
-            {
-                codegen_call_fn(
-                    Call::new(
-                        cgs.insert_function
-                            .get(&InsertFunction::Land)
-                            .unwrap()
-                            .clone()
-                            .into(),
-                        vec![*binary.lhs, *binary.rhs],
-                    ),
-                    cgs,
-                );
-            }
-
-            _ => {
-                gen_expr(*binary.lhs, cgs);
-                gen_expr(*binary.rhs, cgs);
-                cgs.outputs.push(binary.op.into());
-            }
-        },
+            gen_expr(*binary.lhs, cgs);
+            gen_expr(*binary.rhs, cgs);
+            cgs.outputs.push(binary.op.into());
+        }
         SemaExpr::Assign(assign) => match assign.op {
             AssignOp::Equal => {
                 gen_expr(*assign.rhs, cgs);
