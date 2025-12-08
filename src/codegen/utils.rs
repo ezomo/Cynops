@@ -133,7 +133,7 @@ impl From<SLabel> for StackCommand {
 
 use strum_macros::EnumString;
 
-#[derive(EnumString, Debug, Eq, Hash, PartialEq)]
+#[derive(EnumString, Debug, Eq, Hash, PartialEq, Clone)]
 pub enum InsertFunction {
     #[strum(serialize = "Greater")]
     Greater,
@@ -165,6 +165,12 @@ pub enum InsertFunction {
     DoubleLess,
     #[strum(serialize = "DoubleEqual")]
     DoubleEqual,
+    #[strum(serialize = "DoubleAdd")]
+    DoubleAdd,
+    #[strum(serialize = "DoubleSub")]
+    DoubleSub,
+    #[strum(serialize = "DoubleMinus")]
+    DoubleMinus,
 }
 
 pub struct CodeGenStatus {

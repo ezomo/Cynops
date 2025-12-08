@@ -28,6 +28,8 @@ impl BinaryOp {
             Self::Arithmetic(ari) => match ari {
                 Arithmetic::Slash if ty == &Type::Int => InsertFunction::Slash.into(),
                 Arithmetic::Percent if ty == &Type::Int => InsertFunction::Mod.into(),
+                Arithmetic::Plus if ty == &Type::Double => InsertFunction::DoubleAdd.into(),
+                Arithmetic::Minus if ty == &Type::Double => InsertFunction::DoubleSub.into(),
                 _ => None,
             },
             BinaryOp::Logical(logical) => match logical {
@@ -53,9 +55,9 @@ fn try_codegen_binop(cgs: &mut CodeGenStatus, key: InsertFunction, binary: Binar
 pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
     match typed_expr.expr {
         SemaExpr::Binary(binary) => {
-            let inset_fn = binary.op.insert_map(&typed_expr.r#type);
+            let inset_fn = binary.op.insert_map(&binary.lhs.r#type);
             if let Some(key) = inset_fn {
-                if try_codegen_binop(cgs, key, binary.clone()) {
+                if try_codegen_binop(cgs, key.clone(), binary.clone()) {
                     return;
                 }
             }
@@ -142,6 +144,25 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
                 }
             }
             UnaryOp::Minus => {
+                if cgs
+                    .insert_function
+                    .get(&InsertFunction::DoubleMinus)
+                    .is_some()
+                    && matches!(unary.expr.r#type, Type::Double)
+                {
+                    codegen_call_fn(
+                        Call::new(
+                            cgs.insert_function
+                                .get(&InsertFunction::DoubleMinus)
+                                .unwrap()
+                                .clone()
+                                .into(),
+                            vec![*unary.expr],
+                        ),
+                        cgs,
+                    );
+                    return;
+                }
                 gen_expr(*unary.expr, cgs);
                 cgs.outputs.push(StackCommand::UnaryOp(UnaryOp::minus()));
             }
