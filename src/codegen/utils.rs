@@ -1,6 +1,7 @@
 use crate::op::*;
 use crate::sema::ast::*;
 use core::str;
+use ordered_float::OrderedFloat;
 use std::collections::HashMap;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
@@ -130,19 +131,6 @@ impl From<SLabel> for StackCommand {
     }
 }
 
-#[derive(Debug)]
-pub struct CodeGenSpace {
-    pub variables: HashMap<Ident, String>,
-}
-
-impl CodeGenSpace {
-    pub fn new() -> Self {
-        Self {
-            variables: HashMap::new(),
-        }
-    }
-}
-
 use strum_macros::EnumString;
 
 #[derive(EnumString, Debug, Eq, Hash, PartialEq)]
@@ -165,6 +153,12 @@ pub enum InsertFunction {
     Not,
     #[strum(serialize = "Land")]
     Land,
+    #[strum(serialize = "print_int")]
+    PrintInt,
+    #[strum(serialize = "print_double")]
+    PrintDouble,
+    #[strum(serialize = "InitDouble")]
+    InitDouble,
 }
 
 pub struct CodeGenStatus {
@@ -195,40 +189,10 @@ impl CodeGenStatus {
             insert_function: HashMap::new(),
         }
     }
-
-    pub fn register_variable(&self, sybmol: Symbol, string: String) {
-        sybmol
-            .scope
-            .ptr
-            .upgrade()
-            .unwrap()
-            .borrow_mut()
-            .codege_space
-            .variables
-            .insert(sybmol.ident, string);
-    }
 }
 
 pub struct NameGenerator {
     counter: usize,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-
-pub enum LLVMType {
-    GrobalConst,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct LLVMValue {
-    pub variable: String,
-    pub ty: LLVMType,
-}
-
-impl ToString for LLVMValue {
-    fn to_string(&self) -> String {
-        self.variable.clone()
-    }
 }
 
 impl NameGenerator {
@@ -243,13 +207,6 @@ impl NameGenerator {
     fn next(&mut self) -> usize {
         self.counter += 1;
         self.counter
-    }
-
-    pub fn global_const(&mut self) -> LLVMValue {
-        LLVMValue {
-            variable: format!("@{}", self.next()),
-            ty: LLVMType::GrobalConst,
-        }
     }
 
     pub fn slabel(&mut self) -> SLabel {
@@ -270,6 +227,36 @@ impl TypedExpr {
             _ => unreachable!(),
         }
     }
+}
+
+impl From<usize> for TypedExpr {
+    fn from(this: usize) -> Self {
+        TypedExpr::new(Type::Int, SemaExpr::NumInt(this))
+    }
+}
+
+pub fn frac_as_usize(x: OrderedFloat<f64>) -> usize {
+    let f = x.into_inner().abs().fract(); // 絶対値を取って小数部だけ
+
+    if f == 0.0 {
+        return 0;
+    }
+
+    let mut scale = 1.0;
+    let max_digits = 15; // f64 の限界程度
+
+    for _ in 0..max_digits {
+        let v = f * scale;
+        if (v - v.round()).abs() < 1e-12 {
+            // 整数になった
+            return v.round() as usize;
+        }
+        scale *= 10.0;
+    }
+
+    // ここに来るのは、「全然ぴったり整数にならない」場合
+    // とりあえず丸めて返す
+    (f * scale).round() as usize
 }
 
 impl Type {

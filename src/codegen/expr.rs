@@ -151,7 +151,20 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             _ => unreachable!(),
         },
         SemaExpr::NumInt(_) => cgs.outputs.push(typed_expr.into()),
-        SemaExpr::NumFloat(_) => cgs.outputs.push(typed_expr.into()),
+        SemaExpr::NumFloat(this) => codegen_call_fn(
+            Call::new(
+                cgs.insert_function
+                    .get(&InsertFunction::InitDouble)
+                    .unwrap()
+                    .clone()
+                    .into(),
+                vec![
+                    (this.into_inner() as usize).into(),
+                    frac_as_usize(this).into(),
+                ],
+            ),
+            cgs,
+        ),
         SemaExpr::Char(_) => cgs.outputs.push(typed_expr.into()),
         SemaExpr::String(_) => cgs.outputs.push(typed_expr.into()),
         SemaExpr::Symbol(symbol) => {

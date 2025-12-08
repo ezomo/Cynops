@@ -70,14 +70,6 @@ impl Array {
             _ => vec![this_len],
         }
     }
-
-    fn types(&self, b: usize) -> Type {
-        if b == 0 {
-            *self.array_of.clone()
-        } else {
-            self.array_of.as_array().unwrap().types(b - 1)
-        }
-    }
 }
 
 impl InitData {

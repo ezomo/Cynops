@@ -1,5 +1,4 @@
 use super::*;
-use crate::codegen::CodeGenSpace;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
@@ -91,7 +90,6 @@ impl From<&ScopeId> for String {
 #[derive(Debug)]
 pub struct ScopeNode {
     pub id: ScopeId,
-    pub codege_space: CodeGenSpace,
     pub symbols: HashMap<Ident, Type>,
     pub parent: Option<Weak<RefCell<ScopeNode>>>,
     pub children: Vec<Rc<RefCell<ScopeNode>>>,
@@ -108,7 +106,6 @@ impl ScopeNode {
 
         Rc::new(RefCell::new(ScopeNode {
             id,
-            codege_space: CodeGenSpace::new(),
             symbols: HashMap::new(),
             parent: parent.as_ref().map(|p| Rc::downgrade(p)),
             children: Vec::new(),

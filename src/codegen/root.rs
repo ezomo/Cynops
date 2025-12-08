@@ -161,10 +161,67 @@ fn gen_top_level(top_level: TopLevel, cgs: &mut CodeGenStatus) {
 
 pub fn generate_program(program: Program) {
     let mut cgs = CodeGenStatus::new();
-    let (fine_ex, _session) = fine_expr("src/codegen/insert_c/expr.c");
+
+    let (fine_base, _session_base) = fine_expr("src/codegen/insert_c/base.c");
     // sessionは必要，
     {
-        for item in fine_ex.items {
+        for item in fine_base.items {
+            gen_top_level(item, &mut cgs);
+        }
+
+        cgs.funcs.iter().for_each(|x| {
+            if x.sig
+                .symbol
+                .ident
+                .get_name()
+                .parse::<InsertFunction>()
+                .is_ok()
+            {
+                cgs.insert_function.insert(
+                    x.sig
+                        .symbol
+                        .ident
+                        .get_name()
+                        .parse::<InsertFunction>()
+                        .unwrap(),
+                    x.sig.symbol.clone(),
+                );
+            }
+        });
+    }
+
+    let (fine_int, _session_int) = fine_expr("src/codegen/insert_c/int.c");
+    // sessionは必要，
+    {
+        for item in fine_int.items {
+            gen_top_level(item, &mut cgs);
+        }
+
+        cgs.funcs.iter().for_each(|x| {
+            if x.sig
+                .symbol
+                .ident
+                .get_name()
+                .parse::<InsertFunction>()
+                .is_ok()
+            {
+                cgs.insert_function.insert(
+                    x.sig
+                        .symbol
+                        .ident
+                        .get_name()
+                        .parse::<InsertFunction>()
+                        .unwrap(),
+                    x.sig.symbol.clone(),
+                );
+            }
+        });
+    }
+
+    let (fine_float, _session_float) = fine_expr("src/codegen/insert_c/float.c");
+    // sessionは必要，
+    {
+        for item in fine_float.items {
             gen_top_level(item, &mut cgs);
         }
 

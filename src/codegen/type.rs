@@ -1,3 +1,5 @@
+use std::rc::Weak;
+
 use crate::sema::ast::*;
 
 pub trait Size {
@@ -11,7 +13,8 @@ impl Size for Type {
             Type::Error => 0,
             Type::Char => 1,
             Type::Int => 1,
-            Type::Double => 2,
+            // 普通に2と書いても良かったがのちに困るので
+            Type::Double => &Type::Int.size() + &Type::Int.size(),
             Type::DotDotDot => 0,
             Type::Unresolved => 0,
             Type::Pointer(_) => 1,
