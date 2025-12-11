@@ -30,6 +30,7 @@ impl BinaryOp {
                 Arithmetic::Percent if ty == &Type::Int => InsertFunction::Mod.into(),
                 Arithmetic::Plus if ty == &Type::Double => InsertFunction::DoubleAdd.into(),
                 Arithmetic::Minus if ty == &Type::Double => InsertFunction::DoubleSub.into(),
+                Arithmetic::Asterisk if ty == &Type::Double => InsertFunction::DoubleMul.into(),
                 _ => None,
             },
             BinaryOp::Logical(logical) => match logical {

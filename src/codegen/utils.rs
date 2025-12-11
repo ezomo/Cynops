@@ -171,6 +171,9 @@ pub enum InsertFunction {
     DoubleSub,
     #[strum(serialize = "DoubleMinus")]
     DoubleMinus,
+
+    #[strum(serialize = "DoubleMul")]
+    DoubleMul,
 }
 
 pub struct CodeGenStatus {

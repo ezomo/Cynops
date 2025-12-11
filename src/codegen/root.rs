@@ -290,6 +290,16 @@ fn fine_expr(filename: impl ToString) -> (Program, Session) {
     let new_program = sema::convert::program(&program, &mut sema_session);
     let type_check_result = sema::r#type::program(&new_program, &mut sema_session);
 
+    let type_errors = type_check_result.errors;
+
+    // 型エラーを表示
+    if !type_errors.is_empty() {
+        eprintln!("=== Type Errors ===");
+        for error in &type_errors {
+            eprintln!("型エラー: {}", error);
+        }
+    }
+
     (type_check_result.result, sema_session)
 }
 

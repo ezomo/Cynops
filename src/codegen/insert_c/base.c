@@ -69,7 +69,7 @@ int Slash(int a, int b) {
 
     if (b_abs == 0) {  //
         char error[] = "\nerror:  divide by zero\n";
-        print_error(&error);
+        print_error((char (*)[0]) & error);
         exit();
     }
 
@@ -92,7 +92,7 @@ int Slash(int a, int b) {
 int Mod(int a, int b) {
     if (b == 0) {
         char error[] = "\nerror: modulo by zero \n";
-        print_error(&error);
+        print_error((char (*)[0]) & error);
         exit();
     }
 
@@ -107,7 +107,7 @@ int Land(int a, int b) { return (int2bool(a) & int2bool(b)); }
 void print_error(char (*s)[0]) {
     int i = 0;
     for (i = 0; (*s)[i] != '\0'; i += 1) {
-        putchar((int)(*s)[i]);
+        putchar((*s)[i]);
     }
     return;
 }
