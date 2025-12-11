@@ -306,6 +306,8 @@ int take_digits(int (*arr)[0], int size, int off) {
     return result;
 }
 
+int min(int a, int b) { return (a < b) ? a : b; }
+
 Double DoubleMul(Double a, Double b) {
     if (IS_Zero(a) || IS_Zero(b)) {
         return InitDouble(0, 0);
@@ -352,10 +354,14 @@ Double DoubleMul(Double a, Double b) {
     int d_part_size = digits_without_trailing_zeros(a.decimal_part) +
                       digits_without_trailing_zeros(b.decimal_part);
 
-    int off = (d_part_size > 4) ? (d_part_size - 4) : 0;
     Double re_turn = InitDouble(0, 0);
-    re_turn.decimal_part = take_digits((int (*)[0]) & result_sum, 4, off);
-    re_turn.integer_part = take_digits((int (*)[0]) & result_sum, 4, 4 + off);
+
+    int off = (d_part_size > 4) ? (d_part_size - 4) : 0;
+    int size = min(d_part_size, 4);
+    re_turn.decimal_part = take_digits((int (*)[0]) & result_sum, size, off);
+    re_turn.integer_part =
+        take_digits((int (*)[0]) & result_sum, 4, size + off);
+    re_turn.sgn = a.sgn * b.sgn;
 
     return re_turn;
 }
