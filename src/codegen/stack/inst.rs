@@ -1,5 +1,3 @@
-use std::fmt::write;
-
 use super::*;
 
 #[derive(Default, Clone, PartialEq, Hash, Eq, PartialOrd, Ord)]
@@ -21,7 +19,6 @@ pub enum StackInst {
     Sub,
     Mul,
     Div,
-    Mod,
     Negate,
 
     // Bitwise Ops
@@ -48,10 +45,7 @@ pub enum StackInst {
     // Memory
     Alloc(usize), // No runtime allocations yet
     Dealloc(usize),
-    GblStr,
-    GblRead,
-    LclStr(usize),  // Offset from top of stack
-    LclRead(usize), // Offset from top of stack
+    LclStr(usize), // Offset from top of stack
     StkRead,
     StkStr,
 
@@ -107,19 +101,18 @@ impl StackInst {
             Swap => (2, Some(2)),
             LNot | Not => (1, Some(1)),
             Add | Sub | Mul | Div | Eq | Neq | Lt | LtEq | Gr | GrEq | LAnd | LOr | LShift
-            | RShift | And | Or | Xor | Mod => (2, Some(1)),
+            | RShift | And | Or | Xor => (2, Some(1)),
             Alloc(n) => (0, Some(*n)),
             Dealloc(n) => (*n, Some(0)),
-            GblStr | StkStr => (2, Some(0)),
-            GblRead | StkRead => (1, Some(1)),
             Negate => (1, Some(1)),
             LclStr(_) => (1, Some(0)),
-            LclRead(_) => (0, Some(1)),
             Label(_) => (0, None),
             Branch(_, _) => (1, Some(0)),
             Goto => (1, Some(0)),
             Exit => (0, None),
             PutChar => (1, Some(0)),
+            StkRead => todo!(),
+            StkStr => todo!(),
         }
     }
 }
@@ -140,18 +133,14 @@ impl std::fmt::Debug for StackInst {
             Sub => write!(f, "Sub"),
             Mul => write!(f, "Mul"),
             Div => write!(f, "Div"),
-            Mod => write!(f, "Mod"),
             Negate => write!(f, "Negate"),
             LShift => write!(f, "LShift"),
             RShift => write!(f, "RShift"),
             Alloc(n) => write!(f, "Alloc({})", n),
             Dealloc(n) => write!(f, "Dealloc({})", n),
-            GblStr => write!(f, "GblStr"),
-            GblRead => write!(f, "GblRead"),
             StkStr => write!(f, "StkStr"),
             StkRead => write!(f, "StkRead"),
             LclStr(d) => write!(f, "LclStr({})", d),
-            LclRead(d) => write!(f, "LclRead({})", d),
             Label(l) => write!(f, "Label({})", l),
             Branch(t, e) => write!(f, "Branch({}, {})", t, e),
             Goto => write!(f, "Goto"),

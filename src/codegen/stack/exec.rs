@@ -81,30 +81,6 @@ impl StackMachine {
                     let top = *self.stack.last().unwrap();
                     self.stack.push(top);
                 }
-
-                GblRead => {
-                    let addr = self.stack.pop().unwrap();
-                    let value = self
-                        .stack
-                        .get(addr as usize)
-                        .expect("Global address does not exist.");
-                    self.stack.push(*value)
-                }
-                GblStr => {
-                    let addr = self.stack.pop().unwrap();
-                    let word = self.stack.pop().unwrap();
-
-                    *self
-                        .stack
-                        .get_mut(addr as usize)
-                        .expect("Global address does not exist.") = word;
-                }
-                LclRead(addr) => {
-                    let addr = self.stack.len() - 1 - addr;
-                    let value = *self.stack.get(addr).expect("Address does not exist");
-
-                    self.stack.push(value);
-                }
                 LclStr(addr) => {
                     let word = self.stack.pop().unwrap();
                     let addr = self.stack.len() - addr;
@@ -141,7 +117,7 @@ impl StackMachine {
                     continue;
                 }
 
-                o @ (Add | Sub | Mul | Div | LShift | RShift | And | Or | Xor | Mod) => {
+                o @ (Add | Sub | Mul | Div | LShift | RShift | And | Or | Xor) => {
                     let b = self.stack.pop().unwrap();
                     let a = self.stack.pop().unwrap();
                     let out = match o {
@@ -154,7 +130,6 @@ impl StackMachine {
                         And => a & b,
                         Or => a | b,
                         Xor => a ^ b,
-                        Mod => a % b,
                         _ => unreachable!(),
                     };
                     self.stack.push(out)

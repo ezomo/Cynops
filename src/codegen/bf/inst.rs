@@ -130,23 +130,7 @@ pub fn emit_bf(inst: StackInst, bf: &mut Vec<BF>) {
             for _ in 0..n {
                 bf.extend(BF::parse("[-]<"));
             }
-        }
-        LclRead(n) => {
-            let left = repeat_n(Left, n).collect::<Vec<_>>();
-            let right = repeat_n(Right, n).collect::<Vec<_>>();
-            bf.extend(left.clone());
-            bf.extend(BF::parse("[-"));
-            bf.extend(right.clone());
-            bf.extend(BF::parse(">+>+<<")); // Make 2 copies
-            bf.extend(left.clone());
-            bf.extend(BF::parse("]"));
-            bf.extend(right.clone());
-            bf.extend(BF::parse(">>[-<<")); // Move 1 copy back
-            bf.extend(left);
-            bf.extend(BF::parse("+"));
-            bf.extend(right);
-            bf.extend(BF::parse(">>]<"))
-        }
+        },
         LclStr(n) => {
             let left = repeat_n(Left, n).collect::<Vec<_>>();
             let right = repeat_n(Right, n).collect::<Vec<_>>();
@@ -280,20 +264,6 @@ pub fn emit_bf(inst: StackInst, bf: &mut Vec<BF>) {
             >[-]>[-]>[-<<<+>>>]<<<
             ",
         )),
-        Mod => bf.extend(BF::parse(
-            // From https://esolangs.org/wiki/Brainfuck_algorithms#Modulo
-            "
-            // Prepare state
-            >[-]>[-]>[-]<<<
-            [->+<]<[->+<]
-            [->>+<<]<[->+<]>
-            // Perform modulo
-            [>->+<[>]>[<+>-]<<[<]>-]
-            // Return answer
-            >[-]>[-<<<+>>>]<<<
-            ",
-        )),
-
         // StkRead & StkStr taken from the internet: https://www.inshame.com/2008/02/efficient-brainfuck-tables.html (directions flipped)
         StkRead => bf.extend(BF::parse(
             "
@@ -324,7 +294,6 @@ pub fn emit_bf(inst: StackInst, bf: &mut Vec<BF>) {
             <<<<
             ",
         )),
-
         Branch(t, f) => {
             bf.push(Right);
             bf.extend(repeat_n(Inc, f as _));
