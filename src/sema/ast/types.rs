@@ -211,28 +211,6 @@ impl Type {
             None
         }
     }
-    pub fn as_struct(&self) -> Option<&Struct> {
-        if let Type::Struct(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-
-    pub fn as_array(&self) -> Option<&Array> {
-        if let Type::Array(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-    pub fn as_par(&self) -> Option<&Type> {
-        if let Type::Pointer(ptr) = self {
-            Some(ptr)
-        } else {
-            None
-        }
-    }
 }
 
 impl Type {

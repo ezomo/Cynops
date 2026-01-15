@@ -1,4 +1,5 @@
 use super::*;
+use crate::codegen::r#type::Size;
 use crate::op::*;
 use crate::sema::ast::*;
 use crate::visualize::OneLine;
@@ -214,8 +215,10 @@ pub fn gen_expr(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             _ => unreachable!(),
         },
         SemaExpr::Sizeof(sizeof) => match sizeof {
-            Sizeof::Type(ty) => {}
-            Sizeof::TypedExpr(num) => {}
+            Sizeof::Type(ty) => cgs.outputs.push(StackCommand::Push(ty.size().into())),
+            Sizeof::TypedExpr(num) => cgs
+                .outputs
+                .push(StackCommand::Push(num.as_ref().r#type.size().into())),
         },
         SemaExpr::Cast(cast) => {
             // どうせ今はintしかないので
@@ -283,7 +286,9 @@ pub fn gen_expr_left(typed_expr: TypedExpr, cgs: &mut CodeGenStatus) {
             },
             _ => unreachable!(),
         },
-        SemaExpr::Cast(cast) => {}
+        SemaExpr::Cast(_cast) => {
+            // TODO
+        }
 
         _ => unreachable!("{:?}", typed_expr.expr.oneline()),
     }

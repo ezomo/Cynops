@@ -14,15 +14,5 @@ mkdir -p ./out/
 cargo run "$1" codegen > ./out/result.txt
 gcc -DMASK=2 hydrogen.c -o brainck
 ./brainck ./out/result.txt
+rm brainck
 
-# lli ./out/result.ll
-
-# # # アセンブリ生成 & 実行ファイル作成
-# opt -O3 ./out/result.ll -S -o ./out/optimized.ll
-# # lli ./out/optimized.ll
-# llc ./out/result.ll
-# clang ./out/optimized.s -o ./out/result
-# # # lli ./out/optimized.ll
-# # # 実行 & 終了コード表示
-# ./out/result
-# # # echo $?

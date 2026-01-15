@@ -1,5 +1,3 @@
-use std::rc::Weak;
-
 use crate::sema::ast::*;
 
 pub trait Size {

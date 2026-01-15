@@ -65,11 +65,6 @@ impl StackMachine {
                     let len = self.stack.len();
                     self.stack.resize(len - n, 0);
                 }
-                Move(d) => {
-                    let n = self.stack.len() - 1;
-                    let word = *self.stack.last().unwrap();
-                    self.stack[n - d] = word;
-                }
                 Swap => {
                     let a = self.stack.pop().unwrap();
                     let b = self.stack.pop().unwrap();
@@ -80,12 +75,6 @@ impl StackMachine {
                 Copy => {
                     let top = *self.stack.last().unwrap();
                     self.stack.push(top);
-                }
-                LclStr(addr) => {
-                    let word = self.stack.pop().unwrap();
-                    let addr = self.stack.len() - addr;
-
-                    *self.stack.get_mut(addr).expect("Address does not exist") = word;
                 }
                 StkRead => {
                     let addr = self.stack.pop().unwrap();

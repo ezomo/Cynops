@@ -6,11 +6,11 @@ pub enum StackInst {
     #[default]
     Nop,
     Comment(String),
+    #[allow(unused)]
     Debug(&'static str),
 
     // Stack Manipulation
     Push(Word),
-    Move(usize), // Copy word into stack
     Swap,
     Copy,
 
@@ -45,7 +45,6 @@ pub enum StackInst {
     // Memory
     Alloc(usize), // No runtime allocations yet
     Dealloc(usize),
-    LclStr(usize), // Offset from top of stack
     StkRead,
     StkStr,
 
@@ -69,7 +68,6 @@ impl StackInst {
 
         while let Some(inst) = stream.pop() {
             let expansion: &[_] = match inst {
-                Move(d) => &[Copy, LclStr(d + 1)],
                 Exit => &[Push(0), Goto],
                 Eq => &[Neq, LNot],
                 // All comparisons are in terms of GrEq
@@ -89,6 +87,7 @@ impl StackInst {
         *stream = out;
     }
 
+    #[cfg(test)]
     // # of words of input + # of words of output (if constant)
     pub fn signature(&self) -> (usize, Option<usize>) {
         use StackInst::*;
@@ -96,7 +95,6 @@ impl StackInst {
             Comment(_) | Debug(_) | Nop => (0, Some(0)),
             Push(_) => (0, Some(1)),
             Input => (0, Some(1)),
-            Move(_) => (1, Some(0)),
             Copy => (1, Some(2)),
             Swap => (2, Some(2)),
             LNot | Not => (1, Some(1)),
@@ -105,7 +103,6 @@ impl StackInst {
             Alloc(n) => (0, Some(*n)),
             Dealloc(n) => (*n, Some(0)),
             Negate => (1, Some(1)),
-            LclStr(_) => (1, Some(0)),
             Label(_) => (0, None),
             Branch(_, _) => (1, Some(0)),
             Goto => (1, Some(0)),
@@ -126,7 +123,6 @@ impl std::fmt::Debug for StackInst {
             Comment(c) => write!(f, "// {} ", c),
             Push(c) => write!(f, "Push({})", c),
             Input => write!(f, "Input"),
-            Move(d) => write!(f, "Move({})", d),
             Swap => write!(f, "Swap"),
             Copy => write!(f, "Copy"),
             Add => write!(f, "Add"),
@@ -140,7 +136,6 @@ impl std::fmt::Debug for StackInst {
             Dealloc(n) => write!(f, "Dealloc({})", n),
             StkStr => write!(f, "StkStr"),
             StkRead => write!(f, "StkRead"),
-            LclStr(d) => write!(f, "LclStr({})", d),
             Label(l) => write!(f, "Label({})", l),
             Branch(t, e) => write!(f, "Branch({}, {})", t, e),
             Goto => write!(f, "Goto"),

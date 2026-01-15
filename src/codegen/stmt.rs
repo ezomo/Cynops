@@ -36,8 +36,6 @@ fn declstmt(declstmt: DeclStmt, cgs: &mut CodeGenStatus) {
             }
         }
         DeclStmt::Typedef(_) => {}
-        DeclStmt::Enum(this) => declare_enum(this, cgs),
-        DeclStmt::Union(this) => declare_union(this, cgs),
         _ => {}
     }
 }
@@ -133,10 +131,6 @@ fn initialize_variable(init_data: InitData, var_type: &Type, cgs: &mut CodeGenSt
     }
 }
 
-fn declare_union(init: Union, _cgs: &mut CodeGenStatus) {}
-
-fn declare_enum(init: Enum, cgs: &mut CodeGenStatus) {}
-
 fn control(control: Control, cgs: &mut CodeGenStatus) {
     match control {
         Control::If(if_stmt) => controls::r#if(if_stmt, cgs),
@@ -212,7 +206,9 @@ mod controls {
         );
     }
 
-    pub fn r#do_while(do_while_stmt: DoWhile, cgs: &mut CodeGenStatus) {}
+    pub fn r#do_while(_do_while_stmt: DoWhile, _cgs: &mut CodeGenStatus) {
+        // TODO
+    }
 
     pub fn r#for(for_stmt: For, cgs: &mut CodeGenStatus) {
         let label_start = cgs.name_gen.slabel();
@@ -270,5 +266,7 @@ mod controls {
         cgs.continue_stack.pop();
     }
 
-    pub fn r#switch(switch_stmt: Switch, cgs: &mut CodeGenStatus) {}
+    pub fn r#switch(_switch_stmt: Switch, _cgs: &mut CodeGenStatus) {
+        // TODO
+    }
 }

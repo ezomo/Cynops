@@ -131,18 +131,6 @@ pub fn emit_bf(inst: StackInst, bf: &mut Vec<BF>) {
                 bf.extend(BF::parse("[-]<"));
             }
         },
-        LclStr(n) => {
-            let left = repeat_n(Left, n).collect::<Vec<_>>();
-            let right = repeat_n(Right, n).collect::<Vec<_>>();
-            bf.extend(left.clone());
-            bf.extend(BF::parse("[-]")); // Erase previous value
-            bf.extend(right.clone());
-            bf.extend(BF::parse("[-")); // Enter move loop
-            bf.extend(left.clone());
-            bf.extend(BF::parse("+")); // Shift 1 unit over
-            bf.extend(right.clone());
-            bf.extend(BF::parse("]<")); // Exit loop and move stack head
-        }
         Label(n) if n != 0 => {
             bf.extend(BF::parse("<[->+>+<<]>>[-<<+>>]<")); // Move to, and then copy, label
             bf.extend(repeat_n(Dec, n as _)); // Check equality
