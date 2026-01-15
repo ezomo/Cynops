@@ -10,7 +10,6 @@ fi
 rm -rf ./out/
 mkdir -p ./out/
 
-# cargoを実行してLLVM IRを生成
 cargo run "$1" codegen > ./out/result.txt
 gcc -DMASK=2 hydrogen.c -o brainck
 ./brainck ./out/result.txt
