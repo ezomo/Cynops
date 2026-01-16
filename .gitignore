@@ -3,7 +3,7 @@
 /.cargo
 /.vscode
 a.out
-.DS_Store
+**/.DS_Store
 /c
 ./brainfuck
 test.c
