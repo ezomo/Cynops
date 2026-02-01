@@ -11,7 +11,5 @@ rm -rf ./out/
 mkdir -p ./out/
 
 cargo run "$1" codegen > ./out/result.txt
-gcc -DMASK=2 hydrogen.c -o brainck
-./brainck ./out/result.txt
-rm brainck
-
+gcc -DMASK=2 hydrogen.c -o brainfuck
+./brainfuck ./out/result.txt
