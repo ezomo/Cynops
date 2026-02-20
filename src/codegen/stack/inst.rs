@@ -108,8 +108,8 @@ impl StackInst {
             Goto => (1, Some(0)),
             Exit => (0, None),
             PutChar => (1, Some(0)),
-            StkRead => todo!(),
-            StkStr => todo!(),
+            StkStr => (2, Some(0)),
+            StkRead => (1, Some(1)),
         }
     }
 }
