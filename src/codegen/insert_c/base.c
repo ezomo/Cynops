@@ -5,44 +5,58 @@ int sgn(int);
 int abs(int);
 int int2bool(int);
 
-int sgn(int a) {
+int sgn(int a)
+{
     int r = 1;
-    if (32767 <= a) {
-        r = 0;  // 負数
+    if (32767 <= a)
+    {
+        r = 0; // 負数
     }
 
     return r;
 }
 
-int abs(int x) {
+int abs(int x)
+{
     int n = x;
-    if (sgn(x) == 0) {
+    if (sgn(x) == 0)
+    {
         n = 0 - x;
     }
     return n;
 }
 
-int Not(int a) {
-    if (int2bool(a) == 0) {
+int Not(int a)
+{
+    if (int2bool(a) == 0)
+    {
         return 1;
-    } else
+    }
+    else
         return 0;
 }
 
 // a > b
-int Greater(int a, int b) {
+int Greater(int a, int b)
+{
     int a_abs = abs(a);
     int a_sgn = sgn(a);
 
     int b_abs = abs(b);
     int b_sgn = sgn(b);
 
-    if (b_sgn > a_sgn) {
+    if (b_sgn > a_sgn)
+    {
         return 0;
-    } else if (a_sgn > b_sgn) {
+    }
+    else if (a_sgn > b_sgn)
+    {
         return 1;
-    } else {
-        if (a_sgn == 0) {
+    }
+    else
+    {
+        if (a_sgn == 0)
+        {
             return Not(a_abs > b_abs);
         }
         return (a_abs > b_abs);
@@ -55,19 +69,25 @@ int GreaterEqual(int a, int b) { return Greater(a, b) || a == b; }
 
 int LessEqual(int a, int b) { return Less(a, b) || a == b; }
 
-int Ternary(int a, int b, int c) {
-    if (a != 0) {
+int Ternary(int a, int b, int c)
+{
+    if (a != 0)
+    {
         return b;
-    } else {
+    }
+    else
+    {
         return c;
     }
 }
 
-int Slash(int a, int b) {
+int Slash(int a, int b)
+{
     int a_abs = abs(a);
     int b_abs = abs(b);
 
-    if (b_abs == 0) {  //
+    if (b_abs == 0)
+    { //
         char error[] = "\nerror:  divide by zero\n";
         print_error((char (*)[0]) & error);
         exit();
@@ -76,21 +96,29 @@ int Slash(int a, int b) {
     int r = 1;
 
     // 標準で使える/記号はなぜかb=1の時機能しなかった．
-    if (b_abs == 1) {
+    if (b_abs == 1)
+    {
         r = a_abs;
-    } else {
+    }
+    else
+    {
         r = a_abs / b_abs;
     }
 
-    if (sgn(a) != sgn(b)) {
+    if (sgn(a) != sgn(b))
+    {
         return -r;
-    } else {
+    }
+    else
+    {
         return r;
     }
 }
 
-int Mod(int a, int b) {
-    if (b == 0) {
+int Mod(int a, int b)
+{
+    if (b == 0)
+    {
         char error[] = "\nerror: modulo by zero \n";
         print_error((char (*)[0]) & error);
         exit();
@@ -102,18 +130,22 @@ int Mod(int a, int b) {
     return r;
 }
 
-int Land(int a, int b) { return (int2bool(a) & int2bool(b)); }
+int Land(int a, int b) { return (int2bool(a) * int2bool(b)); }
 
-void print_error(char (*s)[0]) {
+void print_error(char (*s)[0])
+{
     int i = 0;
-    for (i = 0; (*s)[i] != '\0'; i += 1) {
+    for (i = 0; (*s)[i] != '\0'; i += 1)
+    {
         putchar((*s)[i]);
     }
     return;
 }
 
-int int2bool(int a) {
-    if (a == 0) {
+int int2bool(int a)
+{
+    if (a == 0)
+    {
         return 0;
     }
     return 1;
