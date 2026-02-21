@@ -355,15 +355,19 @@ impl CodeGenStatus {
             self.outpus.push(SeStackCommand::Push(1));
             self.outpus.push(SeStackCommand::WriteAddr);
         } else if b > 0 {
-            (1..b).for_each(|_| self.outpus.push(SeStackCommand::Copy)); //すでに１つ乗っているので..=ではない
-            (1..b).for_each(|_| self.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus())));
+            self.outpus.push(SeStackCommand::Push(b as usize));
+            self.outpus
+                .push(SeStackCommand::BinaryOP(BinaryOp::asterisk()));
         } else {
             self.outpus.push(SeStackCommand::Copy);
             self.outpus.push(SeStackCommand::Push(0));
             self.outpus.push(SeStackCommand::Push(2));
             self.outpus.push(SeStackCommand::WriteAddr);
-            (1..-b).for_each(|_| self.outpus.push(SeStackCommand::Copy)); //すでに１つ乗っているので..=ではない
-            (1..-b).for_each(|_| self.outpus.push(SeStackCommand::BinaryOP(BinaryOp::plus())));
+
+            self.outpus.push(SeStackCommand::Push(b.abs() as usize));
+            self.outpus
+                .push(SeStackCommand::BinaryOP(BinaryOp::asterisk()));
+
             self.outpus
                 .push(SeStackCommand::BinaryOP(BinaryOp::minus()));
         }
@@ -511,14 +515,14 @@ fn test() {
     use crate::codegen::stack::{StackInst, StackMachine};
     use SeStackCommand::*;
     let mut vec = vec![
-        Push(0),
-        Push(0),
-        Push(50),
-        Push(50),
-        Push(50),
-        Push(100),
-        Push(20),
         Push(5),
+        SeStackCommand::Copy,
+        SeStackCommand::Push(0),
+        SeStackCommand::Push(2),
+        SeStackCommand::WriteAddr,
+        SeStackCommand::Push(20),
+        SeStackCommand::BinaryOP(BinaryOp::asterisk()),
+        SeStackCommand::BinaryOP(BinaryOp::minus()),
     ];
 
     vec.push(SeStackCommand::Exit);
