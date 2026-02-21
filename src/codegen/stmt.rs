@@ -55,34 +55,6 @@ fn declare_variable(init: Init, cgs: &mut CodeGenStatus) {
     }
 }
 
-impl Array {
-    pub fn arry_list(&self) -> Vec<usize> {
-        let this_len = self.length.as_ref().unwrap().consume_const() as usize;
-
-        match &*self.array_of {
-            Type::Array(inner) => {
-                std::iter::once(self.length.as_ref().unwrap().consume_const() as usize)
-                    .chain(inner.arry_list().into_iter())
-                    .collect()
-            }
-            _ => vec![this_len],
-        }
-    }
-}
-
-impl InitData {
-    fn acsess(&self, list: Vec<usize>) -> InitData {
-        if list.is_empty() {
-            return self.clone();
-        } else {
-            match self {
-                InitData::Compound(this) => this[*list.first().unwrap()].acsess(list[1..].to_vec()),
-                _ => return self.clone(),
-            }
-        }
-    }
-}
-
 fn initialize_variable(init_data: InitData, var_type: &Type, cgs: &mut CodeGenStatus) {
     match init_data.clone() {
         InitData::Expr(typed_expr) => {
@@ -93,27 +65,9 @@ fn initialize_variable(init_data: InitData, var_type: &Type, cgs: &mut CodeGenSt
             // 複合初期化子 {1, 2, 3}
             match var_type {
                 Type::Array(arr) => {
-                    let combos =
-                        arr.arry_list()
-                            .iter()
-                            .fold(vec![vec![]].into_iter(), |acc, &max| {
-                                acc.flat_map(move |prefix| {
-                                    (0..max).map(move |i| {
-                                        let mut new_prefix = prefix.clone();
-                                        new_prefix.push(i);
-                                        new_prefix
-                                    })
-                                })
-                                .collect::<Vec<_>>()
-                                .into_iter()
-                            });
-
-                    for i in combos.rev() {
-                        match init_data.clone().acsess(i) {
-                            InitData::Compound(_) => panic!(),
-                            InitData::Expr(this) => gen_expr(this, cgs),
-                        }
-                    }
+                    (0..com.len())
+                        .rev()
+                        .for_each(|i| initialize_variable(com[i].clone(), &arr.array_of, cgs));
                 }
                 Type::Struct(st) => {
                     (0..com.len()).rev().for_each(|i| {
